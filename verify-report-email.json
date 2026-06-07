@@ -1,0 +1,8 @@
+{
+  "dailyVisible": true,
+  "summaryCount": 7,
+  "emailButtonVisible": true,
+  "printButtonVisible": true,
+  "emailMessage": "Report email was sent to adminService@gmail.com",
+  "errors": []
+}

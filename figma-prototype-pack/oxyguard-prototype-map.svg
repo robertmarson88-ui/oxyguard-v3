@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+  <rect width="1440" height="900" fill="#f5f8fb"/>
+  <text x="72" y="82" fill="#0d2238" font-family="Arial, sans-serif" font-size="34" font-weight="700">OxyGuard V3 Prototype Map</text>
+  <text x="72" y="122" fill="#667085" font-family="Arial, sans-serif" font-size="16">Import this SVG into Figma as a user-flow overview.</text>
+
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#0b72d9"/>
+    </marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#142337" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+
+  <g font-family="Arial, sans-serif">
+    <g transform="translate(72 210)" filter="url(#shadow)">
+      <rect width="230" height="132" rx="16" fill="#ffffff" stroke="#dae2eb"/>
+      <text x="24" y="44" fill="#0d2238" font-size="22" font-weight="700">Login</text>
+      <text x="24" y="76" fill="#667085" font-size="14">admin / admin1234</text>
+      <text x="24" y="102" fill="#27ae60" font-size="13" font-weight="700">Login button</text>
+    </g>
+
+    <g transform="translate(438 210)" filter="url(#shadow)">
+      <rect width="260" height="132" rx="16" fill="#ffffff" stroke="#dae2eb"/>
+      <text x="24" y="44" fill="#0d2238" font-size="22" font-weight="700">Dashboard</text>
+      <text x="24" y="76" fill="#667085" font-size="14">Ward cards and live metrics</text>
+      <text x="24" y="102" fill="#0b72d9" font-size="13" font-weight="700">Main hub</text>
+    </g>
+
+    <g transform="translate(838 128)" filter="url(#shadow)">
+      <rect width="270" height="132" rx="16" fill="#ffffff" stroke="#dae2eb"/>
+      <text x="24" y="44" fill="#0d2238" font-size="22" font-weight="700">Order Summary</text>
+      <text x="24" y="76" fill="#667085" font-size="14">Automated order review</text>
+      <text x="24" y="102" fill="#27ae60" font-size="13" font-weight="700">Confirm or reject order</text>
+    </g>
+
+    <g transform="translate(838 350)" filter="url(#shadow)">
+      <rect width="270" height="132" rx="16" fill="#ffffff" stroke="#dae2eb"/>
+      <text x="24" y="44" fill="#0d2238" font-size="22" font-weight="700">Report</text>
+      <text x="24" y="76" fill="#667085" font-size="14">Heat map, charts, tables</text>
+      <text x="24" y="102" fill="#0b72d9" font-size="13" font-weight="700">Email or print report</text>
+    </g>
+
+    <g transform="translate(838 572)" filter="url(#shadow)">
+      <rect width="270" height="132" rx="16" fill="#ffffff" stroke="#dae2eb"/>
+      <text x="24" y="44" fill="#0d2238" font-size="22" font-weight="700">Analytics</text>
+      <text x="24" y="76" fill="#667085" font-size="14">Monthly usage and wastage</text>
+      <text x="24" y="102" fill="#dc3545" font-size="13" font-weight="700">Top ward cost insights</text>
+    </g>
+
+    <g transform="translate(1190 350)" filter="url(#shadow)">
+      <rect width="178" height="132" rx="16" fill="#ffffff" stroke="#dae2eb"/>
+      <text x="24" y="44" fill="#0d2238" font-size="22" font-weight="700">Logout</text>
+      <text x="24" y="76" fill="#667085" font-size="14">Return to Login</text>
+    </g>
+
+    <path d="M302 276 L438 276" stroke="#0b72d9" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+    <path d="M698 268 C760 232 766 194 838 194" stroke="#0b72d9" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+    <path d="M698 276 C762 294 764 416 838 416" stroke="#0b72d9" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+    <path d="M698 288 C766 360 764 638 838 638" stroke="#0b72d9" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+    <path d="M1108 416 L1190 416" stroke="#0b72d9" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+    <path d="M1190 482 C948 806 286 518 184 342" stroke="#0b72d9" stroke-width="3" fill="none" stroke-dasharray="10 8" marker-end="url(#arrow)"/>
+  </g>
+</svg>

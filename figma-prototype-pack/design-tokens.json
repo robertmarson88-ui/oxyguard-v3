@@ -1,0 +1,48 @@
+{
+  "name": "OxyGuard V3",
+  "version": "1.01",
+  "colors": {
+    "blue": "#0b72d9",
+    "blueDark": "#064f9f",
+    "navy": "#0d2238",
+    "background": "#f5f8fb",
+    "text": "#182230",
+    "muted": "#667085",
+    "green": "#27ae60",
+    "yellow": "#e5a80f",
+    "red": "#dc3545",
+    "grey": "#98a0a8",
+    "sky": "#00a0dc",
+    "purple": "#6f42c1",
+    "line": "#dae2eb"
+  },
+  "typography": {
+    "fontFamily": "Inter, Segoe UI, Roboto, Arial, sans-serif",
+    "baseSize": 14,
+    "headingWeight": 760,
+    "bodyWeight": 500
+  },
+  "layout": {
+    "desktopFrame": {
+      "width": 1440,
+      "height": 900
+    },
+    "sidebarWidth": 200,
+    "topbarHeight": 82,
+    "cardRadius": 14,
+    "buttonRadius": 10
+  },
+  "components": [
+    "Login Card",
+    "Sidebar Button",
+    "Topbar",
+    "Ward Card",
+    "Tank Row",
+    "Metric Card",
+    "Report Card",
+    "Analytics Summary Card",
+    "Order Detail Row",
+    "Delivery Step",
+    "Dialog Overlay"
+  ]
+}
