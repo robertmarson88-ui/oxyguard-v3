@@ -12,7 +12,7 @@ const authEmailAddress = process.env.OXYGUARD_AUTH_EMAIL || "robertmarson88@gmai
 const codeTtlMs = 5 * 60 * 1000;
 const users = {
   user1: { password: "password1", role: "admin", label: "Administrator" },
-  user2: { password: "password2", role: "viewer", label: "Viewer" }
+  user2: { password: "password2", role: "admin", label: "Administrator" }
 };
 const pendingCodes = new Map();
 const types = {

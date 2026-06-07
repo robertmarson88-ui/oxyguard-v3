@@ -29,4 +29,4 @@ OXYGUARD_EMAIL_FROM=OxyGuard <onboarding@resend.dev>
 ## Login Roles
 
 - `user1` is the administrator.
-- `user2` is the viewer.
+- `user2` is also an administrator.
