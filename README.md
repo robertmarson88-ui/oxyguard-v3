@@ -30,3 +30,5 @@ OXYGUARD_EMAIL_FROM=OxyGuard <onboarding@resend.dev>
 
 - `user1` is the administrator.
 - `user2` is also an administrator.
+- `vernon` is an administrator.
+- `martin` is an administrator.

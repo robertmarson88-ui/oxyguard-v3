@@ -8,11 +8,12 @@ await loadLocalEnv();
 const port = Number(process.env.PORT || 4180);
 const root = process.cwd();
 const nurseStationDataPath = join(process.env.USERPROFILE || "C:\\Users\\twcl.ssa", "Desktop", "data.txt");
-const authEmailAddress = process.env.OXYGUARD_AUTH_EMAIL || "robertmarson88@gmail.com";
 const codeTtlMs = 5 * 60 * 1000;
 const users = {
-  user1: { password: "password1", role: "admin", label: "Administrator" },
-  user2: { password: "password2", role: "admin", label: "Administrator" }
+  user1: { password: "password1", role: "admin", label: "Administrator", email: process.env.OXYGUARD_AUTH_EMAIL || "robertmarson88@gmail.com" },
+  user2: { password: "password2", role: "admin", label: "Administrator", email: process.env.OXYGUARD_AUTH_EMAIL || "robertmarson88@gmail.com" },
+  vernon: { password: "vernon1", role: "admin", label: "Administrator", email: "vernon.dacosta@gmail.com" },
+  martin: { password: "martin1", role: "admin", label: "Administrator", email: "robinsonmartin187@gmail.com" }
 };
 const pendingCodes = new Map();
 const types = {
@@ -41,7 +42,7 @@ createServer(async (req, res) => {
         expiresAt: Date.now() + codeTtlMs
       });
 
-      const delivery = await sendAuthEmail(authEmailAddress, code);
+      const delivery = await sendAuthEmail(user.email, code);
       if (!delivery.sent) {
         pendingCodes.delete(challengeId);
         sendJson(res, 503, {
@@ -54,7 +55,7 @@ createServer(async (req, res) => {
       sendJson(res, 200, {
         ok: true,
         challengeId,
-        email: maskEmail(authEmailAddress),
+        email: maskEmail(user.email),
         message: "Email code sent."
       });
       return;
