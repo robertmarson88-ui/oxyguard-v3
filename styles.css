@@ -462,11 +462,6 @@ body.login-active .app {
   box-shadow: 0 18px 45px rgba(20, 35, 55, 0.13);
 }
 
-.ward-card.alert.flash {
-  background: #ffe7e7;
-  border-color: var(--red);
-}
-
 .ward-head {
   display: flex;
   align-items: center;

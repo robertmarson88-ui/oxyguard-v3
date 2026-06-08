@@ -295,7 +295,7 @@ function renderWardCard(ward) {
   const pressure = averagePressure(ward);
 
   return `
-    <article class="ward-card ${alert ? "alert" : ""} ${alert && flashRed ? "flash" : ""}" data-ward="${ward.id}" style="color:${ward.accent}">
+    <article class="ward-card ${alert ? "alert" : ""}" data-ward="${ward.id}" style="color:${ward.accent}">
       <header class="ward-head">
         <div class="ward-icon">O2</div>
         <div class="ward-title">
@@ -315,7 +315,7 @@ function renderWardCard(ward) {
 function renderTankRow(t) {
   const alert = t.leakageAlert || t.highFlowAlert;
   const arrowColor = !t.active || t.flowRate <= 0 ? colors.grey : alert ? colors.red : colors.green;
-  const status = t.highFlowAlert ? "High Abnormal Flow Rate" : t.leakageAlert ? (t.alertMessage || "Wastage Alert") : t.flowRate <= 0 ? "No oxygen" : t.occupied ? "Stable" : "Monitor";
+  const status = t.alertMessage || (t.highFlowAlert ? "High Abnormal Flow Rate" : t.leakageAlert ? "Wastage Alert" : t.flowRate <= 0 ? "No oxygen" : t.occupied ? "Stable" : "Monitor");
 
   return `
     <div class="tank-row ${alert ? "alert" : ""} ${alert && flashRed ? "flash" : ""}">
@@ -458,11 +458,11 @@ function scheduleDemo() {
   timeout(12000, () => {
     const a2 = getTank("Tank A2");
     a2.active = true;
-    a2.flowRate = 68;
-    a2.stationFlowRate = 68;
+    a2.flowRate = 3;
+    a2.stationFlowRate = 3;
     a2.leakageAlert = true;
-    a2.highFlowAlert = true;
-    a2.alertMessage = "High Abnormal Flow Rate";
+    a2.highFlowAlert = false;
+    a2.alertMessage = "A&E Ward Alert - Flow Normal";
     wastage = Math.max(wastage, 18);
     renderAll();
   });
@@ -510,7 +510,7 @@ function openWard(id) {
       <span>Tank</span><span>Station</span><span>Pressure</span><span>Flow</span><span>Status</span>
     </div>
     ${ward.tanks.filter(t => t.active).map(t => {
-      const status = t.highFlowAlert ? "High Abnormal Flow Rate" : t.leakageAlert ? "Wastage Alert" : t.flowRate <= 0 ? "No oxygen" : t.occupied ? "Stable" : "Monitor";
+      const status = t.alertMessage || (t.highFlowAlert ? "High Abnormal Flow Rate" : t.leakageAlert ? "Wastage Alert" : t.flowRate <= 0 ? "No oxygen" : t.occupied ? "Stable" : "Monitor");
       return `<div class="detail-row"><span>${t.name}<br><small>${t.serial}</small></span><span>${t.station}</span><span>${t.pressure} PSI</span><span>${t.flowRate} L/min</span><span>${status}</span></div>`;
     }).join("")}
   `;
@@ -1002,7 +1002,7 @@ function updateFooter() {
 
 function activeAlerts() {
   const alerts = [];
-  if (getTank("Tank A2").highFlowAlert) alerts.push("A&E A2 high flow");
+  if (getTank("Tank A2").leakageAlert || getTank("Tank A2").highFlowAlert) alerts.push("A&E Ward alert - flow normal");
   if (getTank("Tank B3").leakageAlert) alerts.push("Labour Ward wastage");
   if (getTank("Tank C3").leakageAlert) alerts.push("Paediatric C3 wastage");
   return alerts;
