@@ -83,7 +83,6 @@ let flashRed;
 let activeView = "dashboard";
 let timers = [];
 let currentUser = null;
-let loginChallengeId = "";
 
 function tank(name, serial, station, pressure, flowRate, options = {}) {
   return {
@@ -142,12 +141,8 @@ function setupLogin() {
   const form = document.getElementById("loginForm");
   const username = document.getElementById("loginUsername");
   const password = document.getElementById("loginPassword");
-  const codeField = document.getElementById("authCodeField");
-  const code = document.getElementById("authCode");
   const submit = document.getElementById("loginSubmit");
-  const resetStep = document.getElementById("resetLoginStep");
   const error = document.getElementById("loginError");
-  const hint = document.getElementById("loginHint");
 
   const savedUser = readSavedUser();
   if (savedUser) {
@@ -157,54 +152,27 @@ function setupLogin() {
     username.focus();
   }
 
-  resetStep.addEventListener("click", () => {
-    resetLoginStep();
-    username.focus();
-  });
-
   form.addEventListener("submit", async event => {
     event.preventDefault();
     error.classList.remove("visible");
     submit.disabled = true;
 
     try {
-      if (!loginChallengeId) {
-        const response = await fetch("/api/login/request-code", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ username: username.value.trim(), password: password.value })
-        });
-        const result = await response.json();
-
-        if (!response.ok || !result.ok) {
-          throw new Error(result.message || "Invalid username or password.");
-        }
-
-        loginChallengeId = result.challengeId;
-        username.setAttribute("readonly", "readonly");
-        password.setAttribute("readonly", "readonly");
-        codeField.classList.add("visible");
-        resetStep.classList.add("visible");
-        submit.textContent = "Verify Code";
-        hint.textContent = `Email auth code sent to ${result.email}.`;
-        code.focus();
-        return;
-      }
-
-      const response = await fetch("/api/login/verify-code", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ challengeId: loginChallengeId, code: code.value })
+        body: JSON.stringify({ username: username.value.trim(), password: password.value })
       });
       const result = await response.json();
 
       if (!response.ok || !result.ok) {
-        throw new Error(result.message || "Invalid email auth code.");
+        throw new Error(result.message || "Invalid username or password.");
       }
 
       currentUser = result.user;
       sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
-      resetLoginStep();
+      password.value = "";
+      error.classList.remove("visible");
       showApp();
     } catch (authError) {
       error.textContent = authError.message;
@@ -216,14 +184,8 @@ function setupLogin() {
 }
 
 function resetLoginStep() {
-  loginChallengeId = "";
-  document.getElementById("authCode").value = "";
   document.getElementById("loginPassword").value = "";
-  document.getElementById("loginUsername").removeAttribute("readonly");
-  document.getElementById("loginPassword").removeAttribute("readonly");
-  document.getElementById("authCodeField").classList.remove("visible");
-  document.getElementById("resetLoginStep").classList.remove("visible");
-  document.getElementById("loginSubmit").textContent = "Send Password";
+  document.getElementById("loginSubmit").textContent = "Login";
   document.getElementById("loginHint").textContent = "";
   document.getElementById("loginError").classList.remove("visible");
 }
@@ -575,7 +537,7 @@ function updateCurrentUserDisplay() {
   const currentUserElement = document.getElementById("currentUser");
   if (!currentUserElement) return;
   currentUserElement.innerHTML = currentUser
-    ? `<span>Logged in as</span><strong>${currentUser.username}</strong>`
+    ? `<span>Logged in as</span><strong>${currentUser.username} - ${currentUser.label}</strong>`
     : "";
 }
 
