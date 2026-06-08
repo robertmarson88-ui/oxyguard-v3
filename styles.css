@@ -981,15 +981,6 @@ body.login-active .app {
   grid-area: service;
 }
 
-.heat-zone::after {
-  content: "";
-  position: absolute;
-  inset: auto 12px 8px 12px;
-  height: 4px;
-  border-radius: 999px;
-  background: #d7e0ea;
-}
-
 .heat-zone strong {
   position: relative;
   z-index: 1;
@@ -1014,10 +1005,6 @@ body.login-active .app {
   box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.08) inset;
 }
 
-.heat-zone.low::after {
-  background: var(--green);
-}
-
 .heat-zone.medium {
   background:
     radial-gradient(circle at 50% 52%, rgba(229, 168, 15, 0.2), transparent 58%),
@@ -1026,21 +1013,12 @@ body.login-active .app {
   box-shadow: 0 0 0 3px rgba(229, 168, 15, 0.11) inset;
 }
 
-.heat-zone.medium::after {
-  background: var(--yellow);
-}
-
 .heat-zone.high {
   background:
     radial-gradient(circle at 50% 52%, rgba(220, 53, 69, 0.24), transparent 58%),
     #fff0f1;
   border-color: #ef9aa3;
   box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.12) inset;
-}
-
-.heat-zone.high::after,
-.heat-zone.has-alert::after {
-  background: var(--red);
 }
 
 .heat-zone.has-alert {
@@ -1067,10 +1045,6 @@ body.login-active .app {
 
 .heat-zone.corridor small {
   font-size: 10px;
-}
-
-.heat-zone.support::after {
-  background: repeating-linear-gradient(90deg, #adb6c1 0 8px, transparent 8px 14px);
 }
 
 @keyframes heatPulse {
