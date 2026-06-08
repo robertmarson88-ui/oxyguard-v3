@@ -47,7 +47,7 @@ createServer(async (req, res) => {
         pendingCodes.delete(challengeId);
         sendJson(res, 503, {
           ok: false,
-          message: "Email delivery is not configured. Add an email API key before requesting a code."
+          message: delivery.message || "Email delivery is not configured. Add an email API key before requesting a code."
         });
         return;
       }
@@ -149,7 +149,7 @@ async function sendAuthEmail(to, code) {
 
   if (!apiKey) {
     console.log("[OxyGuard email not sent] RESEND_API_KEY is not configured.");
-    return { sent: false };
+    return { sent: false, message: "Email delivery is not configured. Add an email API key before requesting a code." };
   }
 
   const response = await fetch("https://api.resend.com/emails", {
@@ -169,10 +169,22 @@ async function sendAuthEmail(to, code) {
   if (!response.ok) {
     const details = await response.text();
     console.log(`[OxyGuard email failed] ${response.status}: ${details}`);
-    return { sent: false };
+    return { sent: false, message: emailFailureMessage(details) };
   }
 
   return { sent: true };
+}
+
+function emailFailureMessage(details) {
+  try {
+    const parsed = JSON.parse(details);
+    if (parsed.message?.includes("You can only send testing emails")) {
+      return "Resend is in testing mode. Verify a domain in Resend before sending codes to this user's email address.";
+    }
+    return parsed.message || "Email delivery failed. Check your Resend sender settings.";
+  } catch {
+    return "Email delivery failed. Check your Resend sender settings.";
+  }
 }
 
 function maskEmail(email) {
