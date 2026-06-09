@@ -210,6 +210,7 @@ function showApp() {
 }
 
 function logout() {
+  if (!window.confirm("Are you sure you want to logout?")) return;
   currentUser = null;
   sessionStorage.removeItem("oxyguardUser");
   document.body.classList.add("login-active");
