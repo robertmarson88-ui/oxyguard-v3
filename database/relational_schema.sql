@@ -94,13 +94,24 @@ ON CONFLICT (role_id) DO UPDATE
 
 SELECT setval('roles_role_id_seq', GREATEST((SELECT MAX(role_id) FROM roles), 1), true);
 
-INSERT INTO users (user_id, username, email, email_verified, password_hash, role_id) VALUES
-  ('AA001', 'martinm', 'robinsonmartin187@gmail.com', TRUE, 'demo-hash:martinm', 3),
-  ('AA002', 'robertm', 'marsonrobert88@gmail.com', TRUE, 'demo-hash:robertm', 1),
-  ('AA003', 'vernond', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernond', 4)
+INSERT INTO users (user_id, username, email, email_verified, password_hash, role_id, created_at) VALUES
+  ('AA001', 'martinm', 'robinsonmartin187@gmail.com', TRUE, 'demo-hash:martinm-2026', 3, '2026-06-09 08:00:00'),
+  ('AA002', 'robertm', 'marsonrobert88@gmail.com', TRUE, 'demo-hash:robertm-2026', 1, '2026-06-09 08:00:00'),
+  ('AA003', 'vernond', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernond-2026', 4, '2026-06-09 08:00:00')
 ON CONFLICT (user_id) DO UPDATE
   SET username = EXCLUDED.username,
       email = EXCLUDED.email,
       email_verified = EXCLUDED.email_verified,
       password_hash = EXCLUDED.password_hash,
-      role_id = EXCLUDED.role_id;
+      role_id = EXCLUDED.role_id,
+      created_at = EXCLUDED.created_at;
+
+INSERT INTO wards (ward_id, ward_name, location) VALUES
+  ('X001', 'Labour', '7a East Wing'),
+  ('X002', 'A&E', '12c North Wing'),
+  ('X003', 'Maternity', '3a South Wing'),
+  ('X004', 'Nurse Station', '11b West Wing'),
+  ('X005', 'Paediatric Ward', '11c West Wing')
+ON CONFLICT (ward_id) DO UPDATE
+  SET ward_name = EXCLUDED.ward_name,
+      location = EXCLUDED.location;

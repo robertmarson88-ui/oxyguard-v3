@@ -15,6 +15,7 @@ const types = {
 };
 const operationalStatuses = new Set(["normal", "warning", "critical", "hardware_fault"]);
 const alertSeverities = new Set(["High", "Medium", "Low"]);
+const demoCreatedAt = "2026-06-09T08:00:00Z";
 const sessions = new Map();
 const db = createRelationalStore();
 
@@ -323,7 +324,6 @@ function ensureDevice(deviceId, wardId) {
 }
 
 function createRelationalStore() {
-  const now = new Date().toISOString();
   const store = {
     roles: [
       { role_id: 1, role_name: "Administrator" },
@@ -346,23 +346,23 @@ function createRelationalStore() {
       { role_id: 5, permission_id: 2 }
     ],
     users: [
-      createUser("AA001", "martinm", "martin1", "robinsonmartin187@gmail.com", 3),
-      createUser("AA002", "robertm", "password1", "marsonrobert88@gmail.com", 1),
-      createUser("AA003", "vernond", "vernon1", "vernon.dacosta@gmail.com", 4)
+      createUser("AA001", "martinm", "martin1", "robinsonmartin187@gmail.com", 3, "demo-hash:martinm-2026"),
+      createUser("AA002", "robertm", "password1", "marsonrobert88@gmail.com", 1, "demo-hash:robertm-2026"),
+      createUser("AA003", "vernond", "vernon1", "vernon.dacosta@gmail.com", 4, "demo-hash:vernond-2026")
     ],
     wards: [
-      { ward_id: "AE-WARD", ward_name: "A&E Ward", location: "Emergency" },
-      { ward_id: "NURSE-STATION", ward_name: "Nurse Station", location: "Central Desk" },
-      { ward_id: "PAEDIATRIC", ward_name: "Paediatric Ward", location: "East Wing" },
-      { ward_id: "RECOVERY", ward_name: "Recovery Bay", location: "Post-care" },
-      { ward_id: "LABOUR", ward_name: "Labour Ward", location: "Maternity" }
+      { ward_id: "X001", ward_name: "Labour", location: "7a East Wing" },
+      { ward_id: "X002", ward_name: "A&E", location: "12c North Wing" },
+      { ward_id: "X003", ward_name: "Maternity", location: "3a South Wing" },
+      { ward_id: "X004", ward_name: "Nurse Station", location: "11b West Wing" },
+      { ward_id: "X005", ward_name: "Paediatric Ward", location: "11c West Wing" }
     ],
     devices: [
-      { device_id: "ESP32-AE-WARD", ward_id: "AE-WARD", created_at: now },
-      { device_id: "ESP32-NURSE-STATION", ward_id: "NURSE-STATION", created_at: now },
-      { device_id: "ESP32-PAEDIATRIC", ward_id: "PAEDIATRIC", created_at: now },
-      { device_id: "ESP32-RECOVERY", ward_id: "RECOVERY", created_at: now },
-      { device_id: "ESP32-LABOUR", ward_id: "LABOUR", created_at: now }
+      { device_id: "ESP32-X001-LABOUR", ward_id: "X001", created_at: demoCreatedAt },
+      { device_id: "ESP32-X002-AE", ward_id: "X002", created_at: demoCreatedAt },
+      { device_id: "ESP32-X003-MATERNITY", ward_id: "X003", created_at: demoCreatedAt },
+      { device_id: "ESP32-X004-NURSE-STATION", ward_id: "X004", created_at: demoCreatedAt },
+      { device_id: "ESP32-X005-PAEDIATRIC", ward_id: "X005", created_at: demoCreatedAt }
     ],
     telemetry_logs: [],
     alerts: [],
@@ -374,16 +374,16 @@ function createRelationalStore() {
   return store;
 }
 
-function createUser(user_id, username, password, email, role_id) {
+function createUser(user_id, username, password, email, role_id, password_hash) {
   return {
     user_id,
     username,
     email,
     email_verified: true,
     password,
-    password_hash: `demo-hash:${username}`,
+    password_hash,
     role_id,
-    created_at: new Date().toISOString()
+    created_at: demoCreatedAt
   };
 }
 
