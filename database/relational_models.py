@@ -59,7 +59,7 @@ class RolePermission(Base):
 class User(Base):
     __tablename__ = "users"
 
-    user_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[str] = mapped_column(String(10), primary_key=True)
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String(150), unique=True, nullable=False)
     email_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
@@ -136,7 +136,7 @@ class Alert(Base):
     alert_type: Mapped[str] = mapped_column(String(50), nullable=False)
     severity: Mapped[str] = mapped_column(String(20), nullable=False)
     is_resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
-    resolved_by: Mapped[int | None] = mapped_column(ForeignKey("users.user_id"))
+    resolved_by: Mapped[str | None] = mapped_column(ForeignKey("users.user_id"))
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
@@ -154,7 +154,7 @@ class AuditLog(Base):
     __tablename__ = "audit_logs"
 
     audit_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.user_id"), nullable=False)
     action: Mapped[str] = mapped_column(String(100), nullable=False)
     target: Mapped[str] = mapped_column(String(100), nullable=False)
     performed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

@@ -18,7 +18,7 @@ CREATE TABLE role_permissions (
 );
 
 CREATE TABLE users (
-  user_id SERIAL PRIMARY KEY,
+  user_id VARCHAR(10) PRIMARY KEY,
   username VARCHAR(100) UNIQUE NOT NULL,
   email VARCHAR(150) UNIQUE NOT NULL,
   email_verified BOOLEAN DEFAULT FALSE NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE alerts (
   alert_type VARCHAR(50) NOT NULL,
   severity VARCHAR(20) NOT NULL,
   is_resolved BOOLEAN DEFAULT FALSE NOT NULL,
-  resolved_by INTEGER REFERENCES users(user_id),
+  resolved_by VARCHAR(10) REFERENCES users(user_id),
   resolved_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT alerts_severity_check CHECK (severity IN ('High', 'Medium', 'Low'))
@@ -68,7 +68,7 @@ CREATE TABLE alerts (
 
 CREATE TABLE audit_logs (
   audit_id SERIAL PRIMARY KEY,
-  user_id INTEGER NOT NULL REFERENCES users(user_id),
+  user_id VARCHAR(10) NOT NULL REFERENCES users(user_id),
   action VARCHAR(100) NOT NULL,
   target VARCHAR(100) NOT NULL,
   performed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL
@@ -93,3 +93,14 @@ ON CONFLICT (role_id) DO UPDATE
   SET role_name = EXCLUDED.role_name;
 
 SELECT setval('roles_role_id_seq', GREATEST((SELECT MAX(role_id) FROM roles), 1), true);
+
+INSERT INTO users (user_id, username, email, email_verified, password_hash, role_id) VALUES
+  ('AA001', 'martinm', 'robinsonmartin187@gmail.com', TRUE, 'demo-hash:martinm', 3),
+  ('AA002', 'robertm', 'marsonrobert88@gmail.com', TRUE, 'demo-hash:robertm', 1),
+  ('AA003', 'vernond', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernond', 4)
+ON CONFLICT (user_id) DO UPDATE
+  SET username = EXCLUDED.username,
+      email = EXCLUDED.email,
+      email_verified = EXCLUDED.email_verified,
+      password_hash = EXCLUDED.password_hash,
+      role_id = EXCLUDED.role_id;

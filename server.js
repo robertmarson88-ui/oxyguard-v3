@@ -346,10 +346,9 @@ function createRelationalStore() {
       { role_id: 5, permission_id: 2 }
     ],
     users: [
-      createUser(1, "user1", "password1", process.env.OXYGUARD_AUTH_EMAIL || "robertmarson88@gmail.com", 1),
-      createUser(2, "user2", "password2", process.env.OXYGUARD_AUTH_EMAIL || "robertmarson88@gmail.com", 1),
-      createUser(3, "vernon", "vernon1", "vernon.dacosta@gmail.com", 1),
-      createUser(4, "martin", "martin1", "robinsonmartin187@gmail.com", 1)
+      createUser("AA001", "martinm", "martin1", "robinsonmartin187@gmail.com", 3),
+      createUser("AA002", "robertm", "password1", "marsonrobert88@gmail.com", 1),
+      createUser("AA003", "vernond", "vernon1", "vernon.dacosta@gmail.com", 4)
     ],
     wards: [
       { ward_id: "AE-WARD", ward_name: "A&E Ward", location: "Emergency" },
