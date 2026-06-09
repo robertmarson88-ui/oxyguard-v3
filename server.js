@@ -123,10 +123,11 @@ async function login(req, res, apiV1) {
 
   const role = db.roles.find(item => item.role_id === user.role_id);
   const token = issueToken(user);
+  const isAdministrator = role.role_name === "Administrator";
   const sessionUser = {
     username: normalizedUsername,
-    role: role.role_name.toLowerCase() === "admin" ? "admin" : "viewer",
-    label: role.role_name === "Admin" ? "Administrator" : role.role_name
+    role: isAdministrator ? "admin" : "viewer",
+    label: role.role_name
   };
 
   if (apiV1) {
@@ -252,7 +253,7 @@ function issueToken(user) {
 
 function resolveAlert(res, alertId, user) {
   const role = db.roles.find(item => item.role_id === user.role_id);
-  if (!role || role.role_name !== "Admin") {
+  if (!role || role.role_name !== "Administrator") {
     sendJson(res, 403, { ok: false, message: "Session lacks resolve_alert permission." });
     return;
   }
@@ -325,8 +326,11 @@ function createRelationalStore() {
   const now = new Date().toISOString();
   const store = {
     roles: [
-      { role_id: 1, role_name: "Admin" },
-      { role_id: 2, role_name: "Nurse" }
+      { role_id: 1, role_name: "Administrator" },
+      { role_id: 2, role_name: "Executive / CFO" },
+      { role_id: 3, role_name: "Facilities Manager" },
+      { role_id: 4, role_name: "Nurse Manager" },
+      { role_id: 5, role_name: "Nurse" }
     ],
     permissions: [
       { permission_id: 1, permission_name: "resolve_alert" },
@@ -335,7 +339,11 @@ function createRelationalStore() {
     role_permissions: [
       { role_id: 1, permission_id: 1 },
       { role_id: 1, permission_id: 2 },
-      { role_id: 2, permission_id: 2 }
+      { role_id: 2, permission_id: 2 },
+      { role_id: 3, permission_id: 2 },
+      { role_id: 4, permission_id: 1 },
+      { role_id: 4, permission_id: 2 },
+      { role_id: 5, permission_id: 2 }
     ],
     users: [
       createUser(1, "user1", "password1", process.env.OXYGUARD_AUTH_EMAIL || "robertmarson88@gmail.com", 1),

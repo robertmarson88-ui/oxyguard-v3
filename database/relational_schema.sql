@@ -82,3 +82,14 @@ CREATE INDEX telemetry_logs_status_timestamp_idx ON telemetry_logs(operational_s
 CREATE INDEX alerts_device_id_idx ON alerts(device_id);
 CREATE INDEX alerts_unresolved_idx ON alerts(is_resolved, severity);
 CREATE INDEX audit_logs_user_performed_idx ON audit_logs(user_id, performed_at DESC);
+
+INSERT INTO roles (role_id, role_name) VALUES
+  (1, 'Administrator'),
+  (2, 'Executive / CFO'),
+  (3, 'Facilities Manager'),
+  (4, 'Nurse Manager'),
+  (5, 'Nurse')
+ON CONFLICT (role_id) DO UPDATE
+  SET role_name = EXCLUDED.role_name;
+
+SELECT setval('roles_role_id_seq', GREATEST((SELECT MAX(role_id) FROM roles), 1), true);
