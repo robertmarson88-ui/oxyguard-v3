@@ -403,13 +403,30 @@ body.login-active .app {
   align-items: center;
 }
 
-.legend span {
+.legend-filter {
   display: inline-flex;
   align-items: center;
   gap: 7px;
+  min-height: 28px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
   font-size: 11px;
   color: #344054;
   font-weight: 500;
+  cursor: pointer;
+}
+
+.legend-filter:hover,
+.legend-filter.active {
+  border-color: #cfd9e4;
+  background: #f6f9fc;
+}
+
+.legend-filter.active {
+  color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.08) inset;
 }
 
 .line {
@@ -532,6 +549,28 @@ body.login-active .app {
   background: #ffe7e7;
   border-color: var(--red);
   border-width: 2px;
+}
+
+.tank-row.suspicious {
+  border-color: #ecc85e;
+  background: #fffaf0;
+}
+
+.tank-row.inactive {
+  border-color: #cfd9e4;
+  background: #f6f8fb;
+}
+
+.empty-filter {
+  min-height: 160px;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  color: var(--muted);
+}
+
+.empty-filter strong {
+  color: var(--text);
 }
 
 .tank-name {

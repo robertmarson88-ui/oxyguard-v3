@@ -83,6 +83,7 @@ let flashRed;
 let activeView = "dashboard";
 let timers = [];
 let currentUser = null;
+let pipelineFilter = "";
 
 function tank(name, serial, station, pressure, flowRate, options = {}) {
   return {
@@ -132,8 +133,18 @@ function start() {
   });
   document.getElementById("closeDialog").addEventListener("click", () => document.getElementById("wardDialog").close());
   document.getElementById("logoutButton").addEventListener("click", logout);
+  setupPipelineFilters();
   document.querySelectorAll("[data-view]").forEach(button => {
     button.addEventListener("click", () => setView(button.dataset.view));
+  });
+}
+
+function setupPipelineFilters() {
+  document.querySelectorAll("[data-pipeline-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      pipelineFilter = pipelineFilter === button.dataset.pipelineFilter ? "" : button.dataset.pipelineFilter;
+      renderWards();
+    });
   });
 }
 
@@ -237,6 +248,7 @@ function resetState() {
   wastage = 3;
   flowIndex = 0;
   flashRed = false;
+  pipelineFilter = "";
 
   renderAll();
   scheduleDemo();
@@ -283,16 +295,56 @@ function setView(view) {
 
 function renderWards() {
   const grid = document.getElementById("wardGrid");
-  grid.innerHTML = wards.map(renderWardCard).join("");
-  grid.querySelectorAll(".ward-card").forEach(card => {
+  updatePipelineFilterButtons();
+  const visibleWards = wards
+    .map(ward => ({ ward, tanks: getVisibleTanks(ward) }))
+    .filter(item => item.tanks.length);
+
+  if (!visibleWards.length) {
+    grid.innerHTML = `
+      <article class="ward-card empty-filter">
+        <strong>No wards match this pipeline status</strong>
+        <span>Click the active status line again to show all wards.</span>
+      </article>
+    `;
+    return;
+  }
+
+  grid.innerHTML = visibleWards.map(({ ward, tanks }) => renderWardCard(ward, tanks)).join("");
+  grid.querySelectorAll(".ward-card[data-ward]").forEach(card => {
     card.addEventListener("click", () => openWard(card.dataset.ward));
   });
 }
 
-function renderWardCard(ward) {
-  const alert = ward.tanks.some(t => t.active && (t.leakageAlert || t.highFlowAlert));
-  const flow = totalFlow(ward);
-  const pressure = averagePressure(ward);
+function updatePipelineFilterButtons() {
+  document.querySelectorAll("[data-pipeline-filter]").forEach(button => {
+    const active = button.dataset.pipelineFilter === pipelineFilter;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+function getVisibleTanks(ward) {
+  if (!pipelineFilter) return ward.tanks.filter(t => t.active);
+  return ward.tanks.filter(t => tankPipelineStatus(t) === pipelineFilter);
+}
+
+function tankPipelineStatus(t) {
+  if (!t.active || t.flowRate <= 0) return "inactive";
+  if (t.leakageAlert || t.highFlowAlert) return "leak";
+  if (isSuspiciousTank(t)) return "suspicious";
+  return "normal";
+}
+
+function isSuspiciousTank(t) {
+  const percent = Math.round((t.volumeRemaining * 100) / t.maxVolume);
+  return t.pressure < 45 || percent < 30 || t.flowRate >= 8;
+}
+
+function renderWardCard(ward, visibleTanks = ward.tanks.filter(t => t.active)) {
+  const alert = visibleTanks.some(t => t.active && (t.leakageAlert || t.highFlowAlert));
+  const flow = visibleTanks.reduce((sum, t) => sum + t.flowRate, 0);
+  const pressure = Math.round(visibleTanks.reduce((sum, t) => sum + t.pressure, 0) / Math.max(1, visibleTanks.length));
 
   return `
     <article class="ward-card ${alert ? "alert" : ""}" data-ward="${ward.id}" style="color:${ward.accent}">
@@ -305,7 +357,7 @@ function renderWardCard(ward) {
         <span class="live-badge">LIVE</span>
       </header>
       <div class="tank-list">
-        ${ward.tanks.filter(t => t.active).map(t => renderTankRow(t)).join("")}
+        ${visibleTanks.map(t => renderTankRow(t)).join("")}
       </div>
       <footer class="ward-summary">Average Pressure: ${pressure} PSI | Total Flow: ${flow} L/min</footer>
     </article>
@@ -314,11 +366,12 @@ function renderWardCard(ward) {
 
 function renderTankRow(t) {
   const alert = t.leakageAlert || t.highFlowAlert;
-  const arrowColor = !t.active || t.flowRate <= 0 ? colors.grey : alert ? colors.red : colors.green;
-  const status = t.alertMessage || (t.highFlowAlert ? "High Abnormal Flow Rate" : t.leakageAlert ? "Wastage Alert" : t.flowRate <= 0 ? "No oxygen" : t.occupied ? "Stable" : "Monitor");
+  const pipelineStatus = tankPipelineStatus(t);
+  const arrowColor = pipelineStatus === "inactive" ? colors.grey : pipelineStatus === "leak" ? colors.red : pipelineStatus === "suspicious" ? colors.yellow : colors.green;
+  const status = t.alertMessage || (t.highFlowAlert ? "High Abnormal Flow Rate" : t.leakageAlert ? "Wastage Alert" : pipelineStatus === "inactive" ? "Inactive / Isolated" : pipelineStatus === "suspicious" ? "Suspicious" : t.occupied ? "Stable" : "Monitor");
 
   return `
-    <div class="tank-row ${alert ? "alert" : ""} ${alert && flashRed ? "flash" : ""}">
+    <div class="tank-row ${pipelineStatus} ${alert ? "alert" : ""} ${alert && flashRed ? "flash" : ""}">
       <div>
         <div class="tank-name">${t.name}</div>
         <div class="tank-meta">
