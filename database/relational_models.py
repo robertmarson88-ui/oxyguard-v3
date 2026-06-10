@@ -97,7 +97,7 @@ class Device(Base):
     alerts: Mapped[list["Alert"]] = relationship(back_populates="device")
 
     __table_args__ = (
-        CheckConstraint("device_id ~ '^ESP32-[A-Z0-9-]+$'", name="devices_device_id_pattern"),
+        CheckConstraint("device_id ~ '^[A-Z]{2}[0-9]{3}$'", name="devices_device_id_pattern"),
         Index("devices_ward_id_idx", "ward_id"),
     )
 

@@ -18,7 +18,7 @@ Defines the RESTful API endpoints supporting authentication, edge data ingestion
 | Method | Endpoint             | Purpose                          | Auth Required |  
 | :----- | :------------------- | :------------------------------- | :------------ |  
 | \`POST\` | \`/login\`             | Authenticate user & issue tokens | No            |  
-| \`POST\` | \`/telemetry\`         | Ingest edge hardware metrics     | No (ESP32)    |  
+| \`POST\` | \`/telemetry\`         | Ingest edge hardware metrics     | No (tank node) |  
 | \`GET\`  | \`/devices\`           | Retrieve active device inventory | Yes           |  
 | \`GET\`  | \`/telemetry\`         | Query historical data telemetry  | Yes           |  
 | \`GET\`  | \`/alerts\`            | Monitor platform alert states    | Yes           |  
@@ -66,7 +66,7 @@ Defines the RESTful API endpoints supporting authentication, edge data ingestion
 \*Refer to Telemetry Data Contract v1.0.0 for explicit parameter regex patterns.\*  
 \`\`\`json  
 {  
-  "device\_id": "ESP32-WARD1-ICU",  
+  "device\_id": "TK001",  
   "ward\_id": "ICU-A",  
   "flow\_rate": 14.75,  
   "operational\_status": "normal",  
@@ -94,7 +94,7 @@ Defines the RESTful API endpoints supporting authentication, edge data ingestion
   \`\`\`json  
   \[  
     {  
-      "device\_id": "ESP32-WARD1-ICU",  
+      "device\_id": "TK001",  
       "device\_name": "ICU Bed 4 Monitor",  
       "ward\_id": "ICU-A",  
       "device\_status": "active",  
@@ -109,7 +109,7 @@ Defines the RESTful API endpoints supporting authentication, edge data ingestion
 \#\#\# 2.4 Historical Telemetry Streams  
 \* \*\*Route:\*\* \`GET /telemetry\`  
 \* \*\*Purpose:\*\* Extracts time-series array fragments for analytics dashboard charts.  
-\* \*\*Query Parameters:\*\* \`?device\_id=ESP32-WARD1-ICU\&limit=100\`
+\* \*\*Query Parameters:\*\* \`?device\_id=TK001\&limit=100\`
 
 \#\#\#\# Expected Responses:  
 \- \*\*200 OK:\*\* Returns ordered metric lines matching query criteria.
@@ -169,4 +169,3 @@ Defines the RESTful API endpoints supporting authentication, edge data ingestion
     "status": "healthy"  
   }  
   \`\`\`
-

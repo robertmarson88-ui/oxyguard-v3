@@ -37,7 +37,7 @@ CREATE TABLE devices (
   device_id VARCHAR(50) PRIMARY KEY,
   ward_id VARCHAR(50) NOT NULL REFERENCES wards(ward_id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT devices_device_id_pattern CHECK (device_id ~ '^ESP32-[A-Z0-9-]+$')
+  CONSTRAINT devices_device_id_pattern CHECK (device_id ~ '^[A-Z]{2}[0-9]{3}$')
 );
 
 CREATE TABLE telemetry_logs (
@@ -115,3 +115,16 @@ INSERT INTO wards (ward_id, ward_name, location) VALUES
 ON CONFLICT (ward_id) DO UPDATE
   SET ward_name = EXCLUDED.ward_name,
       location = EXCLUDED.location;
+
+INSERT INTO devices (device_id, ward_id, created_at) VALUES
+  ('TK001', 'X001', '2026-06-09 08:00:00'),
+  ('TK002', 'X001', '2026-06-09 08:00:00'),
+  ('TK003', 'X001', '2026-06-09 08:00:00'),
+  ('TK004', 'X003', '2026-06-09 08:00:00'),
+  ('TK005', 'X003', '2026-06-09 08:00:00'),
+  ('TK006', 'X003', '2026-06-09 08:00:00'),
+  ('TK007', 'X002', '2026-06-09 08:00:00'),
+  ('TK008', 'X002', '2026-06-09 08:00:00')
+ON CONFLICT (device_id) DO UPDATE
+  SET ward_id = EXCLUDED.ward_id,
+      created_at = EXCLUDED.created_at;

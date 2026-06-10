@@ -38,7 +38,7 @@ class TelemetryPayload(Base):
 
     __table_args__ = (
         PrimaryKeyConstraint("device_id", "timestamp", name="telemetry_payload_pk"),
-        CheckConstraint("device_id ~ '^ESP32-[A-Z0-9-]+$'", name="telemetry_payload_device_id_pattern"),
+        CheckConstraint("device_id ~ '^[A-Z]{2}[0-9]{3}$'", name="telemetry_payload_device_id_pattern"),
         CheckConstraint("flow_rate >= 0.0 AND flow_rate <= 100.0", name="telemetry_payload_flow_rate_range"),
         Index("telemetry_payload_ward_timestamp_idx", "ward_id", timestamp.desc()),
         Index("telemetry_payload_status_timestamp_idx", "operational_status", timestamp.desc()),

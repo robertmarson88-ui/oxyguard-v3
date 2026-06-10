@@ -188,8 +188,8 @@ function validateTelemetryPayload(payload) {
     if (!(key in data)) errors.push(`Missing required field: ${key}`);
   });
 
-  if (typeof data.device_id !== "string" || !/^ESP32-[A-Z0-9-]+$/.test(data.device_id)) {
-    errors.push("device_id must match ^ESP32-[A-Z0-9-]+$");
+  if (typeof data.device_id !== "string" || !/^[A-Z]{2}\d{3}$/.test(data.device_id)) {
+    errors.push("device_id must match two uppercase letters followed by three digits, for example TK001");
   }
   if (typeof data.ward_id !== "string" || !data.ward_id.trim()) {
     errors.push("ward_id must be a non-empty string");
@@ -358,11 +358,14 @@ function createRelationalStore() {
       { ward_id: "X005", ward_name: "Paediatric Ward", location: "11c West Wing" }
     ],
     devices: [
-      { device_id: "ESP32-X001-LABOUR", ward_id: "X001", created_at: demoCreatedAt },
-      { device_id: "ESP32-X002-AE", ward_id: "X002", created_at: demoCreatedAt },
-      { device_id: "ESP32-X003-MATERNITY", ward_id: "X003", created_at: demoCreatedAt },
-      { device_id: "ESP32-X004-NURSE-STATION", ward_id: "X004", created_at: demoCreatedAt },
-      { device_id: "ESP32-X005-PAEDIATRIC", ward_id: "X005", created_at: demoCreatedAt }
+      { device_id: "TK001", ward_id: "X001", created_at: demoCreatedAt },
+      { device_id: "TK002", ward_id: "X001", created_at: demoCreatedAt },
+      { device_id: "TK003", ward_id: "X001", created_at: demoCreatedAt },
+      { device_id: "TK004", ward_id: "X003", created_at: demoCreatedAt },
+      { device_id: "TK005", ward_id: "X003", created_at: demoCreatedAt },
+      { device_id: "TK006", ward_id: "X003", created_at: demoCreatedAt },
+      { device_id: "TK007", ward_id: "X002", created_at: demoCreatedAt },
+      { device_id: "TK008", ward_id: "X002", created_at: demoCreatedAt }
     ],
     telemetry_logs: [],
     alerts: [],

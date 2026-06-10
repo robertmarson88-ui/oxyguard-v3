@@ -16,7 +16,7 @@ CREATE TABLE telemetry_payload (
   "timestamp" TIMESTAMPTZ NOT NULL,
 
   CONSTRAINT telemetry_payload_pk PRIMARY KEY (device_id, "timestamp"),
-  CONSTRAINT telemetry_payload_device_id_pattern CHECK (device_id ~ '^ESP32-[A-Z0-9-]+$'),
+  CONSTRAINT telemetry_payload_device_id_pattern CHECK (device_id ~ '^[A-Z]{2}[0-9]{3}$'),
   CONSTRAINT telemetry_payload_flow_rate_range CHECK (flow_rate >= 0.0 AND flow_rate <= 100.0)
 );
 
