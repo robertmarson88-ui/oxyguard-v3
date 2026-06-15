@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: oxyguard-v3
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
