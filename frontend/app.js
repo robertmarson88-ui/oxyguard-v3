@@ -959,9 +959,13 @@ function updateOperationsReportPanels() {
   const isOperations = selectedReportType === "operations";
   const isCritical = selectedReportType === "critical";
   const alertTables = document.querySelector(".report-alert-tables");
+  const flowCard = document.getElementById("highAbnormalFlowCard");
+  const pressureCard = document.getElementById("highAbnormalPressureCard");
   const meterCard = document.getElementById("flowMeterStatusCard");
   const wasteCard = document.getElementById("operationsWasteComparisonCard");
   if (alertTables) alertTables.hidden = !isCritical;
+  if (flowCard) flowCard.hidden = !isCritical;
+  if (pressureCard) pressureCard.hidden = !isCritical;
   if (meterCard) meterCard.hidden = !isOperations;
   if (wasteCard) wasteCard.hidden = !isOperations;
 }
