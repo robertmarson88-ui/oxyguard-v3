@@ -982,19 +982,28 @@ function renderOperationsWasteComparison() {
   const fullTankVolume = 1200;
   const selectedMonths = getSelectedDemoMonths();
   const rows = selectedMonths.map(month => {
-    const wastedVolume = Math.round(wards.reduce((sum, ward) => {
+    const monthlyTotals = wards.reduce((sum, ward) => {
       const wardData = month.wards[ward.id] || {};
-      return sum + ((wardData.wastage || 0) / 100) * fullTankVolume;
-    }, 0));
+      const usedTankCount = wardData.depleted || 0;
+      const usedVolume = usedTankCount * fullTankVolume;
+      return {
+        usedTankCount: sum.usedTankCount + usedTankCount,
+        usedVolume: sum.usedVolume + usedVolume,
+        wastedVolume: sum.wastedVolume + ((wardData.wastage || 0) / 100) * usedVolume
+      };
+    }, { usedTankCount: 0, usedVolume: 0, wastedVolume: 0 });
+    const usedVolume = Math.round(monthlyTotals.usedVolume);
+    const wastedVolume = Math.round(monthlyTotals.wastedVolume);
     return {
       label: month.label,
-      fullTankVolume,
+      usedTankCount: monthlyTotals.usedTankCount,
+      usedVolume,
       wastedVolume,
-      equivalentTanks: Number((wastedVolume / fullTankVolume).toFixed(2))
+      wastageRate: usedVolume ? Number(((wastedVolume / usedVolume) * 100).toFixed(1)) : 0
     };
   });
 
-  const maxVolume = Math.max(fullTankVolume, ...rows.map(row => row.wastedVolume), 1);
+  const maxVolume = Math.max(...rows.map(row => row.usedVolume), ...rows.map(row => row.wastedVolume), 1);
   const chartWidth = 420;
   const chartHeight = 132;
   const paddingX = 38;
@@ -1003,27 +1012,27 @@ function renderOperationsWasteComparison() {
   const plotHeight = chartHeight - paddingY * 2;
   const groupWidth = plotWidth / Math.max(1, rows.length);
   const barWidth = Math.max(13, groupWidth * 0.22);
-  const latest = rows[rows.length - 1] || { wastedVolume: 0, equivalentTanks: 0 };
+  const latest = rows[rows.length - 1] || { usedVolume: 0, wastedVolume: 0, wastageRate: 0 };
 
   target.innerHTML = `
     <div class="oxygen-waste-layout">
       <div class="oxygen-waste-chart">
         <div class="oxygen-waste-head">
-          <span>Full tank capacity vs monthly wasted volume</span>
-          <strong>${latest.wastedVolume} L wasted</strong>
+          <span>Total tank volume used vs estimated wasted volume</span>
+          <strong>${latest.wastedVolume} L wasted of ${latest.usedVolume} L</strong>
         </div>
-        <svg viewBox="0 0 ${chartWidth} ${chartHeight}" aria-label="Monthly full tank volume versus wasted oxygen volume">
+        <svg viewBox="0 0 ${chartWidth} ${chartHeight}" aria-label="Monthly used tank volume versus wasted oxygen volume">
           <line class="monthly-axis" x1="${paddingX}" y1="${paddingY}" x2="${paddingX}" y2="${chartHeight - paddingY}"></line>
           <line class="monthly-axis" x1="${paddingX}" y1="${chartHeight - paddingY}" x2="${chartWidth - paddingX}" y2="${chartHeight - paddingY}"></line>
           <line class="monthly-gridline" x1="${paddingX}" y1="${paddingY + plotHeight / 2}" x2="${chartWidth - paddingX}" y2="${paddingY + plotHeight / 2}"></line>
           ${rows.map((row, index) => {
             const groupStart = paddingX + index * groupWidth + groupWidth / 2;
-            const fullHeight = Math.max(2, (row.fullTankVolume / maxVolume) * plotHeight);
+            const fullHeight = Math.max(2, (row.usedVolume / maxVolume) * plotHeight);
             const wasteHeight = Math.max(2, (row.wastedVolume / maxVolume) * plotHeight);
             const baseY = chartHeight - paddingY;
             return `
               <rect class="oxygen-full-bar" x="${groupStart - barWidth - 2}" y="${baseY - fullHeight}" width="${barWidth}" height="${fullHeight}" rx="3">
-                <title>${row.label} full tank: ${row.fullTankVolume} L</title>
+                <title>${row.label} total tank volume used: ${row.usedVolume} L</title>
               </rect>
               <rect class="oxygen-waste-bar" x="${groupStart + 2}" y="${baseY - wasteHeight}" width="${barWidth}" height="${wasteHeight}" rx="3">
                 <title>${row.label} wasted: ${row.wastedVolume} L</title>
@@ -1033,17 +1042,18 @@ function renderOperationsWasteComparison() {
           }).join("")}
         </svg>
         <div class="oxygen-waste-legend">
-          <span><i class="full"></i>Full tank volume</span>
+          <span><i class="full"></i>Total tank volume used</span>
           <span><i class="waste"></i>Estimated wasted volume</span>
         </div>
       </div>
       ${tableHtml(
-        ["Month", "Full Tank", "Wasted Volume", "Equivalent Tanks"],
+        ["Month", "Tanks Used", "Total Volume Used", "Wasted Volume", "Wastage Rate"],
         rows.map(row => [
           row.label,
-          `${row.fullTankVolume} L`,
+          row.usedTankCount,
+          `${row.usedVolume} L`,
           `${row.wastedVolume} L`,
-          row.equivalentTanks
+          `${row.wastageRate}%`
         ])
       )}
     </div>
