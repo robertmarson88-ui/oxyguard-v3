@@ -906,8 +906,7 @@ function renderReportLiveInsights() {
   const depletionTarget = document.getElementById("reportDepletionTable");
   const flowTarget = document.getElementById("highFlowReportCard");
   const pressureTarget = document.getElementById("highPressureReportCard");
-  const meterTarget = document.getElementById("flowMeterStatusTable");
-  if (!depletionTarget || !flowTarget || !pressureTarget || !meterTarget) return;
+  if (!depletionTarget || !flowTarget || !pressureTarget) return;
 
   if (isHistoricalReportMonth()) {
     renderHistoricalDepletionReport(depletionTarget);
@@ -943,16 +942,6 @@ function renderReportLiveInsights() {
     "No high abnormal pressure readings."
   );
 
-  meterTarget.innerHTML = tableHtml(
-    ["Flow Meter", "Ward", "Linked Tank", "Flow", "Status"],
-    simulatedFlowMeters().map(meter => [
-      meter.name,
-      meter.ward,
-      meter.tank,
-      `${meter.flow} L/min`,
-      badge(meter.active ? "Active" : "Inactive", meter.active ? "good" : "bad")
-    ])
-  );
 }
 
 function renderLiveDepletionReport(target) {
@@ -968,19 +957,17 @@ function renderLiveDepletionReport(target) {
   const depletionRows = [...activeTanks]
     .sort((a, b) => a.percent - b.percent)
     .map(t => {
-      const status = tankDepletionStatus(t);
       return [
         t.name,
         t.serial,
         t.wardName,
-        `${t.reportVolumeRemaining} L (${t.percent}%)`,
-        badge(status.label, status.tone)
+        `${t.reportVolumeRemaining} L (${t.percent}%)`
       ];
     });
 
   target.innerHTML = tableHtml(
-    ["Tank Name", "Serial Number", "Ward", "Volume", "Status"],
-    depletionRows.length ? depletionRows : [["No active tanks", "-", "-", "-", "-"]]
+    ["Tank Name", "Serial Number", "Ward", "Volume Remaining"],
+    depletionRows.length ? depletionRows : [["No active tanks", "-", "-", "-"]]
   );
 }
 
@@ -997,15 +984,14 @@ function renderHistoricalDepletionReport(target) {
         tankName,
         `${month.label.toUpperCase()}-${ward.id.toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
         ward.name,
-        `${Math.round((remainingPercent / 100) * 1200)} L (${remainingPercent}%)`,
-        badge(wasCritical ? "Empty" : "Moderate", wasCritical ? "bad" : "warn")
+        `${Math.round((remainingPercent / 100) * 1200)} L (${remainingPercent}%)`
       ];
     });
   });
 
   target.innerHTML = tableHtml(
-    ["Tank Name", "Serial Number", "Ward", "Historical Volume", "Historical Status"],
-    rows.length ? rows : [["No historical depletion records", "-", month?.label || "-", "-", badge("Clear", "good")]]
+    ["Tank Name", "Serial Number", "Ward", "Volume Remaining"],
+    rows.length ? rows : [["No historical depletion records", "-", month?.label || "-", "-"]]
   );
 }
 
@@ -1015,12 +1001,10 @@ function updateOperationsReportPanels() {
   const alertTables = document.querySelector(".report-alert-tables");
   const flowCard = document.getElementById("highAbnormalFlowCard");
   const pressureCard = document.getElementById("highAbnormalPressureCard");
-  const meterCard = document.getElementById("flowMeterStatusCard");
   const wasteCard = document.getElementById("operationsWasteComparisonCard");
   if (alertTables) alertTables.hidden = !isCritical;
   if (flowCard) flowCard.hidden = !isCritical;
   if (pressureCard) pressureCard.hidden = !isCritical;
-  if (meterCard) meterCard.hidden = !isOperations;
   if (wasteCard) wasteCard.hidden = !isOperations;
 }
 
@@ -1112,16 +1096,6 @@ function renderOperationsWasteComparison() {
       )}
     </div>
   `;
-}
-
-function simulatedFlowMeters() {
-  return wards.flatMap(ward => ward.tanks.map((tankItem, index) => ({
-    name: `${ward.name.replace(" Ward", "").replace("Nurse Station", "Nurse")} FM-${String(index + 1).padStart(2, "0")}`,
-    ward: ward.name,
-    tank: tankItem.name,
-    flow: tankItem.active ? tankItem.stationFlowRate : 0,
-    active: tankItem.active && tankItem.stationFlowRate > 0
-  })));
 }
 
 function renderAlertReportTable(items, valueHeader, valueFormatter, emptyText) {
