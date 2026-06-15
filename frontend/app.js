@@ -229,6 +229,7 @@ function setupReportGenerator() {
       selectedReportPeriod = "";
       document.getElementById("reportEndMonth").value = document.getElementById("reportStartMonth").value;
       renderGeneratedReport();
+      renderReportLiveInsights();
       renderMonthlyUsageComparison();
     });
   });
@@ -259,6 +260,7 @@ function applyReportPeriod(period) {
   document.getElementById("reportStartMonth").value = end;
   document.getElementById("reportEndMonth").value = end;
   renderGeneratedReport();
+  renderReportLiveInsights();
   renderMonthlyUsageComparison();
 }
 
@@ -897,6 +899,12 @@ function renderReportLiveInsights() {
   const meterTarget = document.getElementById("flowMeterStatusTable");
   if (!depletionTarget || !flowTarget || !pressureTarget || !meterTarget) return;
 
+  if (isHistoricalReportMonth()) {
+    renderHistoricalDepletionReport(depletionTarget);
+  } else {
+    renderLiveDepletionReport(depletionTarget);
+  }
+
   const activeTanks = wards.flatMap(ward => ward.tanks
     .filter(t => t.active)
     .map(t => ({
@@ -904,24 +912,6 @@ function renderReportLiveInsights() {
       wardName: ward.name,
       percent: Math.round((t.volumeRemaining * 100) / t.maxVolume)
     })));
-
-  const depletionRows = [...activeTanks]
-    .sort((a, b) => a.percent - b.percent)
-    .map(t => {
-      const status = tankDepletionStatus(t);
-      return [
-        t.name,
-        t.serial,
-        t.wardName,
-        `${t.volumeRemaining} L (${t.percent}%)`,
-        badge(status.label, status.tone)
-      ];
-    });
-
-  depletionTarget.innerHTML = tableHtml(
-    ["Tank Name", "Serial Number", "Ward", "Volume", "Status"],
-    depletionRows.length ? depletionRows : [["No active tanks", "-", "-", "-", "-"]]
-  );
 
   const highFlowTanks = activeTanks
     .filter(t => t.highFlowAlert || t.flowRate >= 10)
@@ -952,6 +942,59 @@ function renderReportLiveInsights() {
       `${meter.flow} L/min`,
       badge(meter.active ? "Active" : "Inactive", meter.active ? "good" : "bad")
     ])
+  );
+}
+
+function renderLiveDepletionReport(target) {
+  const activeTanks = wards.flatMap(ward => ward.tanks
+    .filter(t => t.active)
+    .map(t => ({
+      ...t,
+      wardName: ward.name,
+      percent: Math.round((t.volumeRemaining * 100) / t.maxVolume)
+    })));
+
+  const depletionRows = [...activeTanks]
+    .sort((a, b) => a.percent - b.percent)
+    .map(t => {
+      const status = tankDepletionStatus(t);
+      return [
+        t.name,
+        t.serial,
+        t.wardName,
+        `${t.volumeRemaining} L (${t.percent}%)`,
+        badge(status.label, status.tone)
+      ];
+    });
+
+  target.innerHTML = tableHtml(
+    ["Tank Name", "Serial Number", "Ward", "Volume", "Status"],
+    depletionRows.length ? depletionRows : [["No active tanks", "-", "-", "-", "-"]]
+  );
+}
+
+function renderHistoricalDepletionReport(target) {
+  const month = getSelectedReportMonth();
+  const rows = wards.flatMap(ward => {
+    const wardData = month?.wards[ward.id] || {};
+    const depletedCount = wardData.depleted || 0;
+    return Array.from({ length: depletedCount }, (_, index) => {
+      const wasCritical = index < (wardData.critical || 0);
+      const remainingPercent = wasCritical ? 0 : 8 + ((index + ward.id.length) % 18);
+      const tankName = `${ward.name.replace(" Ward", "").replace("Nurse Station", "Nurse")} HIST-${String(index + 1).padStart(2, "0")}`;
+      return [
+        tankName,
+        `${month.label.toUpperCase()}-${ward.id.toUpperCase()}-${String(index + 1).padStart(3, "0")}`,
+        ward.name,
+        `${Math.round((remainingPercent / 100) * 1200)} L (${remainingPercent}%)`,
+        badge(wasCritical ? "Empty" : "Moderate", wasCritical ? "bad" : "warn")
+      ];
+    });
+  });
+
+  target.innerHTML = tableHtml(
+    ["Tank Name", "Serial Number", "Ward", "Historical Volume", "Historical Status"],
+    rows.length ? rows : [["No historical depletion records", "-", month?.label || "-", "-", badge("Clear", "good")]]
   );
 }
 
@@ -1376,6 +1419,17 @@ function getSelectedDemoMonths() {
   const endIndex = selectedIndex >= 0 ? selectedIndex : reportDemoData.length - 1;
   const startIndex = Math.max(0, endIndex - 2);
   return reportDemoData.slice(startIndex, endIndex + 1);
+}
+
+function getSelectedReportMonth() {
+  const selectedValue = document.getElementById("reportStartMonth")?.value || "2026-06";
+  return reportDemoData.find(item => item.month === selectedValue) || reportDemoData[reportDemoData.length - 1];
+}
+
+function isHistoricalReportMonth() {
+  const selectedValue = document.getElementById("reportStartMonth")?.value || "2026-06";
+  const currentMonth = reportDemoData[reportDemoData.length - 1]?.month || selectedValue;
+  return selectedValue < currentMonth;
 }
 
 function getReportRangeLabel() {
