@@ -860,6 +860,7 @@ function renderGeneratedReport() {
     button.classList.toggle("active", button.dataset.reportPeriod === selectedReportPeriod);
   });
   updateOperationsReportPanels();
+  renderOperationsWasteComparison();
 
   const report = buildGeneratedReport(selectedReportType);
   target.innerHTML = `
@@ -956,10 +957,93 @@ function renderReportLiveInsights() {
 
 function updateOperationsReportPanels() {
   const isOperations = selectedReportType === "operations";
+  const isCritical = selectedReportType === "critical";
   const alertTables = document.querySelector(".report-alert-tables");
   const meterCard = document.getElementById("flowMeterStatusCard");
-  if (alertTables) alertTables.hidden = isOperations;
+  const wasteCard = document.getElementById("operationsWasteComparisonCard");
+  if (alertTables) alertTables.hidden = !isCritical;
   if (meterCard) meterCard.hidden = !isOperations;
+  if (wasteCard) wasteCard.hidden = !isOperations;
+}
+
+function renderOperationsWasteComparison() {
+  const target = document.getElementById("operationsWasteComparison");
+  if (!target) return;
+
+  if (selectedReportType !== "operations") {
+    target.innerHTML = "";
+    return;
+  }
+
+  const fullTankVolume = 1200;
+  const selectedMonths = getSelectedDemoMonths();
+  const rows = selectedMonths.map(month => {
+    const wastedVolume = Math.round(wards.reduce((sum, ward) => {
+      const wardData = month.wards[ward.id] || {};
+      return sum + ((wardData.wastage || 0) / 100) * fullTankVolume;
+    }, 0));
+    return {
+      label: month.label,
+      fullTankVolume,
+      wastedVolume,
+      equivalentTanks: Number((wastedVolume / fullTankVolume).toFixed(2))
+    };
+  });
+
+  const maxVolume = Math.max(fullTankVolume, ...rows.map(row => row.wastedVolume), 1);
+  const chartWidth = 420;
+  const chartHeight = 132;
+  const paddingX = 38;
+  const paddingY = 18;
+  const plotWidth = chartWidth - paddingX * 2;
+  const plotHeight = chartHeight - paddingY * 2;
+  const groupWidth = plotWidth / Math.max(1, rows.length);
+  const barWidth = Math.max(13, groupWidth * 0.22);
+  const latest = rows[rows.length - 1] || { wastedVolume: 0, equivalentTanks: 0 };
+
+  target.innerHTML = `
+    <div class="oxygen-waste-layout">
+      <div class="oxygen-waste-chart">
+        <div class="oxygen-waste-head">
+          <span>Full tank capacity vs monthly wasted volume</span>
+          <strong>${latest.wastedVolume} L wasted</strong>
+        </div>
+        <svg viewBox="0 0 ${chartWidth} ${chartHeight}" aria-label="Monthly full tank volume versus wasted oxygen volume">
+          <line class="monthly-axis" x1="${paddingX}" y1="${paddingY}" x2="${paddingX}" y2="${chartHeight - paddingY}"></line>
+          <line class="monthly-axis" x1="${paddingX}" y1="${chartHeight - paddingY}" x2="${chartWidth - paddingX}" y2="${chartHeight - paddingY}"></line>
+          <line class="monthly-gridline" x1="${paddingX}" y1="${paddingY + plotHeight / 2}" x2="${chartWidth - paddingX}" y2="${paddingY + plotHeight / 2}"></line>
+          ${rows.map((row, index) => {
+            const groupStart = paddingX + index * groupWidth + groupWidth / 2;
+            const fullHeight = Math.max(2, (row.fullTankVolume / maxVolume) * plotHeight);
+            const wasteHeight = Math.max(2, (row.wastedVolume / maxVolume) * plotHeight);
+            const baseY = chartHeight - paddingY;
+            return `
+              <rect class="oxygen-full-bar" x="${groupStart - barWidth - 2}" y="${baseY - fullHeight}" width="${barWidth}" height="${fullHeight}" rx="3">
+                <title>${row.label} full tank: ${row.fullTankVolume} L</title>
+              </rect>
+              <rect class="oxygen-waste-bar" x="${groupStart + 2}" y="${baseY - wasteHeight}" width="${barWidth}" height="${wasteHeight}" rx="3">
+                <title>${row.label} wasted: ${row.wastedVolume} L</title>
+              </rect>
+              <text class="monthly-point-label" x="${groupStart}" y="${chartHeight - 5}">${row.label}</text>
+            `;
+          }).join("")}
+        </svg>
+        <div class="oxygen-waste-legend">
+          <span><i class="full"></i>Full tank volume</span>
+          <span><i class="waste"></i>Estimated wasted volume</span>
+        </div>
+      </div>
+      ${tableHtml(
+        ["Month", "Full Tank", "Wasted Volume", "Equivalent Tanks"],
+        rows.map(row => [
+          row.label,
+          `${row.fullTankVolume} L`,
+          `${row.wastedVolume} L`,
+          row.equivalentTanks
+        ])
+      )}
+    </div>
+  `;
 }
 
 function simulatedFlowMeters() {
