@@ -38,7 +38,7 @@ const initialWards = [
     subtitle: "Ward oxygen cylinder cluster",
     accent: colors.paediatric,
     tanks: [
-      tank("Tank C1", "C1-OXY-3017", "Station 1", 47, 2),
+      tank("Tank C1", "C1-OXY-3017", "Station 1", 47, 2, { volumeRemaining: 60 }),
       tank("Tank C2", "C2-OXY-3164", "Station 2", 46, 3),
       tank("Tank C3", "C3-OXY-3298", "Station 3", 45, 6, { active: false, occupied: false })
     ]
@@ -49,7 +49,7 @@ const initialWards = [
     subtitle: "Post-care oxygen recovery area",
     accent: colors.recovery,
     tanks: [
-      tank("Tank R1", "R1-OXY-4106", "Bay 1", 48, 4),
+      tank("Tank R1", "R1-OXY-4106", "Bay 1", 48, 4, { volumeRemaining: 96 }),
       tank("Tank R2", "R2-OXY-4250", "Bay 2", 47, 5)
     ]
   },
@@ -67,6 +67,10 @@ const initialWards = [
 ];
 
 const TANK_COST = 588000;
+const depletionVolumeFloors = {
+  "Tank R1": 8,
+  "Tank C1": 5
+};
 const analyticsMonths = ["Jan", "Feb", "Mar", "Apr", "May"];
 const analyticsData = [
   { ward: "A&E Ward", accent: colors.ae, usage: [18, 21, 24, 27, 30], leakage: [2, 3, 4, 3, 5] },
@@ -606,7 +610,13 @@ function liveTick() {
       if (!t.active || t.readOnly) return;
       t.pressure = clamp(t.pressure + rand(-1, 1), 38, 60);
       if (t.flowRate <= 0) return;
-      t.volumeRemaining = Math.max(0, t.volumeRemaining - t.flowRate);
+      const floorVolume = getTankVolumeFloor(t);
+      t.volumeRemaining = Math.max(floorVolume, t.volumeRemaining - t.flowRate);
+      if (floorVolume && t.volumeRemaining === floorVolume) {
+        t.flowRate = 0;
+        t.stationFlowRate = 0;
+        return;
+      }
       if (t.volumeRemaining === 0) {
         t.flowRate = 0;
         t.pressure = Math.max(0, t.pressure - 2);
@@ -951,7 +961,8 @@ function renderLiveDepletionReport(target) {
     .map(t => ({
       ...t,
       wardName: ward.name,
-      percent: Math.round((t.volumeRemaining * 100) / t.maxVolume)
+      reportVolumeRemaining: getReportVolumeRemaining(t),
+      percent: getReportVolumePercent(t)
     })));
 
   const depletionRows = [...activeTanks]
@@ -962,7 +973,7 @@ function renderLiveDepletionReport(target) {
         t.name,
         t.serial,
         t.wardName,
-        `${t.volumeRemaining} L (${t.percent}%)`,
+        `${t.reportVolumeRemaining} L (${t.percent}%)`,
         badge(status.label, status.tone)
       ];
     });
@@ -1454,8 +1465,21 @@ function updateDepletionFilterButtons() {
   });
 }
 
+function getTankVolumeFloor(t) {
+  const floorPercent = depletionVolumeFloors[t.name] || 0;
+  return Math.round((floorPercent / 100) * t.maxVolume);
+}
+
+function getReportVolumeRemaining(t) {
+  return Math.max(t.volumeRemaining, getTankVolumeFloor(t));
+}
+
+function getReportVolumePercent(t) {
+  return Math.round((getReportVolumeRemaining(t) * 100) / t.maxVolume);
+}
+
 function tankDepletionStatus(t) {
-  const percent = Math.round((t.volumeRemaining * 100) / t.maxVolume);
+  const percent = getReportVolumePercent(t);
   if (percent < 10 || t.highFlowAlert) return { key: "critical", label: "Empty", tone: "bad" };
   if (percent < 30 || t.leakageAlert) return { key: "warning", label: "Moderate", tone: "warn" };
   return { key: "normal", label: "Full", tone: "good" };
