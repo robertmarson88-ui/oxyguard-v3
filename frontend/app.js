@@ -1022,19 +1022,19 @@ function renderOperationsWasteComparison() {
   const rows = selectedMonths.map(month => {
     const monthlyTotals = wards.reduce((sum, ward) => {
       const wardData = month.wards[ward.id] || {};
-      const usedTankCount = wardData.depleted || 0;
-      const usedVolume = usedTankCount * fullTankVolume;
+      const tankUsage = wardData.usage || 0;
+      const usedVolume = tankUsage * fullTankVolume;
       return {
-        usedTankCount: sum.usedTankCount + usedTankCount,
+        tankUsage: sum.tankUsage + tankUsage,
         usedVolume: sum.usedVolume + usedVolume,
         wastedVolume: sum.wastedVolume + ((wardData.wastage || 0) / 100) * usedVolume
       };
-    }, { usedTankCount: 0, usedVolume: 0, wastedVolume: 0 });
+    }, { tankUsage: 0, usedVolume: 0, wastedVolume: 0 });
     const usedVolume = Math.round(monthlyTotals.usedVolume);
     const wastedVolume = Math.round(monthlyTotals.wastedVolume);
     return {
       label: month.label,
-      usedTankCount: monthlyTotals.usedTankCount,
+      tankUsage: monthlyTotals.tankUsage,
       usedVolume,
       wastedVolume,
       wastageRate: usedVolume ? Number(((wastedVolume / usedVolume) * 100).toFixed(1)) : 0
@@ -1085,10 +1085,10 @@ function renderOperationsWasteComparison() {
         </div>
       </div>
       ${tableHtml(
-        ["Month", "Tanks Used", "Total Volume Used", "Wasted Volume", "Wastage Rate"],
+        ["Month", "Tank Usage", "Total Volume Used", "Wasted Volume", "Wastage Rate"],
         rows.map(row => [
           row.label,
-          row.usedTankCount,
+          row.tankUsage,
           `${row.usedVolume} L`,
           `${row.wastedVolume} L`,
           `${row.wastageRate}%`
