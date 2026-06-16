@@ -992,7 +992,7 @@ function renderHistoricalDepletionReport(target) {
 function updateOperationsReportPanels() {
   const isOperations = selectedReportType === "operations";
   const isCritical = selectedReportType === "critical";
-  const hideSupportingReportSections = isCritical || selectedReportType === "wastage";
+  const hideSupportingReportSections = isCritical || selectedReportType === "wastage" || selectedReportType === "ward";
   const alertTables = document.querySelector(".report-alert-tables");
   const flowCard = document.getElementById("highAbnormalFlowCard");
   const pressureCard = document.getElementById("highAbnormalPressureCard");
