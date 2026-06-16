@@ -992,6 +992,7 @@ function renderHistoricalDepletionReport(target) {
 function updateOperationsReportPanels() {
   const isOperations = selectedReportType === "operations";
   const isCritical = selectedReportType === "critical";
+  const hideSupportingReportSections = isCritical || selectedReportType === "wastage";
   const alertTables = document.querySelector(".report-alert-tables");
   const flowCard = document.getElementById("highAbnormalFlowCard");
   const pressureCard = document.getElementById("highAbnormalPressureCard");
@@ -1002,8 +1003,8 @@ function updateOperationsReportPanels() {
   if (flowCard) flowCard.hidden = !isCritical;
   if (pressureCard) pressureCard.hidden = !isCritical;
   if (wasteCard) wasteCard.hidden = !isOperations;
-  if (monthlyCard) monthlyCard.hidden = isCritical;
-  if (depletionSection) depletionSection.hidden = isCritical;
+  if (monthlyCard) monthlyCard.hidden = hideSupportingReportSections;
+  if (depletionSection) depletionSection.hidden = hideSupportingReportSections;
 }
 
 function renderOperationsWasteComparison() {
