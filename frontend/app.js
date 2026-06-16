@@ -996,10 +996,14 @@ function updateOperationsReportPanels() {
   const flowCard = document.getElementById("highAbnormalFlowCard");
   const pressureCard = document.getElementById("highAbnormalPressureCard");
   const wasteCard = document.getElementById("operationsWasteComparisonCard");
+  const monthlyCard = document.querySelector(".monthly-comparison-card");
+  const depletionSection = document.querySelector(".report-live-grid");
   if (alertTables) alertTables.hidden = !isCritical;
   if (flowCard) flowCard.hidden = !isCritical;
   if (pressureCard) pressureCard.hidden = !isCritical;
   if (wasteCard) wasteCard.hidden = !isOperations;
+  if (monthlyCard) monthlyCard.hidden = isCritical;
+  if (depletionSection) depletionSection.hidden = isCritical;
 }
 
 function renderOperationsWasteComparison() {
