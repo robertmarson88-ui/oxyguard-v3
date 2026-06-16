@@ -1202,7 +1202,7 @@ function renderMonthlyUsageComparison() {
         </div>
       </div>
       ${tableHtml(
-        ["Month", "Oxygen Usage", "Top Ward", "Top Ward Usage", "MoM Change"],
+        ["Month", "Tank Usage", "Top Ward", "Top Ward Usage", "MoM Change"],
         tableRows.length ? tableRows : [["No monthly data", "-", "-", "-", "-"]]
       )}
     </div>
