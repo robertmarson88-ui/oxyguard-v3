@@ -95,9 +95,9 @@ ON CONFLICT (role_id) DO UPDATE
 SELECT setval('roles_role_id_seq', GREATEST((SELECT MAX(role_id) FROM roles), 1), true);
 
 INSERT INTO users (user_id, username, email, email_verified, password_hash, role_id, created_at) VALUES
-  ('AA001', 'martinm', 'robinsonmartin187@gmail.com', TRUE, 'demo-hash:martinm-2026', 3, '2026-06-09 08:00:00'),
+  ('AA001', 'martinm', 'robinsonmartin187@gmail.com', TRUE, 'demo-hash:martinm-2026', 1, '2026-06-09 08:00:00'),
   ('AA002', 'robertm', 'marsonrobert88@gmail.com', TRUE, 'demo-hash:robertm-2026', 1, '2026-06-09 08:00:00'),
-  ('AA003', 'vernond', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernond-2026', 4, '2026-06-09 08:00:00')
+  ('AA003', 'vernond', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernond-2026', 1, '2026-06-09 08:00:00')
 ON CONFLICT (user_id) DO UPDATE
   SET username = EXCLUDED.username,
       email = EXCLUDED.email,

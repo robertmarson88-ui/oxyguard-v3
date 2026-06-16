@@ -23,9 +23,9 @@ export function createRelationalStore() {
       { role_id: 5, permission_id: 2 }
     ],
     users: [
-      createUser("AA001", "martinm", "martin1", "robinsonmartin187@gmail.com", 3, "demo-hash:martinm-2026"),
+      createUser("AA001", "martinm", "martin1", "robinsonmartin187@gmail.com", 1, "demo-hash:martinm-2026"),
       createUser("AA002", "robertm", "password1", "marsonrobert88@gmail.com", 1, "demo-hash:robertm-2026"),
-      createUser("AA003", "vernond", "vernon1", "vernon.dacosta@gmail.com", 4, "demo-hash:vernond-2026")
+      createUser("AA003", "vernond", "vernon1", "vernon.dacosta@gmail.com", 1, "demo-hash:vernond-2026")
     ],
     wards: [
       { ward_id: "X001", ward_name: "Labour", location: "7a East Wing" },
