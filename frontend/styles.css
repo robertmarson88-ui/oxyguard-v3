@@ -970,28 +970,27 @@ body.login-active .app {
   min-width: min(240px, 100%);
 }
 
-.period-buttons {
+.report-export-buttons {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 6px;
+  gap: 8px;
 }
 
-.period-buttons button {
-  min-height: 30px;
-  padding: 0 10px;
+.report-export-buttons button {
+  min-height: 34px;
+  padding: 0 13px;
   border: 1px solid #cfd9e4;
-  border-radius: 999px;
+  border-radius: 8px;
   background: #fff;
-  color: var(--muted);
+  color: var(--navy);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 780;
 }
 
-.period-buttons button:hover,
-.period-buttons button.active {
+.report-export-buttons button:hover {
   border-color: var(--blue);
   background: #eef6ff;
   color: var(--blue);

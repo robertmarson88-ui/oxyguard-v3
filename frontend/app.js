@@ -243,29 +243,26 @@ function setupReportGenerator() {
       renderGeneratedReport();
     });
   });
-  document.querySelectorAll("[data-report-period]").forEach(button => {
-    button.addEventListener("click", () => {
-      applyReportPeriod(button.dataset.reportPeriod);
-    });
-  });
+  document.getElementById("emailGeneratedReport")?.addEventListener("click", emailGeneratedReport);
+  document.getElementById("printGeneratedReport")?.addEventListener("click", () => window.print());
 }
 
-function applyReportPeriod(period) {
-  selectedReportPeriod = period;
-
-  const ranges = {
-    today: ["2026-06", "2026-06"],
-    "7": ["2026-06", "2026-06"],
-    "30": ["2026-05", "2026-06"],
-    quarter: ["2026-04", "2026-06"],
-    ytd: ["2026-01", "2026-06"]
-  };
-  const [start, end] = ranges[period] || ranges.ytd;
-  document.getElementById("reportStartMonth").value = end;
-  document.getElementById("reportEndMonth").value = end;
-  renderGeneratedReport();
-  renderReportLiveInsights();
-  renderMonthlyUsageComparison();
+function emailGeneratedReport() {
+  const report = buildGeneratedReport(selectedReportType);
+  const lines = [
+    report.title,
+    report.range,
+    report.description,
+    "",
+    "Key Metrics:",
+    ...report.kpis.map(item => `${item.label}: ${item.value}`),
+    "",
+    "Brief Analysis:",
+    ...report.brief.map(item => `- ${item}`)
+  ];
+  const subject = encodeURIComponent(`OxyGuard ${report.title}`);
+  const body = encodeURIComponent(lines.join("\n"));
+  window.location.href = `mailto:?subject=${subject}&body=${body}`;
 }
 
 function setupNotifications() {
@@ -867,9 +864,6 @@ function renderGeneratedReport() {
 
   document.querySelectorAll("[data-report-type]").forEach(button => {
     button.classList.toggle("active", button.dataset.reportType === selectedReportType);
-  });
-  document.querySelectorAll("[data-report-period]").forEach(button => {
-    button.classList.toggle("active", button.dataset.reportPeriod === selectedReportPeriod);
   });
   updateOperationsReportPanels();
   renderOperationsWasteComparison();
