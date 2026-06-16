@@ -1461,14 +1461,15 @@ body.login-active .app {
 
 .heatmap-card {
   display: grid;
-  gap: 11px;
+  gap: 8px;
+  padding: 14px;
 }
 
 .heatmap-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
+  gap: 12px;
 }
 
 .heatmap-head h3 {
@@ -1478,7 +1479,7 @@ body.login-active .app {
 .heatmap-head p {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .heat-legend {
@@ -1518,7 +1519,7 @@ body.login-active .app {
 .hospital-heatmap {
   display: grid;
   grid-template-columns: 1.05fr 1.15fr 0.9fr 1.15fr 1fr;
-  grid-template-rows: 70px 45px 90px 45px 82px 77px;
+  grid-template-rows: 50px 32px 66px 32px 60px 56px;
   grid-template-areas:
     "entrance ae ae ae ae"
     "nurses corridor corridor corridor corridor"
@@ -1526,25 +1527,25 @@ body.login-active .app {
     "pharmacy service service recovery recovery"
     "pharmacy paediatric paediatric recovery recovery"
     "pharmacy nurse nurse recovery recovery";
-  gap: 6px;
-  min-height: 376px;
-  padding: 13px;
+  gap: 5px;
+  min-height: 286px;
+  padding: 9px;
   border: 1px solid #cfd9e4;
   border-radius: 16px;
   background:
     linear-gradient(90deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     linear-gradient(0deg, rgba(15, 23, 42, 0.035) 1px, transparent 1px),
     #f8fafc;
-  background-size: 28px 28px;
+  background-size: 24px 24px;
 }
 
 .heat-zone {
   position: relative;
   display: grid;
   align-content: center;
-  gap: 4px;
+  gap: 2px;
   min-width: 0;
-  padding: 10px;
+  padding: 7px 8px;
   border: 1px solid #cfd9e4;
   border-radius: 10px;
   background: #fff;
@@ -1595,7 +1596,7 @@ body.login-active .app {
 .heat-zone strong {
   position: relative;
   z-index: 1;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 760;
 }
 
@@ -1604,7 +1605,7 @@ body.login-active .app {
   position: relative;
   z-index: 1;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 650;
 }
 
@@ -3001,26 +3002,30 @@ dialog::backdrop {
   }
 
   .hospital-heatmap {
-    grid-template-columns: 1fr;
-    grid-template-rows: repeat(10, minmax(46px, auto));
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: repeat(6, 42px);
     grid-template-areas:
-      "entrance"
-      "ae"
-      "corridor"
-      "nurses"
-      "labour"
-      "service"
-      "paediatric"
-      "nurse"
-      "pharmacy"
-      "recovery";
-    gap: 5px;
-    padding: 10px;
+      "entrance ae"
+      "corridor corridor"
+      "nurses labour"
+      "service service"
+      "paediatric recovery"
+      "pharmacy nurse";
+    gap: 4px;
+    min-height: 0;
+    padding: 8px;
   }
 
   .heat-zone {
     gap: 2px;
-    padding: 7px;
+    padding: 6px;
+    overflow: hidden;
+  }
+
+  .heat-zone strong,
+  .heat-zone small,
+  .heat-zone span {
+    line-height: 1.15;
   }
 
   .heat-zone strong {
