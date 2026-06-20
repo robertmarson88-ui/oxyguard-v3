@@ -75,6 +75,17 @@
               </div>
             </div>
             <div class="datetime" id="dateTime">--</div>
+            <div class="permission-preview" id="permissionPreviewWrap" hidden>
+              <button class="permission-preview-button" id="permissionPreviewButton" type="button" aria-expanded="false" aria-controls="permissionPreviewMenu">
+                <span>View</span>
+                <strong id="permissionPreviewLabel">Admin</strong>
+              </button>
+              <div class="permission-preview-menu" id="permissionPreviewMenu" hidden>
+                <button type="button" data-permission-view="admin">Admin</button>
+                <button type="button" data-permission-view="nurse-supervisor">Nurse Supervisor</button>
+                <button type="button" data-permission-view="maintenance">Maintenance User</button>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -101,7 +112,7 @@
             <div class="report-button-grid">
               <button type="button" class="report-generate-button active" data-report-type="operations">
                 <strong>Operations Summary</strong>
-                <span>Overall oxygen service status, active inventory, total flow, and current system condition.</span>
+                <span>Overall oxygen service status, active inventory, average flow, and current system condition.</span>
               </button>
               <button type="button" class="report-generate-button" data-report-type="critical">
                 <strong>Critical Tank Review</strong>
@@ -169,7 +180,7 @@
                 <small>Oxygen tanks below the 10% threshold that require urgent review.</small>
               </article>
               <article class="metric-card ward-flow">
-                <span>Total Flow Per Ward</span>
+                <span>Average Flow Per Ward</span>
                 <strong id="rotatingWard">Labour Ward</strong>
                 <b id="rotatingFlow">0 L/min</b>
                 <small>Rotates every 3 sec</small>
@@ -188,7 +199,7 @@
           </section>
 
           <section class="pipeline-tab">
-            <h2>HOSPITAL OXYGEN PIPELINE MAP</h2>
+            <h2>WARD OXYGEN USAGE HEAT MAP</h2>
             <div class="legend">
               <button class="legend-filter" type="button" data-pipeline-filter="normal"><i class="line green"></i>Normal (Good)</button>
               <button class="legend-filter" type="button" data-pipeline-filter="suspicious"><i class="line yellow"></i>Suspicious</button>
@@ -200,61 +211,91 @@
           <section class="ward-grid" id="wardGrid"></section>
         </section>
 
-        <section class="report view active-view" id="reportView">
-          <section class="report-summary" id="reportSummary"></section>
+        <section class="report view active-view v5-dashboard" id="reportView">
+          <section class="report-summary v5-kpi-grid" id="reportSummary"></section>
 
-          <section class="report-card heatmap-card">
-            <div class="heatmap-head">
-              <div>
-                <h3>St.Catherine Medical - Oxygen Usage Heat Map</h3>
-                <p>Ward intensity is based on live total flow per minute from the dashboard.</p>
-              </div>
-              <div class="heat-legend">
-                <span><i class="heat-dot low"></i>Low</span>
-                <span><i class="heat-dot medium"></i>Medium</span>
-                <span><i class="heat-dot high"></i>High</span>
-              </div>
-            </div>
-            <div id="hospitalHeatMap" class="hospital-heatmap"></div>
-          </section>
+          <section class="v5-dashboard-grid">
+            <article class="report-card v5-system-card">
+              <h3>System Health</h3>
+              <div id="systemHealthPanel" class="system-health-list"></div>
+            </article>
 
-          <section class="chart-grid">
-            <article class="report-card chart-card">
-              <h3>Ward Flow Comparison</h3>
-              <div id="wardFlowChart" class="bar-chart"></div>
-            </article>
-            <article class="report-card chart-card">
-              <h3>Critical Tank</h3>
-              <div id="tankVolumeChart" class="critical-tank-list"></div>
-            </article>
-            <article class="report-card chart-card">
-              <h3>Alert Distribution</h3>
-              <div id="alertChart" class="alert-chart"></div>
-            </article>
-          </section>
-
-          <section class="report-grid">
-            <article class="report-card">
-              <h3>Total Tank Usage By Ward</h3>
-              <div id="wardUsageTable" class="ward-usage-chart"></div>
-            </article>
-            <article class="report-card">
-              <h3>Alerts by Ward</h3>
-              <div id="leakageTable" class="report-table"></div>
-            </article>
-            <article class="report-card wide">
-              <div class="card-toolbar">
-                <h3>Tank Depletion Monitoring</h3>
-                <div class="status-filter" aria-label="Tank depletion status filter">
-                  <button type="button" class="active" data-depletion-filter="all">All</button>
-                  <button type="button" data-depletion-filter="normal">Normal</button>
-                  <button type="button" data-depletion-filter="warning">Warning</button>
-                  <button type="button" data-depletion-filter="critical">Critical</button>
+            <article class="report-card heatmap-card v5-map-card">
+              <div class="heatmap-head">
+                <div>
+                  <h3>Ward Oxygen Usage Heat Map</h3>
+                  <p>Ward intensity and pipeline state from live telemetry.</p>
+                </div>
+                <div class="map-tools" aria-hidden="true">
+                  <span>+</span>
+                  <span>-</span>
+                  <span>⛶</span>
                 </div>
               </div>
-              <div id="depletionTable" class="report-table"></div>
+              <div id="hospitalHeatMap" class="hospital-heatmap"></div>
+              <div class="v5-map-legend">
+                <span><i class="normal"></i>Normal</span>
+                <span><i class="high"></i>High Usage</span>
+                <span><i class="ghost"></i>Ghost Flow</span>
+                <span><i class="offline"></i>Offline</span>
+                <span><i class="maintenance"></i>Maintenance</span>
+              </div>
             </article>
+
+            <article class="report-card v5-critical-overview">
+              <h3>Critical Alerts Overview</h3>
+              <div id="criticalOverviewCards" class="critical-overview-grid"></div>
+              <div class="card-toolbar tight">
+                <h3>Critical Tanks</h3>
+                <a href="#depletionTable">View All</a>
+              </div>
+              <div id="tankVolumeChart" class="critical-tank-list"></div>
+            </article>
+
+            <article class="report-card v5-table-card v5-patient-card">
+              <div class="card-toolbar tight">
+                <h3>Patient Alerts (Anonymized)</h3>
+                <a href="#leakageTable">View All</a>
+              </div>
+              <div id="patientAlertsTable" class="report-table compact-table"></div>
+            </article>
+
+            <article class="report-card v5-depletion-card">
+              <div class="card-toolbar tight">
+                <h3>Tank Depletion Monitoring</h3>
+                <a href="#depletionTable">View All</a>
+              </div>
+              <div id="depletionTable" class="report-table compact-table"></div>
+            </article>
+
+            <article class="report-card v5-activity-card">
+              <h3>Recent Activity</h3>
+              <div id="recentActivityList" class="activity-list"></div>
+            </article>
+
+            <article class="report-card v5-trend-card">
+              <div class="card-toolbar tight">
+                <h3>Trend Analytics</h3>
+                <button type="button" class="period-select">Daily</button>
+              </div>
+              <div id="v5TrendAnalytics" class="v5-trend-analytics"></div>
+            </article>
+
+            <article class="report-card v5-insights-card">
+              <h3>Predictive Insights</h3>
+              <div id="predictiveInsights" class="predictive-list"></div>
+            </article>
+
+            <article class="report-card v5-table-card v5-alerts-ward-card">
+              <div class="card-toolbar tight">
+                <h3>Alerts by Ward</h3>
+                <a href="#leakageTable">View All</a>
+              </div>
+              <div id="leakageTable" class="report-table compact-table"></div>
+            </article>
+
           </section>
+          <p class="v5-privacy-note">All patient information is anonymized to protect privacy. Data shown is for monitoring and operational purposes only.</p>
         </section>
 
         <section class="order view" id="orderView">

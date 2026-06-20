@@ -66,7 +66,11 @@ const initialWards = [
   }
 ];
 
-const TANK_COST = 588000;
+const TANK_VOLUME_LITRES = 31700;
+const OXYGEN_COST_PER_LITRE = 1.51;
+const TANK_COST = 48000;
+const YESTERDAY_CONSUMPTION_LITRES = 69077;
+const ESP32_DEVICE_TOTAL = 24;
 const depletionVolumeFloors = {
   "Tank R1": 8,
   "Tank C1": 5
@@ -159,6 +163,28 @@ let pipelineFilter = "";
 let depletionStatusFilter = "all";
 let selectedReportType = "operations";
 let selectedReportPeriod = "today";
+let permissionPreview = "admin";
+let esp32OfflineDevices = 1;
+let esp32LastFluctuation = 0;
+
+const permissionViews = {
+  admin: {
+    label: "Admin",
+    allowedViews: ["report", "dashboard", "alert", "analytics", "order"]
+  },
+  "nurse-supervisor": {
+    label: "Nurse Supervisor",
+    allowedViews: ["report", "dashboard", "alert"]
+  },
+  maintenance: {
+    label: "Maintenance User",
+    allowedViews: ["report", "alert", "order"]
+  },
+  viewer: {
+    label: "Viewer",
+    allowedViews: ["report"]
+  }
+};
 
 function tank(name, serial, station, pressure, flowRate, options = {}) {
   return {
@@ -204,6 +230,7 @@ function start() {
   document.getElementById("closeDialog").addEventListener("click", () => document.getElementById("wardDialog").close());
   document.getElementById("logoutButton").addEventListener("click", logout);
   setupNotifications();
+  setupPermissionPreview();
   setupDepletionFilters();
   setupReportGenerator();
   setupPipelineFilters();
@@ -354,6 +381,7 @@ function showApp() {
 function logout() {
   if (!window.confirm("Are you sure you want to logout?")) return;
   currentUser = null;
+  permissionPreview = "admin";
   sessionStorage.removeItem("oxyguardUser");
   document.body.classList.add("login-active");
   document.getElementById("appShell").setAttribute("aria-hidden", "true");
@@ -371,17 +399,59 @@ function readSavedUser() {
 }
 
 function applyRoleAccess() {
-  const role = currentUser?.role || "viewer";
-  const isAdmin = role === "admin";
-  document.querySelectorAll("[data-role-required='admin']").forEach(button => {
-    button.hidden = !isAdmin;
+  const isAdmin = currentUser?.role === "admin";
+  const access = getActivePermissionView();
+  const previewWrap = document.getElementById("permissionPreviewWrap");
+  const previewLabel = document.getElementById("permissionPreviewLabel");
+
+  if (previewWrap) previewWrap.hidden = !isAdmin;
+  if (previewLabel) previewLabel.textContent = access.label;
+
+  document.querySelectorAll(".side-button[data-view]").forEach(button => {
+    button.hidden = !access.allowedViews.includes(button.dataset.view);
   });
   document.getElementById("sidebarUser").innerHTML = currentUser
-    ? `<div class="user-avatar">${currentUser.username.slice(0, 1).toUpperCase()}</div><div class="user-meta"><strong>${currentUser.username}</strong><span>${currentUser.label}</span></div>`
+    ? `<div class="user-avatar">${currentUser.username.slice(0, 1).toUpperCase()}</div><div class="user-meta"><strong>${currentUser.username}</strong><span>${isAdmin ? access.label : currentUser.label}</span></div>`
     : "";
-  if (!isAdmin && activeView !== "report") {
-    setView("report");
+  if (!access.allowedViews.includes(activeView)) {
+    setView(access.allowedViews[0] || "report");
   }
+}
+
+function setupPermissionPreview() {
+  const button = document.getElementById("permissionPreviewButton");
+  const menu = document.getElementById("permissionPreviewMenu");
+  if (!button || !menu) return;
+
+  button.addEventListener("click", event => {
+    event.stopPropagation();
+    const expanded = button.getAttribute("aria-expanded") === "true";
+    button.setAttribute("aria-expanded", String(!expanded));
+    menu.hidden = expanded;
+  });
+
+  menu.querySelectorAll("[data-permission-view]").forEach(option => {
+    option.addEventListener("click", () => {
+      permissionPreview = option.dataset.permissionView;
+      button.setAttribute("aria-expanded", "false");
+      menu.hidden = true;
+      applyRoleAccess();
+      updateCurrentUserDisplay();
+      updatePageTitle();
+    });
+  });
+
+  document.addEventListener("click", event => {
+    if (!menu.hidden && !menu.contains(event.target) && !button.contains(event.target)) {
+      button.setAttribute("aria-expanded", "false");
+      menu.hidden = true;
+    }
+  });
+}
+
+function getActivePermissionView() {
+  if (currentUser?.role !== "admin") return permissionViews.viewer;
+  return permissionViews[permissionPreview] || permissionViews.admin;
 }
 
 function resetState() {
@@ -392,6 +462,8 @@ function resetState() {
   flowIndex = 0;
   flashRed = false;
   pipelineFilter = "";
+  esp32OfflineDevices = 1;
+  esp32LastFluctuation = 0;
 
   renderAll();
   scheduleDemo();
@@ -407,6 +479,7 @@ function resetState() {
     flashRed = !flashRed;
     renderWards();
   }, 500));
+  timers.push(setInterval(renderV5TrendAnalytics, 3000));
   updateClock();
 }
 
@@ -424,8 +497,9 @@ function renderAll() {
 }
 
 function setView(view) {
-  if (currentUser?.role !== "admin" && view !== "report") {
-    view = "report";
+  const access = getActivePermissionView();
+  if (!access.allowedViews.includes(view)) {
+    view = access.allowedViews[0] || "report";
   }
   activeView = view;
   document.querySelectorAll(".view").forEach(section => {
@@ -512,7 +586,7 @@ function renderWardCard(ward, visibleTanks = ward.tanks.filter(t => t.active)) {
       <div class="tank-list">
         ${visibleTanks.map(t => renderTankRow(t)).join("")}
       </div>
-      <footer class="ward-summary">Average Pressure: ${pressure} PSI | Total Flow: ${flow} L/min</footer>
+      <footer class="ward-summary">Average Pressure: ${pressure} PSI | Average Flow: ${flow} Litre/Min</footer>
     </article>
   `;
 }
@@ -530,7 +604,7 @@ function renderTankRow(t) {
         <div class="tank-meta">
           <span>Serial #: ${t.serial}</span>
           <span>Pressure: ${t.pressure} PSI</span>
-          <span>Flow Rate: ${t.flowRate} L/min</span>
+          <span>Flow Rate: ${t.flowRate} Litre/Min</span>
           <span>Volume: ${t.volumeRemaining} / ${t.maxVolume} L</span>
         </div>
       </div>
@@ -540,7 +614,7 @@ function renderTankRow(t) {
       <div class="tank-detail">
         <span>${t.station}</span>
         <span>Pressure: ${t.pressure} PSI</span>
-        <span>Flow Rate: ${t.stationFlowRate} L/min</span>
+        <span>Flow Rate: ${t.stationFlowRate} Litre/Min</span>
         <span>${status}</span>
       </div>
     </div>
@@ -564,7 +638,7 @@ function updateMetrics() {
   const flowWard = wards[flowIndex % wards.length];
   document.getElementById("rotatingWard").textContent = flowWard.name;
   document.getElementById("rotatingWard").style.color = flowWard.accent;
-  document.getElementById("rotatingFlow").textContent = `${totalFlow(flowWard)} L/min`;
+  document.getElementById("rotatingFlow").textContent = `${totalFlow(flowWard)} Litre/Min`;
   document.getElementById("rotatingFlow").style.color = flowWard.accent;
 
   const alerts = activeAlerts();
@@ -725,7 +799,7 @@ function openWard(id) {
     </div>
     ${ward.tanks.filter(t => t.active).map(t => {
       const status = t.alertMessage || (t.highFlowAlert ? "High Abnormal Flow Rate" : t.leakageAlert ? "Wastage Alert" : t.flowRate <= 0 ? "No oxygen" : t.occupied ? "Stable" : "Monitor");
-      return `<div class="detail-row"><span>${t.name}<br><small>${t.serial}</small></span><span>${t.station}</span><span>${t.pressure} PSI</span><span>${t.flowRate} L/min</span><span>${status}</span></div>`;
+      return `<div class="detail-row"><span>${t.name}<br><small>${t.serial}</small></span><span>${t.station}</span><span>${t.pressure} PSI</span><span>${t.flowRate} Litre/Min</span><span>${status}</span></div>`;
     }).join("")}
   `;
   document.getElementById("wardDialog").showModal();
@@ -750,8 +824,9 @@ function updateClock() {
 function updateCurrentUserDisplay() {
   const currentUserElement = document.getElementById("currentUser");
   if (!currentUserElement) return;
+  const access = getActivePermissionView();
   currentUserElement.innerHTML = currentUser
-    ? `<span>Logged in as</span><strong>${currentUser.username} - ${currentUser.label}</strong>`
+    ? `<span>Logged in as</span><strong>${currentUser.username} - ${currentUser.role === "admin" ? access.label : currentUser.label}</strong>`
     : "";
 }
 
@@ -805,32 +880,37 @@ function renderReport() {
   const criticalTanks = activeTanks.filter(t => Math.round((t.volumeRemaining * 100) / t.maxVolume) < 10);
   const inventoryTotal = 40;
   const depletedTanks = allTanks.filter(t => t.volumeRemaining <= 0).length;
+  const todayConsumptionLitres = Math.round(totalFlowValue * 60 * 24);
+  const yesterdayConsumptionLitres = YESTERDAY_CONSUMPTION_LITRES;
+  const wastageTodayLitres = Math.round(todayConsumptionLitres * (wastage / 100));
+  const wastageCost = Math.round(wastageTodayLitres * OXYGEN_COST_PER_LITRE);
+  const wastageTankEquivalent = wastageCost / TANK_COST;
+  const wastageTankLabel = formatTankEquivalent(wastageTankEquivalent);
+  const wastageCostLabel = `${currency(wastageCost)} Est. Cost | ${wastageTankLabel}`;
+  const yesterdayDelta = formatSignedPercent((todayConsumptionLitres - yesterdayConsumptionLitres) / yesterdayConsumptionLitres);
+  const esp32Status = getEsp32DeviceStatus();
+  const criticalOverview = getCriticalAlertOverview(alertRows);
 
   document.getElementById("reportSummary").innerHTML = [
-    reportSummaryCard("Active Tanks", `${activeTanks.length}/${inventoryTotal}`, "Currently in service from inventory", colors.ae),
-    reportSummaryCard("Total Depleted Tanks", depletedTanks, "Tanks with volume level at 0", colors.labour),
-    reportSummaryCard("Avg Flow", `${avgFlowValue} L/min`, "Average flow across wards", colors.green),
-    reportSummaryCard("Average Pressure", `${avgPressure} PSI`, "Active tank average", colors.ae),
-    reportSummaryCard("Total Estimated Wastage", `${wastage}%`, "Across all wards", alertRows.length ? colors.red : colors.green),
-    reportSummaryCard("Critical Tank Level", criticalTanks.length || "None", "Oxygen tanks below the 10% threshold that require urgent review.", criticalTanks.length ? colors.red : colors.green),
-    reportSummaryCard("Leakage Alerts", alertRows.length || "None", alertRows.length ? "Requires investigation" : "No active alerts", alertRows.length ? colors.red : colors.green)
+    reportSummaryCard("Average Flow", `${avgFlowValue} Litre/Min`, "Across active wards", colors.green, "spark"),
+    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad" }),
+    reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()} Litre`, wastageCostLabel, colors.yellow, "warn"),
+    reportSummaryCard("Active Patients", "94", "On Oxygen Support", colors.purple, "people"),
+    reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
+    reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
   ].join("");
 
   renderCharts(activeTanks);
   renderHospitalHeatMap();
-
+  renderSystemHealth(esp32Status);
+  renderCriticalOverview(criticalOverview);
+  renderPatientAlerts(activeTanks);
+  renderPredictiveInsights(activeTanks, alertRows);
+  renderRecentActivity(alertRows);
+  renderV5TrendAnalytics();
   renderWardUsageChart();
 
-  document.getElementById("leakageTable").innerHTML = tableHtml(
-    ["Ward", "Tank", "Station", "Alert", "Flow"],
-    alertRows.length ? alertRows.map(t => [
-      t.wardName,
-      t.name,
-      t.station,
-      t.highFlowAlert ? "High abnormal flow" : "Wastage alert",
-      `${t.flowRate} L/min`
-    ]) : [["No active leakage alerts", "-", "-", badge("Clear", "good"), "-"]]
-  );
+  renderAlertsByWard();
 
   updateDepletionFilterButtons();
   const depletionRows = activeTanks
@@ -843,7 +923,7 @@ function renderReport() {
           t.wardName,
           t.name,
           t.serial,
-          `${t.flowRate} L/min`,
+          `${t.flowRate} Litre/Min`,
           `${t.volumeRemaining} L (${percent}%)`,
           estimateDepletion(t),
           badge(status.label, status.tone)
@@ -852,10 +932,281 @@ function renderReport() {
     })
     .filter(item => depletionStatusFilter === "all" || item.status.key === depletionStatusFilter);
 
-  document.getElementById("depletionTable").innerHTML = tableHtml(
+  const depletionTarget = document.getElementById("depletionTable");
+  if (depletionTarget) depletionTarget.innerHTML = tableHtml(
     ["Ward", "Tank", "Serial #", "Flow", "Volume", "Est. Depletion", "Status"],
-    depletionRows.length ? depletionRows.map(item => item.row) : [["No tanks match this filter", "-", "-", "-", "-", "-", badge("Clear", "good")]]
+    depletionRows.length ? depletionRows.slice(0, 5).map(item => item.row) : [["No tanks match this filter", "-", "-", "-", "-", "-", badge("Clear", "good")]]
   );
+}
+
+function renderSystemHealth(status = getEsp32DeviceStatus()) {
+  const target = document.getElementById("systemHealthPanel");
+  if (!target) return;
+  const espStatus = status.offline ? `${status.online} / ${status.total} Online` : `${status.total} / ${status.total} Online`;
+  const items = [
+    ["ESP32 Devices", espStatus, "device", status.offline ? "warn" : "good"],
+    ["MQTT Broker", "Connected", "network"],
+    ["FastAPI Server", "Running", "server"],
+    ["Database", "Healthy", "database"],
+    ["Last Packet Received", "2 sec ago", "packet"]
+  ];
+  target.innerHTML = items.map(([label, value, icon, tone = "good"]) => `
+    <div class="health-row ${tone}">
+      <span class="health-icon ${icon}" aria-hidden="true"></span>
+      <div>
+        <strong>${label}</strong>
+        <small>${value}</small>
+      </div>
+      <i></i>
+    </div>
+  `).join("");
+}
+
+function formatTankEquivalent(tankEquivalent) {
+  if (tankEquivalent <= 0) return "0 tank";
+  const rounded = Math.max(0.1, Math.round(tankEquivalent * 10) / 10);
+  const display = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${display} ${rounded <= 1 ? "tank" : "tanks"}`;
+}
+
+function formatSignedPercent(ratio) {
+  const value = ratio * 100;
+  const sign = value >= 0 ? "+" : "";
+  return `${sign}${value.toFixed(1)}%`;
+}
+
+function getEsp32DeviceStatus() {
+  const now = Date.now();
+  if (!esp32LastFluctuation || now - esp32LastFluctuation > 9000) {
+    const possibleOfflineCounts = [0, 1, 1, 2, 2, 3, 4].filter(value => value !== esp32OfflineDevices);
+    esp32OfflineDevices = possibleOfflineCounts[Math.floor(Math.random() * possibleOfflineCounts.length)];
+    esp32LastFluctuation = now;
+  }
+  const offline = Math.round(esp32OfflineDevices);
+  return {
+    total: ESP32_DEVICE_TOTAL,
+    offline,
+    online: ESP32_DEVICE_TOTAL - offline
+  };
+}
+
+function getCriticalAlertOverview(alertRows) {
+  const cards = [
+    ["Leaks", alertRows.filter(t => t.leakageAlert).length, "LK"],
+    ["Ghost Flow", alertRows.filter(t => t.highFlowAlert).length, "GF"],
+    ["Unauthorized", 0, "ID"],
+    ["Residual Gas", 0, "O2"]
+  ];
+  return {
+    cards,
+    total: cards.reduce((sum, [, value]) => sum + value, 0)
+  };
+}
+
+function renderCriticalOverview(overview) {
+  const target = document.getElementById("criticalOverviewCards");
+  if (!target) return;
+  target.innerHTML = overview.cards.map(([label, value, icon]) => `
+    <article class="critical-mini-card">
+      <span>${label}</span>
+      <strong>${value}</strong>
+      <small>Active</small>
+      <b>${icon}</b>
+    </article>
+  `).join("");
+}
+
+function renderPatientAlerts(activeTanks) {
+  const target = document.getElementById("patientAlertsTable");
+  if (!target) return;
+  const rows = activeTanks.slice(0, 5).map((tankItem, index) => {
+    const warning = tankItem.highFlowAlert ? "+92%" : tankItem.leakageAlert ? "+55%" : index % 2 ? "+10%" : "-5%";
+    const status = tankItem.highFlowAlert ? badge("Ghost Flow", "bad") : tankItem.leakageAlert ? badge("Low Flow", "warn") : badge("Normal", "good");
+    const alert = tankItem.highFlowAlert ? "Ghost flow detected" : tankItem.leakageAlert ? "Flow below prescription" : "No flow detected";
+    return [
+      `PT-${String(index + 1).padStart(4, "0")}`,
+      `${tankItem.wardName} / ${tankItem.station}`,
+      `${Math.max(1, tankItem.flowRate - 1)} Litre/Min`,
+      `${tankItem.flowRate + 0.2} Litre/Min`,
+      warning,
+      status,
+      alert
+    ];
+  });
+  target.innerHTML = tableHtml(["Patient ID", "Ward / Bed", "Prescribed Flow", "Live Flow", "Variance", "Status", "Alert"], rows);
+}
+
+function renderLiveTankStatus(activeTanks) {
+  const target = document.getElementById("liveTankStatusTable");
+  if (!target) return;
+  const rows = [...activeTanks]
+    .sort((a, b) => getReportVolumePercent(a) - getReportVolumePercent(b))
+    .slice(0, 6)
+    .map(t => {
+      const percent = getReportVolumePercent(t);
+      const status = tankDepletionStatus(t);
+      return [
+        t.name,
+        t.wardName,
+        `${getReportVolumeRemaining(t)} L (${percent}%)`,
+        estimateDepletion(t),
+        badge(status.label, status.tone)
+      ];
+    });
+  target.innerHTML = tableHtml(["Tank ID", "Location", "Volume", "Est. Depletion", "Status"], rows);
+}
+
+function renderAlertsByWard() {
+  const target = document.getElementById("leakageTable");
+  if (!target) return;
+  const rows = wards.map(ward => {
+    const activeAlerts = ward.tanks.filter(t => t.active && (t.leakageAlert || t.highFlowAlert)).length;
+    const critical = ward.tanks.filter(t => t.active && getReportVolumePercent(t) < 10).length;
+    const warning = ward.tanks.filter(t => t.active && getReportVolumePercent(t) >= 10 && getReportVolumePercent(t) < 30).length;
+    const total = activeAlerts + critical + warning;
+    return {
+      ward: ward.name.replace(" Ward", ""),
+      total,
+      activeAlerts,
+      critical,
+      warning,
+      accent: ward.accent
+    };
+  });
+  const maxTotal = Math.max(1, ...rows.map(row => row.total));
+  target.innerHTML = `
+    <div class="ward-alert-chart" aria-label="Alerts by ward graph">
+      <div class="ward-alert-legend">
+        <span><i class="critical"></i>Critical</span>
+        <span><i class="warning"></i>Warning</span>
+        <span><i class="active"></i>Active Alert</span>
+      </div>
+      ${rows.map(row => {
+        const criticalWidth = row.total ? Math.max(4, (row.critical / maxTotal) * 100) : 0;
+        const warningWidth = row.total ? Math.max(4, (row.warning / maxTotal) * 100) : 0;
+        const activeWidth = row.total ? Math.max(4, (row.activeAlerts / maxTotal) * 100) : 0;
+        return `
+          <div class="ward-alert-row">
+            <div class="ward-alert-label">
+              <strong>${row.ward}</strong>
+              <span>${row.total} total</span>
+            </div>
+            <div class="ward-alert-track">
+              ${row.critical ? `<i class="critical" style="width:${criticalWidth}%"></i>` : ""}
+              ${row.warning ? `<i class="warning" style="width:${warningWidth}%"></i>` : ""}
+              ${row.activeAlerts ? `<i class="active" style="width:${activeWidth}%"></i>` : ""}
+            </div>
+            <b>${row.total}</b>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderV5TrendAnalytics() {
+  const target = document.getElementById("v5TrendAnalytics");
+  if (!target) return;
+
+  const hours = ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"];
+  const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
+  const averageFlowValue = Math.max(10, Math.round(totalFlowValue / Math.max(1, wards.length)));
+  const currentWasteLitres = Math.round(totalFlowValue * 60 * (wastage / 100));
+  const phase = Math.floor(Date.now() / 3000);
+  const flowPattern = [0.72, 0.82, 0.94, 1.03, 1.15, 1.08, 1.22, 1.14, 1.02, 0.91, 0.84, 0.76];
+  const wastePattern = [0.52, 0.61, 0.7, 0.78, 0.92, 1.02, 1.15, 1.07, 0.95, 0.83, 0.72, 0.64];
+  const flowPoints = flowPattern.map((multiplier, index) => {
+    const wave = Math.sin((phase + index) / 2.2) * 5;
+    return Math.round(clamp((averageFlowValue * 8 * multiplier) + wave, 12, 120));
+  });
+  const wastePoints = wastePattern.map((multiplier, index) => {
+    const wave = Math.cos((phase + index) / 2) * 18;
+    return Math.round(clamp((currentWasteLitres / 18) * multiplier + wave, 18, 450));
+  });
+  const width = 520;
+  const height = 188;
+  const left = 50;
+  const right = 58;
+  const top = 28;
+  const bottom = 40;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const xFor = index => left + (index / (flowPoints.length - 1)) * plotWidth;
+  const yFlow = value => top + ((120 - value) / 120) * plotHeight;
+  const yWaste = value => top + ((450 - value) / 450) * plotHeight;
+  const flowPath = flowPoints.map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yFlow(value).toFixed(1)}`).join(" ");
+  const wastePath = wastePoints.map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yWaste(value).toFixed(1)}`).join(" ");
+
+  target.innerHTML = `
+    <div class="trend-legend">
+      <span class="flow">Average Flow (Litre/Min)</span>
+      <span class="waste">Wastage (Litre)</span>
+    </div>
+    <svg viewBox="0 0 ${width} ${height}" aria-label="Daily average flow and wastage trend">
+      <text class="trend-axis-title left" x="${left}" y="16">Flow (Litre/Min)</text>
+      <text class="trend-axis-title right" x="${width - right}" y="16">Wastage (Litre)</text>
+      ${[0, 40, 80, 120].map(value => {
+        const y = yFlow(value);
+        return `
+          <line class="trend-grid" x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"></line>
+          <text class="trend-tick" x="${left - 14}" y="${y + 4}">${value}</text>
+        `;
+      }).join("")}
+      ${[0, 150, 300, 450].map(value => {
+        const y = yWaste(value);
+        return `<text class="trend-tick right" x="${width - right + 14}" y="${y + 4}">${value}</text>`;
+      }).join("")}
+      <line class="trend-axis" x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}"></line>
+      <line class="trend-axis" x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}"></line>
+      <path class="trend-flow-line" d="${flowPath}"></path>
+      <path class="trend-waste-line" d="${wastePath}"></path>
+      ${hours.map((hour, index) => {
+        const x = left + (index / (hours.length - 1)) * plotWidth;
+        return `<text class="trend-time" x="${x}" y="${height - 8}">${hour}</text>`;
+      }).join("")}
+      <text class="trend-axis-title bottom" x="${left + plotWidth / 2}" y="${height - 22}">Time of Day</text>
+    </svg>
+  `;
+}
+
+function renderPredictiveInsights(activeTanks, alertRows) {
+  const target = document.getElementById("predictiveInsights");
+  if (!target) return;
+  const lowest = [...activeTanks].sort((a, b) => getReportVolumePercent(a) - getReportVolumePercent(b))[0];
+  const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
+  const todayConsumptionLitres = Math.round(totalFlowValue * 60 * 24);
+  const yesterdayDelta = formatSignedPercent((todayConsumptionLitres - YESTERDAY_CONSUMPTION_LITRES) / YESTERDAY_CONSUMPTION_LITRES);
+  const wastageTodayLitres = Math.round(todayConsumptionLitres * (wastage / 100));
+  const insights = [
+    ["danger", `${lowest?.name || "Tank B3"} will deplete in`, estimateDepletion(lowest || activeTanks[0] || { volumeRemaining: 120, flowRate: 1 }), "Suggested refill"],
+    ["blue", "Today's oxygen demand", `${todayConsumptionLitres.toLocaleString()} Litre`, `${yesterdayDelta} vs Yesterday`],
+    ["warn", "Estimated wastage today", `${wastageTodayLitres.toLocaleString()} Litre`, "Cost exposure"],
+    ["good", "Potential savings", currency((alertRows.length + 1) * 8200), "If issues resolved"]
+  ];
+  target.innerHTML = insights.map(([tone, label, value, note]) => `
+    <div class="insight-row ${tone}">
+      <span></span>
+      <div><small>${label}</small><strong>${value}</strong><em>${note}</em></div>
+    </div>
+  `).join("");
+}
+
+function renderRecentActivity(alertRows) {
+  const target = document.getElementById("recentActivityList");
+  if (!target) return;
+  const entries = [
+    ["11:01 AM", "danger", `${alertRows[0]?.name || "Tank C1"} alert detected`],
+    ["11:02 AM", "good", "Alert notification sent to admin"],
+    ["11:03 AM", "blue", "Alert acknowledged by nurse"],
+    ["11:06 AM", "good", "Issue resolved in recovery bay"]
+  ];
+  target.innerHTML = entries.map(([time, tone, text]) => `
+    <div class="activity-row ${tone}">
+      <time>${time}</time>
+      <i></i>
+      <span>${text}</span>
+    </div>
+  `).join("") + '<a href="#alertView">View All</a>';
 }
 
 function renderGeneratedReport() {
@@ -926,7 +1277,7 @@ function renderReportLiveInsights() {
   flowTarget.innerHTML = renderAlertReportTable(
     highFlowTanks,
     "Flow",
-    t => `${t.flowRate} L/min`,
+    t => `${t.flowRate} Litre/Min`,
     "No high abnormal flow readings."
   );
   pressureTarget.innerHTML = renderAlertReportTable(
@@ -1238,21 +1589,21 @@ function buildGeneratedReport(type) {
         range,
         generatedAt,
         kpis: [
-          { label: "Avg Flow", value: `${demoSummary.avgFlow} L/min` },
+          { label: "Avg Flow", value: `${demoSummary.avgFlow} Litre/Min` },
           { label: "Avg Pressure", value: `${demoSummary.avgPressure} PSI` },
           { label: "Total Tank Used", value: demoSummary.totalDepleted }
         ],
         headers: ["Ward", "Avg Flow", "Avg Pressure", "Total Tank Used"],
         rows: demoWardRows.map(row => [
           row.ward.name,
-          `${row.avgFlow} L/min`,
+          `${row.avgFlow} Litre/Min`,
           `${row.avgPressure} PSI`,
           row.depleted
         ]),
         brief: [
-          `${highestDemand?.ward.name || "No ward"} had the highest average oxygen demand at ${highestDemand?.avgFlow || 0} L/min across the selected range.`,
+          `${highestDemand?.ward.name || "No ward"} had the highest average oxygen demand at ${highestDemand?.avgFlow || 0} Litre/Min across the selected range.`,
           mostRisk?.critical || mostRisk?.depleted ? `${mostRisk.ward.name} has the highest usage risk based on critical tank events and total tanks used.` : "No ward currently has critical tank or usage risk in this period.",
-          `Across ${demoSummary.monthCount} month${demoSummary.monthCount === 1 ? "" : "s"}, the hospital averaged ${demoSummary.avgActiveTanks} active tanks, ${demoSummary.avgFlow} L/min flow, and ${demoSummary.avgPressure} PSI pressure.`
+          `Across ${demoSummary.monthCount} month${demoSummary.monthCount === 1 ? "" : "s"}, the hospital averaged ${demoSummary.avgActiveTanks} active tanks, ${demoSummary.avgFlow} Litre/Min flow, and ${demoSummary.avgPressure} PSI pressure.`
         ]
       };
     },
@@ -1320,13 +1671,13 @@ function buildGeneratedReport(type) {
           { label: "Highest Demand", value: wardRows[0]?.ward.name || "-" },
           { label: "Top Usage", value: wardRows[0]?.usage || 0 },
           { label: "Wards Online", value: wardRows.length },
-          { label: "Avg Flow", value: `${demoSummary.avgFlow} L/min` }
+          { label: "Avg Flow", value: `${demoSummary.avgFlow} Litre/Min` }
         ],
         headers: ["Ward", "Oxygen Usage", "Avg Flow"],
         rows: wardRows.map(row => [
           row.ward.name,
           row.usage,
-          `${row.avgFlow} L/min`
+          `${row.avgFlow} Litre/Min`
         ]),
         brief: [
           `${wardRows[0]?.ward.name || "No ward"} has the highest oxygen usage in the selected demo period.`,
@@ -1465,11 +1816,13 @@ function renderCharts(activeTanks) {
 }
 
 function renderWardFlowChart() {
+  const target = document.getElementById("wardFlowChart");
+  if (!target) return;
   const maxFlow = Math.max(1, ...wards.map(totalFlow));
   const axisMax = Math.max(10, Math.ceil(maxFlow / 5) * 5);
-  document.getElementById("wardFlowChart").innerHTML = `
+  target.innerHTML = `
     <div class="flow-graph" style="--axis-max:${axisMax}">
-      <span class="axis-title y-axis">Y: Flow Rate (L/min)</span>
+      <span class="axis-title y-axis">Y: Flow Rate (Litre/Min)</span>
       <div class="flow-axis">
         <span>${axisMax}</span>
         <span>${Math.round(axisMax / 2)}</span>
@@ -1480,7 +1833,7 @@ function renderWardFlowChart() {
           const flow = totalFlow(ward);
           const height = Math.max(6, Math.round((flow / axisMax) * 100));
           return `
-            <div class="flow-bar" title="${ward.name}: ${flow} L/min">
+            <div class="flow-bar" title="${ward.name}: ${flow} Litre/Min">
               <strong>${flow}</strong>
               <i style="height:${height}%; background:${ward.accent}"></i>
               <span>${ward.name.replace(" Ward", "").replace("Nurse Station", "Nurse")}</span>
@@ -1494,6 +1847,8 @@ function renderWardFlowChart() {
 }
 
 function renderTankVolumeChart(activeTanks) {
+  const target = document.getElementById("tankVolumeChart");
+  if (!target) return;
   const criticalTanks = activeTanks
     .map(t => ({
       ...t,
@@ -1502,7 +1857,7 @@ function renderTankVolumeChart(activeTanks) {
     .filter(t => t.volumePercent < 10)
     .sort((a, b) => a.volumePercent - b.volumePercent);
 
-  document.getElementById("tankVolumeChart").innerHTML = criticalTanks.length
+  target.innerHTML = criticalTanks.length
     ? `
       <div class="critical-tank-board">
         ${criticalTanks.map(t => `
@@ -1525,6 +1880,8 @@ function renderTankVolumeChart(activeTanks) {
 }
 
 function renderWardUsageChart() {
+  const target = document.getElementById("wardUsageTable");
+  if (!target) return;
   const threshold = 10;
   const usageRows = wards.map(ward => ({
     name: ward.name.replace(" Ward", "").replace("Nurse Station", "Nurse"),
@@ -1548,7 +1905,7 @@ function renderWardUsageChart() {
   const thresholdY = paddingY + ((axisMax - threshold) / axisMax) * plotHeight;
   const averageUsage = usageRows.reduce((sum, row) => sum + row.usage, 0) / Math.max(1, usageRows.length);
 
-  document.getElementById("wardUsageTable").innerHTML = `
+  target.innerHTML = `
     <div class="ward-usage-graph">
       <div class="ward-usage-note">
         <strong>Average: ${averageUsage.toFixed(1)}</strong>
@@ -1606,7 +1963,7 @@ function renderOrderSummary() {
 
   document.getElementById("capacitySummary").innerHTML = orderDetailRows([
     ["Current Usable Capacity", "8,500 Liters"],
-    ["Current Total Flow", `${totalFlowValue} L/min`],
+    ["Current Average Flow", `${totalFlowValue} Litre/Min`],
     ["Order Quantity", "20,000 Liters"],
     ["Projected Capacity After Delivery", "28,500 Liters"],
     ["Projected Depletion Date", "~14 May 2026"],
@@ -1809,6 +2166,8 @@ function currency(value) {
 }
 
 function renderAlertDistributionChart() {
+  const target = document.getElementById("alertChart");
+  if (!target) return;
   const alertCounts = wards
     .map(ward => ({
       name: ward.name,
@@ -1818,7 +2177,7 @@ function renderAlertDistributionChart() {
     .filter(item => item.count > 0);
   const totalAlerts = alertCounts.reduce((sum, item) => sum + item.count, 0);
   const maxAlerts = Math.max(1, ...alertCounts.map(item => item.count));
-  document.getElementById("alertChart").innerHTML = `
+  target.innerHTML = `
     <div class="alert-total ${totalAlerts ? "bad" : "good"}">
       <strong>${totalAlerts}</strong>
       <span>${totalAlerts === 1 ? "active alert" : "active alerts"}</span>
@@ -1853,45 +2212,58 @@ function renderHospitalHeatMap() {
   }
 
   const maxFlow = Math.max(1, ...wards.map(totalFlow));
-  const hospitalZones = [
-    { label: "Emergency Entrance", className: "support entrance", meta: "triage access" },
-    { label: "A&E Ward", className: "ward ae", ward: wards[0] },
-    { label: "Main Corridor", className: "corridor main-corridor", meta: "pipeline spine" },
-    { label: "Nurses' Station", className: "support nurses", meta: "ward control" },
-    { label: "Labour Ward", className: "ward labour", ward: wards[1] },
-    { label: "Pharmacy", className: "support pharmacy", meta: "medication" },
-    { label: "Paediatric Ward", className: "ward paediatric", ward: wards[2] },
-    { label: "Recovery Bay", className: "ward recovery", ward: wards[3] },
-    { label: "Nurse Station", className: "ward nurse", ward: wards[4] },
-    { label: "Service Corridor", className: "corridor service-corridor", meta: "rear access" }
+  const zoneState = ward => {
+    const flow = totalFlow(ward);
+    const ratio = flow / maxFlow;
+    const alerts = ward.tanks.filter(t => t.active && (t.leakageAlert || t.highFlowAlert)).length;
+    if (alerts) return "ghost";
+    if (ratio >= 0.55) return "high";
+    return "normal";
+  };
+  const mapRooms = [
+    { label: "ICU", className: "icu", state: "normal", meta: "North intake" },
+    { label: "Ward A", className: "ward-a", state: zoneState(wards[0]), meta: "A&E feed" },
+    { label: "Ward B", className: "ward-b", state: zoneState(wards[1]), meta: "Labour line" },
+    { label: "Ward C", className: "ward-c", state: zoneState(wards[3]), meta: "Recovery line" },
+    { label: "Pediatrics", className: "pediatrics", state: zoneState(wards[2]), meta: "Paediatric feed" },
+    { label: "Maternity", className: "maternity", state: zoneState(wards[4]), meta: "Nurse station" },
+    { label: "Plant Room", className: "plant-room", state: "offline", meta: "Supply control" },
+    { label: "", className: "south-service", state: "ghost", meta: "Isolation room" }
   ];
 
-  heatMap.innerHTML = hospitalZones.map(zone => {
-    if (!zone.ward) {
-      return `<div class="heat-zone ${zone.className}"><strong>${zone.label}</strong><small>${zone.meta}</small></div>`;
-    }
-
-    const flow = totalFlow(zone.ward);
-    const ratio = flow / maxFlow;
-    const level = ratio >= 0.7 ? "high" : ratio >= 0.38 ? "medium" : "low";
-    const alerts = zone.ward.tanks.filter(t => t.active && (t.leakageAlert || t.highFlowAlert)).length;
-    const active = zone.ward.tanks.filter(t => t.active).length;
-    return `
-      <div class="heat-zone ${zone.className} ${level} ${alerts ? "has-alert" : ""}">
-        <strong>${zone.label}</strong>
-        <small>${flow} L/min | ${active} tanks active</small>
-        <span>${level.toUpperCase()} USAGE</span>
-      </div>
-    `;
-  }).join("");
+  heatMap.innerHTML = `
+    <div class="oxygen-floorplan-shell">
+      <div class="floorplan-maintenance-dot"></div>
+      <div class="floorplan-pipeline main"></div>
+      <div class="floorplan-pipeline lower"></div>
+      ${mapRooms.map(room => `
+        <div class="oxygen-room ${room.className} ${room.state}">
+          <b class="room-status ${room.state}"></b>
+          <strong>${room.label}</strong>
+          <small>${room.meta}</small>
+        </div>
+      `).join("")}
+      <div class="floorplan-wall wall-a"></div>
+      <div class="floorplan-wall wall-b"></div>
+      <div class="floorplan-wall wall-c"></div>
+      <div class="floorplan-wall wall-d"></div>
+      <div class="floorplan-offline-dot"></div>
+    </div>
+  `;
 }
 
-function reportSummaryCard(title, value, status, color) {
+function reportSummaryCard(title, value, status, color, icon = "dot", options = {}) {
+  const delta = options.delta
+    ? `<em class="kpi-delta ${options.deltaTone || ""}">${options.delta}</em>`
+    : "";
   return `
-    <article class="summary-card">
-      <span>${title}</span>
-      <strong style="color:${color}">${value}</strong>
-      <small>${status}</small>
+    <article class="summary-card v5-kpi-card ${icon}">
+      <div class="kpi-copy">
+        <span>${title}</span>
+        <strong style="color:${color}">${value}</strong>
+        <small>${status}${delta}</small>
+      </div>
+      <b class="kpi-icon ${icon}"></b>
     </article>
   `;
 }
