@@ -83,6 +83,40 @@ const analyticsData = [
   { ward: "Recovery Bay", accent: colors.recovery, usage: [10, 12, 13, 15, 16], leakage: [1, 1, 2, 2, 3] },
   { ward: "Nurse Station", accent: colors.nurse, usage: [4, 5, 5, 6, 7], leakage: [0, 0, 1, 1, 1] }
 ];
+const dashboardDemoAlertsByWard = {
+  ae: { activeAlerts: 1, critical: 1, warning: 2 },
+  nurse: { activeAlerts: 0, critical: 0, warning: 1 },
+  paediatric: { activeAlerts: 2, critical: 2, warning: 2 },
+  recovery: { activeAlerts: 1, critical: 1, warning: 1 },
+  labour: { activeAlerts: 1, critical: 1, warning: 2 }
+};
+const dashboardDemoPatientRows = [
+  ["PT-0001", "Paediatric Ward / Station 1", "2 Litre/Min", "3.4 Litre/Min", "+70%", badge("High Flow", "bad"), "Demo high-flow variance"],
+  ["PT-0002", "Recovery Bay / Bay 1", "3 Litre/Min", "1.8 Litre/Min", "-40%", badge("Low Flow", "warn"), "Demo oxygen flow drop"],
+  ["PT-0003", "Labour Ward / Station 3", "4 Litre/Min", "4.2 Litre/Min", "+5%", badge("Normal", "good"), "Stable demo reading"],
+  ["PT-0004", "A&E Ward / Station 1", "3 Litre/Min", "4.1 Litre/Min", "+37%", badge("Review", "warn"), "Demo usage spike"],
+  ["PT-0005", "Nurse Station", "2 Litre/Min", "2.0 Litre/Min", "0%", badge("Normal", "good"), "Routine demo check"]
+];
+const dashboardDemoDepletionRows = {
+  all: [
+    ["Paediatric Ward", "Tank C1", "C1-OXY-3017", "2 Litre/Min", "60 L (5%)", "3h 10m", badge("Empty", "bad")],
+    ["Recovery Bay", "Tank R1", "R1-OXY-4106", "4 Litre/Min", "96 L (8%)", "5h 15m", badge("Empty", "bad")],
+    ["Labour Ward", "Tank B3", "B3-OXY-2390", "4 Litre/Min", "312 L (26%)", "9h 30m", badge("Moderate", "warn")],
+    ["A&E Ward", "Tank A2", "A2-OXY-1186", "3 Litre/Min", "834 L (70%)", "12h 40m", badge("Full", "good")]
+  ],
+  critical: [
+    ["Paediatric Ward", "Tank C1", "C1-OXY-3017", "2 Litre/Min", "60 L (5%)", "3h 10m", badge("Empty", "bad")],
+    ["Recovery Bay", "Tank R1", "R1-OXY-4106", "4 Litre/Min", "96 L (8%)", "5h 15m", badge("Empty", "bad")]
+  ],
+  warning: [
+    ["Labour Ward", "Tank B3", "B3-OXY-2390", "4 Litre/Min", "312 L (26%)", "9h 30m", badge("Moderate", "warn")],
+    ["A&E Ward", "Tank A1", "A1-OXY-1042", "4 Litre/Min", "288 L (24%)", "7h 45m", badge("Moderate", "warn")]
+  ],
+  normal: [
+    ["A&E Ward", "Tank A2", "A2-OXY-1186", "3 Litre/Min", "834 L (70%)", "12h 40m", badge("Full", "good")],
+    ["Labour Ward", "Tank B1", "B1-OXY-2108", "5 Litre/Min", "756 L (63%)", "8h 15m", badge("Full", "good")]
+  ]
+};
 const reportDemoData = [
   {
     month: "2026-01",
@@ -401,17 +435,30 @@ function readSavedUser() {
 function applyRoleAccess() {
   const isAdmin = currentUser?.role === "admin";
   const access = getActivePermissionView();
-  const previewWrap = document.getElementById("permissionPreviewWrap");
-  const previewLabel = document.getElementById("permissionPreviewLabel");
-
-  if (previewWrap) previewWrap.hidden = !isAdmin;
-  if (previewLabel) previewLabel.textContent = access.label;
 
   document.querySelectorAll(".side-button[data-view]").forEach(button => {
     button.hidden = !access.allowedViews.includes(button.dataset.view);
   });
   document.getElementById("sidebarUser").innerHTML = currentUser
-    ? `<div class="user-avatar">${currentUser.username.slice(0, 1).toUpperCase()}</div><div class="user-meta"><strong>${currentUser.username}</strong><span>${isAdmin ? access.label : currentUser.label}</span></div>`
+    ? `
+      <div class="user-avatar">${currentUser.username.slice(0, 1).toUpperCase()}</div>
+      <div class="user-meta">
+        <strong>${currentUser.username}</strong>
+        ${isAdmin ? `
+          <div class="permission-preview" id="permissionPreviewWrap">
+            <button class="permission-preview-button" id="permissionPreviewButton" type="button" aria-expanded="false" aria-controls="permissionPreviewMenu">
+              <span>View</span>
+              <strong id="permissionPreviewLabel">${access.label}</strong>
+            </button>
+            <div class="permission-preview-menu" id="permissionPreviewMenu" hidden>
+              <button type="button" data-permission-view="admin">Admin</button>
+              <button type="button" data-permission-view="nurse-supervisor">Nurse Supervisor</button>
+              <button type="button" data-permission-view="maintenance">Maintenance User</button>
+            </div>
+          </div>
+        ` : `<span class="user-role">${currentUser.label}</span>`}
+      </div>
+    `
     : "";
   if (!access.allowedViews.includes(activeView)) {
     setView(access.allowedViews[0] || "report");
@@ -419,31 +466,32 @@ function applyRoleAccess() {
 }
 
 function setupPermissionPreview() {
-  const button = document.getElementById("permissionPreviewButton");
-  const menu = document.getElementById("permissionPreviewMenu");
-  if (!button || !menu) return;
+  document.addEventListener("click", event => {
+    const option = event.target.closest?.("[data-permission-view]");
+    const button = event.target.closest?.("#permissionPreviewButton");
+    const activeButton = document.getElementById("permissionPreviewButton");
+    const menu = document.getElementById("permissionPreviewMenu");
 
-  button.addEventListener("click", event => {
-    event.stopPropagation();
-    const expanded = button.getAttribute("aria-expanded") === "true";
-    button.setAttribute("aria-expanded", String(!expanded));
-    menu.hidden = expanded;
-  });
-
-  menu.querySelectorAll("[data-permission-view]").forEach(option => {
-    option.addEventListener("click", () => {
+    if (option) {
       permissionPreview = option.dataset.permissionView;
-      button.setAttribute("aria-expanded", "false");
-      menu.hidden = true;
+      if (activeButton) activeButton.setAttribute("aria-expanded", "false");
+      if (menu) menu.hidden = true;
       applyRoleAccess();
       updateCurrentUserDisplay();
       updatePageTitle();
-    });
-  });
+      return;
+    }
 
-  document.addEventListener("click", event => {
-    if (!menu.hidden && !menu.contains(event.target) && !button.contains(event.target)) {
-      button.setAttribute("aria-expanded", "false");
+    if (button && menu) {
+      event.stopPropagation();
+      const expanded = button.getAttribute("aria-expanded") === "true";
+      button.setAttribute("aria-expanded", String(!expanded));
+      menu.hidden = expanded;
+      return;
+    }
+
+    if (menu && activeButton && !menu.hidden && !menu.contains(event.target)) {
+      activeButton.setAttribute("aria-expanded", "false");
       menu.hidden = true;
     }
   });
@@ -933,9 +981,12 @@ function renderReport() {
     .filter(item => depletionStatusFilter === "all" || item.status.key === depletionStatusFilter);
 
   const depletionTarget = document.getElementById("depletionTable");
+  const depletionTableRows = depletionRows.length
+    ? depletionRows.slice(0, 5).map(item => item.row)
+    : dashboardDemoDepletionRows[depletionStatusFilter] || dashboardDemoDepletionRows.all;
   if (depletionTarget) depletionTarget.innerHTML = tableHtml(
     ["Ward", "Tank", "Serial #", "Flow", "Volume", "Est. Depletion", "Status"],
-    depletionRows.length ? depletionRows.slice(0, 5).map(item => item.row) : [["No tanks match this filter", "-", "-", "-", "-", "-", badge("Clear", "good")]]
+    depletionTableRows
   );
 }
 
@@ -991,10 +1042,12 @@ function getEsp32DeviceStatus() {
 }
 
 function getCriticalAlertOverview(alertRows) {
+  const liveLeaks = alertRows.filter(t => t.leakageAlert).length;
+  const liveGhostFlow = alertRows.filter(t => t.highFlowAlert).length;
   const cards = [
-    ["Leaks", alertRows.filter(t => t.leakageAlert).length, "LK"],
-    ["Ghost Flow", alertRows.filter(t => t.highFlowAlert).length, "GF"],
-    ["Unauthorized", 0, "ID"],
+    ["Leaks", liveLeaks || 2, "LK"],
+    ["Ghost Flow", liveGhostFlow || 1, "GF"],
+    ["Unauthorized", 1, "ID"],
     ["Residual Gas", 0, "O2"]
   ];
   return {
@@ -1019,10 +1072,11 @@ function renderCriticalOverview(overview) {
 function renderPatientAlerts(activeTanks) {
   const target = document.getElementById("patientAlertsTable");
   if (!target) return;
-  const rows = activeTanks.slice(0, 5).map((tankItem, index) => {
+  const hasLiveAlerts = activeTanks.some(t => t.leakageAlert || t.highFlowAlert || getReportVolumePercent(t) < 10);
+  const liveRows = activeTanks.slice(0, 5).map((tankItem, index) => {
     const warning = tankItem.highFlowAlert ? "+92%" : tankItem.leakageAlert ? "+55%" : index % 2 ? "+10%" : "-5%";
-    const status = tankItem.highFlowAlert ? badge("Ghost Flow", "bad") : tankItem.leakageAlert ? badge("Low Flow", "warn") : badge("Normal", "good");
-    const alert = tankItem.highFlowAlert ? "Ghost flow detected" : tankItem.leakageAlert ? "Flow below prescription" : "No flow detected";
+    const status = tankItem.highFlowAlert ? badge("Ghost Flow", "bad") : tankItem.leakageAlert ? badge("Low Flow", "warn") : getReportVolumePercent(tankItem) < 10 ? badge("Critical", "bad") : badge("Normal", "good");
+    const alert = tankItem.highFlowAlert ? "Ghost flow detected" : tankItem.leakageAlert ? "Flow below prescription" : getReportVolumePercent(tankItem) < 10 ? "Critical tank feeding station" : "Stable demo reading";
     return [
       `PT-${String(index + 1).padStart(4, "0")}`,
       `${tankItem.wardName} / ${tankItem.station}`,
@@ -1033,6 +1087,7 @@ function renderPatientAlerts(activeTanks) {
       alert
     ];
   });
+  const rows = hasLiveAlerts ? liveRows : dashboardDemoPatientRows;
   target.innerHTML = tableHtml(["Patient ID", "Ward / Bed", "Prescribed Flow", "Live Flow", "Variance", "Status", "Alert"], rows);
 }
 
@@ -1060,9 +1115,13 @@ function renderAlertsByWard() {
   const target = document.getElementById("leakageTable");
   if (!target) return;
   const rows = wards.map(ward => {
-    const activeAlerts = ward.tanks.filter(t => t.active && (t.leakageAlert || t.highFlowAlert)).length;
-    const critical = ward.tanks.filter(t => t.active && getReportVolumePercent(t) < 10).length;
-    const warning = ward.tanks.filter(t => t.active && getReportVolumePercent(t) >= 10 && getReportVolumePercent(t) < 30).length;
+    const demo = dashboardDemoAlertsByWard[ward.id] || { activeAlerts: 0, critical: 0, warning: 0 };
+    const liveActiveAlerts = ward.tanks.filter(t => t.active && (t.leakageAlert || t.highFlowAlert)).length;
+    const liveCritical = ward.tanks.filter(t => t.active && getReportVolumePercent(t) < 10).length;
+    const liveWarning = ward.tanks.filter(t => t.active && getReportVolumePercent(t) >= 10 && getReportVolumePercent(t) < 30).length;
+    const activeAlerts = Math.max(liveActiveAlerts, demo.activeAlerts);
+    const critical = Math.max(liveCritical, demo.critical);
+    const warning = Math.max(liveWarning, demo.warning);
     const total = activeAlerts + critical + warning;
     return {
       ward: ward.name.replace(" Ward", ""),
