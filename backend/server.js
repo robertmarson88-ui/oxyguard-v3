@@ -36,7 +36,10 @@ createServer(async (req, res) => {
     }
 
     const body = await readFile(target);
-    res.writeHead(200, { "content-type": contentTypes[extname(target)] || "application/octet-stream" });
+    res.writeHead(200, {
+      "content-type": contentTypes[extname(target)] || "application/octet-stream",
+      "cache-control": "no-store, max-age=0"
+    });
     res.end(body);
   } catch {
     res.writeHead(404);

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260614-report-bars-flowmeters" />
+    <link rel="stylesheet" href="./styles.css?v=20260621-stable" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -79,43 +79,71 @@
         </header>
 
         <section class="dashboard view" id="dashboardView">
-          <section class="report-builder">
-            <div class="report-builder-head">
+          <section class="report-center">
+            <div class="report-center-head">
               <div>
-                <h2>REPORT GENERATION CENTER</h2>
-                <p>Select a reporting range, then generate a focused operating report from the live ward, tank, flow, wastage, and alert data.</p>
+                <span>Report Generation Center</span>
+                <h2>Oxygen Report Center</h2>
+                <p>Generate operational, exception, audit, and compliance-ready oxygen reports from ward telemetry and tank activity.</p>
               </div>
-              <div class="range-controls">
+              <div class="report-center-controls">
                 <label>
-                  <span>Select Month</span>
-                  <input id="reportStartMonth" type="month" />
+                  <span>Select Report Type</span>
+                  <select id="reportTypeSelect">
+                    <option value="operations">Operations Summary</option>
+                    <option value="critical">Critical Tank Review</option>
+                    <option value="wastage">Wastage & Leakage Report</option>
+                    <option value="ward">Ward Usage Comparison</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Start Date</span>
+                  <input id="reportStartDate" type="date" />
+                  <input id="reportStartMonth" type="month" hidden />
+                </label>
+                <label>
+                  <span>End Date</span>
+                  <input id="reportEndDate" type="date" />
                   <input id="reportEndMonth" type="month" hidden />
                 </label>
-              </div>
-              <div class="report-export-buttons" aria-label="Report export actions">
-                <button type="button" id="emailGeneratedReport">Email Report</button>
-                <button type="button" id="printGeneratedReport">Print Report</button>
+                <button type="button" id="printGeneratedReport" class="ghost-report-button">Preview Report</button>
+                <button type="button" id="emailGeneratedReport" class="primary-report-button">Generate Report</button>
               </div>
             </div>
 
-            <div class="report-button-grid">
-              <button type="button" class="report-generate-button active" data-report-type="operations">
-                <strong>Operations Summary</strong>
-                <span>Overall oxygen service status, active inventory, average flow, and current system condition.</span>
-              </button>
-              <button type="button" class="report-generate-button" data-report-type="critical">
-                <strong>Critical Tank Review</strong>
-                <span>Tanks below safety thresholds, projected depletion, and replacement priority.</span>
-              </button>
-              <button type="button" class="report-generate-button" data-report-type="wastage">
-                <strong>Wastage & Leakage Report</strong>
-                <span>Active wastage alerts, high-flow behavior, affected wards, and investigation notes.</span>
-              </button>
-              <button type="button" class="report-generate-button" data-report-type="ward">
-                <strong>Ward Usage Comparison</strong>
-                <span>Ward-by-ward tank demand, flow levels, alert exposure, and usage ranking.</span>
-              </button>
-            </div>
+            <article class="report-card report-center-card report-generated-top" id="reportGeneratedSummaryCard">
+              <h3>Generated Report Summary</h3>
+              <div id="reportGeneratedSummary"></div>
+            </article>
+
+            <section id="reportExecutiveSummary" class="report-executive-grid"></section>
+
+            <section class="report-center-grid" id="generatedReport">
+              <article class="report-card report-center-card fill-card">
+                <h3>Exception Report</h3>
+                <div id="reportExceptionTable" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card fill-card">
+                <h3>Tank Depletion Report</h3>
+                <div id="reportDepletionTable" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Alert Resolution Performance</h3>
+                <div id="reportResolutionPerformance"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Device & System Health Report</h3>
+                <div id="reportSystemHealth" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Audit Trail Summary</h3>
+                <div id="reportAuditTrail" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Key Recommendations</h3>
+                <div id="reportRecommendations" class="recommendation-list"></div>
+              </article>
+            </section>
 
             <article class="report-card oxygen-waste-card" id="operationsWasteComparisonCard" hidden>
               <h3>Oxygen Volume Used vs Wastage</h3>
@@ -133,8 +161,6 @@
               </article>
             </section>
 
-            <article class="generated-report" id="generatedReport"></article>
-
             <article class="report-card monthly-comparison-card">
               <h3>Monthly Tank Usage Comparison</h3>
               <div id="monthlyUsageComparison" class="report-table"></div>
@@ -142,8 +168,8 @@
 
             <section class="report-live-grid">
               <article class="report-card wide">
-                <h3>Depletion Report</h3>
-                <div id="reportDepletionTable" class="report-table"></div>
+                <h3>Depletion Detail</h3>
+                <div id="reportDepletionDetailTable" class="report-table"></div>
               </article>
             </section>
           </section>
@@ -390,6 +416,6 @@
       <div id="dialogBody" class="dialog-body"></div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260614-report-bars-flowmeters"></script>
+    <script type="module" src="./app.js?v=20260621-stable"></script>
   </body>
 </html>

@@ -24,7 +24,7 @@ export function createRelationalStore() {
     ],
     users: [
       createUser("AA001", "martin", "martin1", "robinsonmartin187@gmail.com", 1, "demo-hash:martin-2026"),
-      createUser("AA002", "robertm", "password1", "marsonrobert88@gmail.com", 1, "demo-hash:robertm-2026"),
+      createUser("AA002", "robertm", "password2", "marsonrobert88@gmail.com", 1, "demo-hash:robertm-2026"),
       createUser("AA003", "vernon", "vernon1", "vernon.dacosta@gmail.com", 1, "demo-hash:vernon-2026"),
       createUser("AA004", "user1", "password1", "robertmarson88@gmail.com", 1, "demo-hash:user1-2026"),
       createUser("AA005", "user2", "password2", "robertmarson88@gmail.com", 1, "demo-hash:user2-2026"),

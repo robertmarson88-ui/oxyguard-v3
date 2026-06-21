@@ -200,6 +200,7 @@ let selectedReportPeriod = "today";
 let permissionPreview = "admin";
 let esp32OfflineDevices = 1;
 let esp32LastFluctuation = 0;
+let acknowledgedAlertSignature = "";
 
 const permissionViews = {
   admin: {
@@ -286,8 +287,18 @@ function setupReportGenerator() {
   const reportMonth = document.getElementById("reportStartMonth");
   if (!reportMonth) return;
 
-  document.getElementById("reportStartMonth").value = "2026-06";
-  document.getElementById("reportEndMonth").value = "2026-06";
+  const today = getReportToday();
+  const startDate = document.getElementById("reportStartDate");
+  const endDate = document.getElementById("reportEndDate");
+  if (startDate && endDate) {
+    startDate.min = "2026-01-01";
+    startDate.max = toDateInputValue(today);
+    endDate.min = "2026-01-01";
+    endDate.max = toDateInputValue(today);
+    startDate.value = "2026-01-01";
+    endDate.value = toDateInputValue(today);
+  }
+  syncReportMonthsFromDates();
 
   ["reportStartMonth", "reportEndMonth"].forEach(id => {
     document.getElementById(id).addEventListener("change", () => {
@@ -298,13 +309,33 @@ function setupReportGenerator() {
       renderMonthlyUsageComparison();
     });
   });
+  ["reportStartDate", "reportEndDate"].forEach(id => {
+    document.getElementById(id)?.addEventListener("change", () => {
+      selectedReportPeriod = "";
+      normalizeReportDateRange();
+      syncReportMonthsFromDates();
+      renderGeneratedReport();
+      renderReportLiveInsights();
+      renderMonthlyUsageComparison();
+    });
+  });
   document.querySelectorAll("[data-report-type]").forEach(button => {
     button.addEventListener("click", () => {
       selectedReportType = button.dataset.reportType;
+      const reportTypeSelect = document.getElementById("reportTypeSelect");
+      if (reportTypeSelect) reportTypeSelect.value = selectedReportType;
       renderGeneratedReport();
     });
   });
-  document.getElementById("emailGeneratedReport")?.addEventListener("click", emailGeneratedReport);
+  document.getElementById("reportTypeSelect")?.addEventListener("change", event => {
+    selectedReportType = event.target.value;
+    renderGeneratedReport();
+  });
+  document.getElementById("emailGeneratedReport")?.addEventListener("click", () => {
+    renderGeneratedReport();
+    renderReportLiveInsights();
+    renderMonthlyUsageComparison();
+  });
   document.getElementById("printGeneratedReport")?.addEventListener("click", () => window.print());
 }
 
@@ -334,6 +365,10 @@ function setupNotifications() {
     const isOpen = !panel.hidden;
     panel.hidden = isOpen;
     button.setAttribute("aria-expanded", String(!isOpen));
+    if (!isOpen) {
+      acknowledgedAlertSignature = getAlertSignature(activeAlerts());
+      button.classList.remove("has-alert");
+    }
   });
   document.addEventListener("click", event => {
     if (panel.hidden || event.target.closest(".notification-wrap")) return;
@@ -383,7 +418,10 @@ function setupLogin() {
         throw new Error(result.message || "Invalid username or password.");
       }
 
-      currentUser = result.user;
+      currentUser = {
+        ...result.user,
+        loginAt: new Date().toISOString()
+      };
       sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
       password.value = "";
       error.classList.remove("visible");
@@ -895,9 +933,11 @@ function updateNotifications(alerts = activeAlerts()) {
   const list = document.getElementById("alertNotificationList");
   const panel = document.getElementById("alertNotificationPanel");
   if (!button || !count || !list || !panel) return;
+  const alertSignature = getAlertSignature(alerts);
+  const hasNewAlerts = alerts.length > 0 && alertSignature !== acknowledgedAlertSignature;
 
   count.textContent = String(alerts.length);
-  button.classList.toggle("has-alert", alerts.length > 0);
+  button.classList.toggle("has-alert", hasNewAlerts);
   button.setAttribute("aria-label", alerts.length ? `${alerts.length} active alert notifications` : "No active alert notifications");
 
   list.innerHTML = alerts.length
@@ -905,9 +945,14 @@ function updateNotifications(alerts = activeAlerts()) {
     : "No active alerts.";
 
   if (!alerts.length) {
+    acknowledgedAlertSignature = "";
     panel.hidden = true;
     button.setAttribute("aria-expanded", "false");
   }
+}
+
+function getAlertSignature(alerts) {
+  return alerts.slice().sort().join("|");
 }
 
 function renderReport() {
@@ -934,15 +979,15 @@ function renderReport() {
   const wastageCost = Math.round(wastageTodayLitres * OXYGEN_COST_PER_LITRE);
   const wastageTankEquivalent = wastageCost / TANK_COST;
   const wastageTankLabel = formatTankEquivalent(wastageTankEquivalent);
-  const wastageCostLabel = `${currency(wastageCost)} Est. Cost | ${wastageTankLabel}`;
+  const wastageCostLabel = `${currency(wastageCost)}&nbsp;Est.&nbsp;Cost&nbsp;|&nbsp;${wastageTankLabel}`;
   const yesterdayDelta = formatSignedPercent((todayConsumptionLitres - yesterdayConsumptionLitres) / yesterdayConsumptionLitres);
   const esp32Status = getEsp32DeviceStatus();
   const criticalOverview = getCriticalAlertOverview(alertRows);
 
   document.getElementById("reportSummary").innerHTML = [
-    reportSummaryCard("Average Flow", `${avgFlowValue} Litre/Min`, "Across active wards", colors.green, "spark"),
+    reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
     reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad" }),
-    reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()} Litre`, wastageCostLabel, colors.yellow, "warn"),
+    reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
     reportSummaryCard("Active Patients", "94", "On Oxygen Support", colors.purple, "people"),
     reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
     reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
@@ -1024,6 +1069,16 @@ function formatSignedPercent(ratio) {
   const value = ratio * 100;
   const sign = value >= 0 ? "+" : "";
   return `${sign}${value.toFixed(1)}%`;
+}
+
+function formatActivityTime(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return "--:--";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+function minutesFromNow(minutes) {
+  return new Date(Date.now() - minutes * 60000);
 }
 
 function getEsp32DeviceStatus() {
@@ -1253,11 +1308,16 @@ function renderPredictiveInsights(activeTanks, alertRows) {
 function renderRecentActivity(alertRows) {
   const target = document.getElementById("recentActivityList");
   if (!target) return;
+  const activeAlert = alertRows[0] || { name: "Tank C1", ward: "Paediatric Ward", alertType: "Critical tank level" };
+  const loginTime = currentUser?.loginAt || sessionStorage.getItem("oxyguardLoginAt") || new Date().toISOString();
+  const username = currentUser?.username || "robertm";
+  const notificationEmail = currentUser?.email || "robertmarson88@gmail.com";
   const entries = [
-    ["11:01 AM", "danger", `${alertRows[0]?.name || "Tank C1"} alert detected`],
-    ["11:02 AM", "good", "Alert notification sent to admin"],
-    ["11:03 AM", "blue", "Alert acknowledged by nurse"],
-    ["11:06 AM", "good", "Issue resolved in recovery bay"]
+    [formatActivityTime(loginTime), "blue", `${username} logged in successfully`],
+    [formatActivityTime(minutesFromNow(4)), "danger", `${activeAlert.name} ${activeAlert.alertType || "alert"} detected in ${activeAlert.ward || "Ward C"}`],
+    [formatActivityTime(minutesFromNow(3)), "good", `Email notification sent to ${notificationEmail}`],
+    [formatActivityTime(minutesFromNow(2)), "blue", `Alert reviewed by ${username}`],
+    [formatActivityTime(minutesFromNow(1)), "good", "Maintenance ticket opened for oxygen team"]
   ];
   target.innerHTML = entries.map(([time, tone, text]) => `
     <div class="activity-row ${tone}">
@@ -1275,39 +1335,180 @@ function renderGeneratedReport() {
   document.querySelectorAll("[data-report-type]").forEach(button => {
     button.classList.toggle("active", button.dataset.reportType === selectedReportType);
   });
+  const reportTypeSelect = document.getElementById("reportTypeSelect");
+  if (reportTypeSelect) reportTypeSelect.value = selectedReportType;
   updateOperationsReportPanels();
   renderOperationsWasteComparison();
 
   const report = buildGeneratedReport(selectedReportType);
-  target.innerHTML = `
-    <div class="generated-report-head">
+  renderReportCenterSummary(report);
+  renderReportCenterExceptionTable();
+  renderReportCenterDepletionTable();
+  renderReportResolutionPerformance();
+  renderReportCenterSystemHealth();
+  renderReportCenterAuditTrail();
+  renderReportCenterRecommendations();
+}
+
+function renderReportCenterSummary(report) {
+  const target = document.getElementById("reportExecutiveSummary");
+  const generated = document.getElementById("reportGeneratedSummary");
+  if (!target || !generated) return;
+
+  const demoSummary = getReportDemoSummary();
+  const allTanks = wards.flatMap(ward => ward.tanks.map(t => ({ ...t, wardName: ward.name })));
+  const activeTanks = allTanks.filter(t => t.active);
+  const criticalTanks = activeTanks.filter(t => getReportVolumePercent(t) < 10 || t.highFlowAlert);
+  const totalConsumption = demoSummary.totalUsage * TANK_VOLUME_LITRES;
+  const wastageLitres = Math.round(totalConsumption * (demoSummary.avgWastage / 100));
+  const ghostFlowIncidents = Math.max(2, Math.round(demoSummary.totalAlerts * 0.22));
+  const leakageEvents = Math.max(2, Math.round(demoSummary.totalAlerts * 0.18));
+  const systemHealth = getEsp32DeviceStatus();
+  const rangeLabel = getReportRangeLabel().replace("Report period: ", "");
+  const kpis = [
+    ["Total Oxygen Consumed", `${totalConsumption.toLocaleString()} L`, rangeLabel, "good", "drop"],
+    ["Estimated Wastage", `${demoSummary.avgWastage}%`, `${wastageLitres.toLocaleString()} Litre`, "good", "leak"],
+    ["Critical Alerts", demoSummary.totalAlerts, "Jan-to-date alerts", "bad", "alert"],
+    ["Ghost Flow Incidents", ghostFlowIncidents, "Telemetry exceptions", "warn", "ghost"],
+    ["Leakage Events", leakageEvents, "Leakage investigation", "bad", "tool"],
+    ["Critical Tanks", criticalTanks.length, "Below 10% threshold", "purple", "tank"],
+    ["System Availability", `${Math.round((systemHealth.online / systemHealth.total) * 100)}%`, `${systemHealth.online}/${systemHealth.total} ESP32 online`, "good", "pulse"]
+  ];
+
+  target.innerHTML = kpis.map(([label, value, note, tone, icon]) => `
+    <article class="report-exec-card ${tone}">
+      <span class="report-exec-icon">${icon.toString().slice(0, 2).toUpperCase()}</span>
+      <div>
+        <small>${label}</small>
+        <strong>${value}</strong>
+        <em>${note}</em>
+      </div>
+    </article>
+  `).join("");
+
+  generated.innerHTML = `
+    <div class="generated-report-head compact">
       <div>
         <span>${report.range}</span>
         <h3>${report.title}</h3>
         <p>${report.description}</p>
       </div>
-      <strong>${report.generatedAt}</strong>
-    </div>
-    <div class="generated-kpis">
-      ${report.kpis.map(item => `
-        <article>
-          <span>${item.label}</span>
-          <strong>${item.value}</strong>
-        </article>
-      `).join("")}
-    </div>
-    <div class="generated-report-body">
-      ${tableHtml(report.headers, report.rows)}
-      <div class="report-brief">
-        <strong>Brief Analysis</strong>
-        <ul>${report.brief.map(item => `<li>${item}</li>`).join("")}</ul>
-      </div>
     </div>
   `;
 }
 
+function renderReportCenterExceptionTable() {
+  const target = document.getElementById("reportExceptionTable");
+  if (!target) return;
+  const rows = [
+    ["12 Jun 09:32", "Ward A", "Tank A2", "Ghost Flow", badge("Closed", "good"), "Valve inspected"],
+    ["15 Jun 11:15", "Paediatrics", "Tank C3", "Leakage", badge("Closed", "good"), "Cylinder replaced"],
+    ["16 Jun 14:08", "Recovery Bay", "Tank R1", "Residual Gas", badge("Open", "warn"), "Facilities assigned"],
+    ["18 Jun 08:45", "Labour", "Tank B1", "Unauthorized Use", badge("Closed", "good"), "Patient verified"],
+    ["21 Jun 19:22", "Paediatrics", "Tank C2", "Ghost Flow", badge("Closed", "good"), "Line checked"]
+  ];
+  target.innerHTML = tableHtml(["Date / Time", "Ward", "Tank", "Event Type", "Status", "Action Taken"], rows);
+}
+
+function renderReportCenterDepletionTable() {
+  const target = document.getElementById("reportDepletionTable");
+  if (!target) return;
+  const activeTanks = wards.flatMap(ward => ward.tanks
+    .filter(t => t.active)
+    .map(t => ({ ...t, wardName: ward.name })));
+  const rows = [...activeTanks]
+    .sort((a, b) => getReportVolumePercent(a) - getReportVolumePercent(b))
+    .slice(0, 5)
+    .map(t => {
+      const percent = getReportVolumePercent(t);
+      const status = tankDepletionStatus(t);
+      return [
+        t.name,
+        t.wardName,
+        `${getReportVolumeRemaining(t)} L (${percent}%)`,
+        estimateDepletion(t),
+        badge(status.label, status.tone),
+        status.key === "critical" ? '<button class="inline-action">Refill Now</button>' : "-"
+      ];
+    });
+  target.innerHTML = tableHtml(["Tank", "Ward", "Current Volume", "Est. Depletion", "Status", "Action"], rows);
+}
+
+function renderReportResolutionPerformance() {
+  const target = document.getElementById("reportResolutionPerformance");
+  if (!target) return;
+  const metrics = [
+    ["Total Alerts", "32"],
+    ["Resolved", "30"],
+    ["Open", "2"],
+    ["Escalated", "3"],
+    ["Ack Rate", "98%"],
+    ["Resolution", "95%"]
+  ];
+  target.innerHTML = `
+    <div class="resolution-metrics">
+      ${metrics.map(([label, value]) => `<article><strong>${value}</strong><span>${label}</span></article>`).join("")}
+    </div>
+    <div class="resolution-times">
+      <span><strong>4 min</strong> Avg response</span>
+      <span><strong>11 min</strong> Avg resolution</span>
+      <span><strong>38 min</strong> Longest open</span>
+    </div>
+    <div class="report-trend-lines" aria-label="Alert trend chart">
+      <svg viewBox="0 0 360 110">
+        <polyline points="8,78 38,52 68,58 98,42 128,57 158,68 188,44 218,57 248,62 278,51 308,58 352,64" fill="none" stroke="#2f80ed" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <polyline points="8,88 38,67 68,70 98,60 128,73 158,80 188,68 218,76 248,82 278,70 308,78 352,82" fill="none" stroke="#19b36b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+      <div><span class="blue-dot"></span>Generated <span class="green-dot"></span>Resolved</div>
+    </div>
+  `;
+}
+
+function renderReportCenterSystemHealth() {
+  const target = document.getElementById("reportSystemHealth");
+  if (!target) return;
+  target.innerHTML = tableHtml(["Metric", "Value", "Status"], [
+    ["ESP32 Devices Online", `${getEsp32DeviceStatus().online} / ${ESP32_DEVICE_TOTAL}`, badge("Excellent", "good")],
+    ["MQTT Broker Uptime", "100%", badge("Excellent", "good")],
+    ["API Server Uptime", "99.9%", badge("Excellent", "good")],
+    ["Database Status", "Healthy", badge("Good", "good")],
+    ["Offline Devices", getEsp32DeviceStatus().offline, badge("Warning", "warn")],
+    ["Communication Failures", "2", badge("Warning", "warn")],
+    ["Packet Loss Avg", "0.3%", badge("Good", "good")]
+  ]);
+}
+
+function renderReportCenterAuditTrail() {
+  const target = document.getElementById("reportAuditTrail");
+  if (!target) return;
+  target.innerHTML = tableHtml(["Date / Time", "User Role", "User ID", "Action", "Details"], [
+    ["19 Jun 09:32", "Nurse", "NUR-07", "Alert Acknowledged", "Ghost Flow at Ward A / Tank A2"],
+    ["19 Jun 09:40", "Facilities", "FAC-03", "Investigation Started", "Inspecting Tank B3"],
+    ["19 Jun 09:44", "Facilities", "FAC-03", "Action Taken", "Valve tightened, flow stopped"],
+    ["19 Jun 09:48", "Nurse", "NUR-07", "Alert Resolved", "Issue resolved"],
+    ["19 Jun 09:50", "Admin", "ADM-01", "Incident Closed", "Closed by Admin"]
+  ]);
+}
+
+function renderReportCenterRecommendations() {
+  const target = document.getElementById("reportRecommendations");
+  if (!target) return;
+  const items = [
+    ["Refill Tank B3 within the next 2 hours.", "Current volume is 15%; estimated depletion in 2h 05m.", "High"],
+    ["Investigate recurring ghost flow in Paediatrics Ward.", "3 ghost flow incidents recorded this month.", "Medium"],
+    ["Schedule maintenance for ESP32-07.", "Intermittent communication issues detected.", "Medium"],
+    ["Review oxygen allocation in Ward C.", "Usage is 18% higher than monthly average.", "Low"]
+  ];
+  target.innerHTML = items.map(([title, note, priority]) => `
+    <article class="recommendation-item ${priority.toLowerCase()}">
+      <div><strong>${title}</strong><span>${note}</span></div>
+      <b>${priority}</b>
+    </article>
+  `).join("");
+}
+
 function renderReportLiveInsights() {
-  const depletionTarget = document.getElementById("reportDepletionTable");
+  const depletionTarget = document.getElementById("reportDepletionDetailTable");
   const flowTarget = document.getElementById("highFlowReportCard");
   const pressureTarget = document.getElementById("highPressureReportCard");
   if (!depletionTarget || !flowTarget || !pressureTarget) return;
@@ -1400,21 +1601,18 @@ function renderHistoricalDepletionReport(target) {
 }
 
 function updateOperationsReportPanels() {
-  const isOperations = selectedReportType === "operations";
-  const isCritical = selectedReportType === "critical";
-  const hideSupportingReportSections = isCritical || selectedReportType === "wastage" || selectedReportType === "ward";
   const alertTables = document.querySelector(".report-alert-tables");
   const flowCard = document.getElementById("highAbnormalFlowCard");
   const pressureCard = document.getElementById("highAbnormalPressureCard");
   const wasteCard = document.getElementById("operationsWasteComparisonCard");
   const monthlyCard = document.querySelector(".monthly-comparison-card");
   const depletionSection = document.querySelector(".report-live-grid");
-  if (alertTables) alertTables.hidden = !isCritical;
-  if (flowCard) flowCard.hidden = !isCritical;
-  if (pressureCard) pressureCard.hidden = !isCritical;
-  if (wasteCard) wasteCard.hidden = !isOperations;
-  if (monthlyCard) monthlyCard.hidden = hideSupportingReportSections;
-  if (depletionSection) depletionSection.hidden = hideSupportingReportSections;
+  if (alertTables) alertTables.hidden = true;
+  if (flowCard) flowCard.hidden = true;
+  if (pressureCard) pressureCard.hidden = true;
+  if (wasteCard) wasteCard.hidden = true;
+  if (monthlyCard) monthlyCard.hidden = true;
+  if (depletionSection) depletionSection.hidden = true;
 }
 
 function renderOperationsWasteComparison() {
@@ -1808,11 +2006,11 @@ function getReportDemoSummary() {
 }
 
 function getSelectedDemoMonths() {
-  const selectedValue = document.getElementById("reportStartMonth")?.value || "2026-06";
-  const selectedIndex = reportDemoData.findIndex(item => item.month === selectedValue);
-  const endIndex = selectedIndex >= 0 ? selectedIndex : reportDemoData.length - 1;
-  const startIndex = Math.max(0, endIndex - 2);
-  return reportDemoData.slice(startIndex, endIndex + 1);
+  const { start, end } = getReportDateRange();
+  const startMonth = start.slice(0, 7);
+  const endMonth = end.slice(0, 7);
+  const selected = reportDemoData.filter(item => item.month >= startMonth && item.month <= endMonth);
+  return selected.length ? selected : [reportDemoData[reportDemoData.length - 1]];
 }
 
 function getSelectedReportMonth() {
@@ -1827,19 +2025,53 @@ function isHistoricalReportMonth() {
 }
 
 function getReportRangeLabel() {
-  const periodLabels = {
-    today: "Current month",
-    "7": "Current month",
-    "30": "30-day monthly range",
-    quarter: "Quarter",
-    ytd: "Year to date"
-  };
-  const start = document.getElementById("reportStartMonth")?.value || "2026-06";
-  const months = getSelectedDemoMonths();
-  const first = months[0]?.month || start;
-  const last = months[months.length - 1]?.month || start;
-  const prefix = periodLabels[selectedReportPeriod] || "Selected month";
-  return `${prefix}: ${first} to ${last}`;
+  const { start, end } = getReportDateRange();
+  return `Report period: ${formatReportDateLabel(start)} - ${formatReportDateLabel(end)}`;
+}
+
+function getReportToday() {
+  const today = new Date();
+  const maxDemoDate = new Date("2026-06-21T12:00:00");
+  return today > maxDemoDate ? maxDemoDate : today;
+}
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getReportDateRange() {
+  const todayValue = toDateInputValue(getReportToday());
+  const startInput = document.getElementById("reportStartDate")?.value || "2026-01-01";
+  const endInput = document.getElementById("reportEndDate")?.value || todayValue;
+  const start = startInput < "2026-01-01" ? "2026-01-01" : startInput > todayValue ? todayValue : startInput;
+  const end = endInput > todayValue ? todayValue : endInput < start ? start : endInput;
+  return { start, end };
+}
+
+function normalizeReportDateRange() {
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+  if (!startInput || !endInput) return;
+  const { start, end } = getReportDateRange();
+  startInput.value = start;
+  endInput.value = end;
+  endInput.min = start;
+}
+
+function syncReportMonthsFromDates() {
+  const { start, end } = getReportDateRange();
+  const startMonth = document.getElementById("reportStartMonth");
+  const endMonth = document.getElementById("reportEndMonth");
+  if (startMonth) startMonth.value = start.slice(0, 7);
+  if (endMonth) endMonth.value = end.slice(0, 7);
+}
+
+function formatReportDateLabel(value) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
 }
 
 function updateDepletionFilterButtons() {
