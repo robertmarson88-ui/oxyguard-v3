@@ -2383,13 +2383,13 @@ body.login-active .app {
 }
 
 .critical-tank-list {
-  min-height: 114px;
+  min-height: 108px;
 }
 
 .critical-tank-board {
-  max-height: 116px;
+  max-height: 114px;
   display: grid;
-  gap: 6px;
+  gap: 7px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -2399,10 +2399,11 @@ body.login-active .app {
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  padding: 7px 8px;
-  border: 1px solid #ef9aa3;
-  border-radius: 8px;
-  background: #fff5f6;
+  padding: 8px 10px;
+  border: 1px solid rgba(248, 113, 113, 0.32);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fffafa, #fff6f7);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.88);
 }
 
 .critical-tank-item div {
@@ -2413,12 +2414,13 @@ body.login-active .app {
 .critical-tank-item strong {
   color: var(--navy);
   font-size: 11px;
+  line-height: 1.1;
 }
 
 .critical-tank-item span {
   min-width: 0;
   color: var(--muted);
-  font-size: 9px;
+  font-size: 8.7px;
   font-weight: 650;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2426,13 +2428,14 @@ body.login-active .app {
 }
 
 .critical-tank-item b {
-  min-width: 36px;
+  min-width: 34px;
   padding: 6px 7px;
   border-radius: 999px;
-  background: var(--red);
+  background: linear-gradient(135deg, #ef4444, #e11d48);
   color: #fff;
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
+  box-shadow: 0 8px 16px rgba(225, 29, 72, 0.16);
 }
 
 .critical-tank-empty {
@@ -3820,10 +3823,10 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 
 .v5-dashboard .report-card,
 .v5-dashboard .summary-card {
-  border: 1px solid #dfe8f2;
-  border-radius: 8px;
-  background: #fff;
-  box-shadow: 0 12px 28px rgba(15, 38, 64, 0.08);
+  border: 1px solid rgba(209, 220, 233, 0.92);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  box-shadow: 0 10px 24px rgba(15, 38, 64, 0.07);
 }
 
 .v5-kpi-grid {
@@ -3939,24 +3942,59 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   content: "";
 }
 
-.v5-kpi-card.up {
+.v5-kpi-card.up,
+.v5-kpi-card.consumption {
   gap: 8px;
 }
 
-.v5-kpi-card.up .kpi-copy {
+.v5-kpi-card.up .kpi-copy,
+.v5-kpi-card.consumption .kpi-copy {
   width: 100%;
 }
 
-.v5-kpi-card.up strong {
+.v5-kpi-card.consumption .kpi-copy {
+  max-width: calc(100% - 62px);
+}
+
+.v5-kpi-card.up strong,
+.v5-kpi-card.consumption strong {
   color: #2f80ed !important;
   white-space: nowrap;
 }
 
-.v5-kpi-card.up small {
+.v5-kpi-card.up small,
+.v5-kpi-card.consumption small {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   align-items: center;
+}
+
+.v5-kpi-card.consumption small {
+  gap: 5px;
+  font-size: 9px;
+  line-height: 1.16;
+}
+
+.kpi-icon.consumption {
+  width: 52px;
+  height: 52px;
+  margin-top: 12px;
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(239, 248, 255, 0.72));
+  box-shadow: inset 0 0 0 1px rgba(47, 128, 237, 0.08), 0 8px 18px rgba(47, 128, 237, 0.08);
+  filter: saturate(1.04) contrast(1.02);
+}
+
+.kpi-icon.consumption::before {
+  content: "";
+  inset: 8px 7px 9px;
+  display: block;
+  background: url("data:image/svg+xml,%3Csvg width='44' height='36' viewBox='0 0 44 36' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 30H40' stroke='%23D6E6F8' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M5 28L13 20L20 23L29 12L39 6' stroke='%232F80ED' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='5' cy='28' r='3.5' fill='%23FFFFFF' stroke='%232F80ED' stroke-width='2'/%3E%3Ccircle cx='13' cy='20' r='3.5' fill='%23FFFFFF' stroke='%232F80ED' stroke-width='2'/%3E%3Ccircle cx='20' cy='23' r='3.5' fill='%23FFFFFF' stroke='%232F80ED' stroke-width='2'/%3E%3Ccircle cx='29' cy='12' r='3.5' fill='%23FFFFFF' stroke='%230EA5E9' stroke-width='2'/%3E%3Ccircle cx='39' cy='6' r='3.5' fill='%2310B981' stroke='%23FFFFFF' stroke-width='2'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.kpi-icon.consumption::after {
+  display: none;
 }
 
 .v5-kpi-card.warn strong {
@@ -3991,27 +4029,24 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 }
 
 .kpi-icon.warn {
-  background: transparent;
+  width: 52px;
+  height: 52px;
+  margin-top: 12px;
+  border-radius: 16px;
+  background:
+    url("./assets/estimated-wastage-icon.png") center / 90% no-repeat,
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(240, 253, 244, 0.42));
+  border: 0;
+  box-shadow: none;
+  filter: saturate(1.02) contrast(1.02);
 }
 
 .kpi-icon.warn::before {
-  width: 0;
-  height: 0;
-  left: 7px;
-  top: 6px;
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-bottom: 29px solid #f59e0b;
+  display: none;
 }
 
 .kpi-icon.warn::after {
-  content: "!";
-  left: 20px;
-  top: 15px;
-  color: #ffffff;
-  font-size: 18px;
-  font-weight: 950;
-  line-height: 1;
+  display: none;
 }
 
 .kpi-icon.people {
@@ -4076,6 +4111,10 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 .v5-critical-overview {
   grid-column: 4 / span 2;
   grid-row: span 2;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  min-width: 0;
 }
 
 .v5-table-card {
@@ -4132,10 +4171,11 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 
 .v5-dashboard h3 {
   margin: 0;
-  color: #16375d;
-  font-size: 13px;
+  color: #0b2f55;
+  font-size: 12px;
   font-weight: 850;
   text-transform: uppercase;
+  letter-spacing: 0.01em;
 }
 
 .v5-dashboard .report-card {
@@ -4182,20 +4222,22 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 
 .system-health-list {
   display: grid;
-  gap: 8px;
-  margin-top: 10px;
+  gap: 7px;
+  margin-top: 9px;
 }
 
 .health-row {
   display: grid;
-  grid-template-columns: 27px minmax(0, 1fr) 9px;
+  grid-template-columns: 25px minmax(0, 1fr) 9px;
   align-items: center;
-  gap: 8px;
+  gap: 7px;
+  min-width: 0;
+  padding: 5px 4px 5px 0;
 }
 
 .health-icon {
-  width: 27px;
-  height: 27px;
+  width: 25px;
+  height: 25px;
   display: grid;
   place-items: center;
   border-radius: 7px;
@@ -4295,15 +4337,23 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 
 .health-row strong {
   display: block;
-  color: #344054;
-  font-size: 10px;
+  color: #21364f;
+  font-size: 9.5px;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .health-row small {
   display: block;
   color: #16a34a;
-  font-size: 9px;
+  font-size: 8.4px;
   font-weight: 760;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .health-row.warn small {
@@ -4624,42 +4674,68 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 .critical-overview-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 5px;
-  margin: 4px 0 7px;
+  gap: 8px;
+  margin: 0;
 }
 
 .critical-mini-card {
-  position: relative;
-  min-height: 38px;
-  padding: 5px 7px;
-  border: 1px solid #ffd7d7;
-  border-radius: 7px;
-  background: #fff7f7;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 10px;
+  border: 1px solid rgba(254, 202, 202, 0.9);
+  border-radius: 10px;
+  background: linear-gradient(145deg, #fffafa 0%, #fff5f5 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  overflow: hidden;
+}
+
+.critical-mini-card div {
+  min-width: 0;
 }
 
 .critical-mini-card span,
 .critical-mini-card small {
   display: block;
+  min-width: 0;
   color: #7f1d1d;
-  font-size: 7px;
-  font-weight: 760;
-  line-height: 1.15;
+  font-size: 8px;
+  font-weight: 800;
+  line-height: 1.12;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .critical-mini-card strong {
   display: block;
-  color: #ef4444;
-  font-size: 14px;
-  line-height: 1.05;
-  margin-top: 2px;
+  color: #e11d48;
+  font-size: 18px;
+  line-height: 1;
+  margin-top: 4px;
+  letter-spacing: 0;
+}
+
+.critical-mini-card small {
+  margin-top: 3px;
+  color: #9f1239;
+  font-size: 7.6px;
 }
 
 .critical-mini-card b {
-  position: absolute;
-  right: 7px;
-  bottom: 6px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff;
   color: #fb7185;
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 6px 14px rgba(225, 29, 72, 0.09);
 }
 
 .compact-table table {

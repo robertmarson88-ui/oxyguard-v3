@@ -1040,11 +1040,11 @@ function renderSystemHealth(status = getEsp32DeviceStatus()) {
   if (!target) return;
   const espStatus = status.offline ? `${status.online} / ${status.total} Online` : `${status.total} / ${status.total} Online`;
   const items = [
-    ["ESP32 Devices", espStatus, "device", status.offline ? "warn" : "good"],
-    ["MQTT Broker", "Connected", "network"],
-    ["FastAPI Server", "Running", "server"],
+    ["ESP32", espStatus, "device", status.offline ? "warn" : "good"],
+    ["MQTT", "Connected", "network"],
+    ["API Server", "Running", "server"],
     ["Database", "Healthy", "database"],
-    ["Last Packet Received", "2 sec ago", "packet"]
+    ["Last Packet", "2 sec ago", "packet"]
   ];
   target.innerHTML = items.map(([label, value, icon, tone = "good"]) => `
     <div class="health-row ${tone}">
@@ -1116,9 +1116,11 @@ function renderCriticalOverview(overview) {
   if (!target) return;
   target.innerHTML = overview.cards.map(([label, value, icon]) => `
     <article class="critical-mini-card">
-      <span>${label}</span>
-      <strong>${value}</strong>
-      <small>Active</small>
+      <div>
+        <span>${label}</span>
+        <strong>${value}</strong>
+        <small>${value ? "Active" : "Clear"}</small>
+      </div>
       <b>${icon}</b>
     </article>
   `).join("");
