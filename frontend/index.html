@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260623-alert-map-balance" />
+    <link rel="stylesheet" href="./styles.css?v=20260623-order-summary-rebuild" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -311,56 +311,66 @@
           <p class="v5-privacy-note">All patient information is anonymized to protect privacy. Data shown is for monitoring and operational purposes only.</p>
         </section>
 
-        <section class="order view" id="orderView">
-          <section class="order-alert">
-            <div class="order-check">✓</div>
-            <div>
-              <h2>Order Automation Triggered</h2>
-              <p>System generated a purchase order from live oxygen forecasting. Review and confirm.</p>
+        <section class="order view order-summary-page" id="orderView">
+          <section class="order-recommendation">
+            <div class="order-check">OK</div>
+            <div class="order-recommend-copy">
+              <h2>Replacement Order Recommended</h2>
+              <p>System has detected low oxygen capacity and forecasted shortage.</p>
             </div>
-            <div class="order-protocol">
-              <span>Automation Protocol</span>
+            <div class="order-recommend-metrics" id="orderRecommendMetrics"></div>
+            <div class="order-protocol-box">
+              <span>Protocol</span>
               <strong>10-Minute Protocol</strong>
-            </div>
-            <div class="order-timer">
+              <i></i>
               <span>Time Remaining</span>
-              <strong id="orderTimeRemaining">08:47</strong>
+              <strong id="orderTimeRemaining">05:41</strong>
+              <button id="protocolDetails">View Protocol Details</button>
             </div>
-            <button id="protocolDetails">View Protocol Details</button>
           </section>
 
-          <nav class="order-tabs" aria-label="Order summary sections">
+          <nav class="order-tabs order-flow-tabs" aria-label="Order summary sections">
             <span class="active">1. Replacement Tanks</span>
             <span>2. Order Details</span>
-            <span>3. Capacity Summary</span>
+            <span>3. Capacity & Forecast</span>
           </nav>
 
-          <section class="order-grid">
-            <article class="order-card replacement-card">
-              <h3>1. Replacement Tanks Required</h3>
-              <p>Active tanks below 10% from the depletion table.</p>
-              <div id="replacementSummary" class="replacement-list"></div>
+          <section class="order-dashboard-grid">
+            <article class="order-panel critical-tanks-panel">
+              <h3>Critical Tanks (3)</h3>
+              <div id="replacementSummary" class="order-table-wrap"></div>
             </article>
 
-            <article class="order-card">
-              <h3>2. Projected Order Details</h3>
-              <div id="orderDetails" class="order-detail-list"></div>
+            <article class="order-panel capacity-forecast-panel">
+              <h3>Capacity Forecast</h3>
+              <div id="capacityForecastChart" class="capacity-forecast-chart"></div>
             </article>
 
-            <article class="order-card capacity-card">
-              <h3>3. Capacity & Forecast Summary</h3>
-              <div id="capacitySummary" class="order-detail-list"></div>
+            <article class="order-panel risk-assessment-panel">
+              <h3>Risk Assessment</h3>
+              <div id="riskAssessmentPanel"></div>
             </article>
-          </section>
-          <section class="order-actions">
-            <button id="downloadOrderSummary" class="secondary-action">Download Summary</button>
-            <div>
-              <button id="rejectOrder" class="danger-action">Reject Order</button>
-              <button id="confirmOrder" class="confirm-action">Confirm Order Now</button>
-            </div>
+
+            <article class="order-panel" id="orderTriggerSummary"></article>
+            <article class="order-panel" id="financialSummary"></article>
+            <article class="order-panel" id="supplierInformation"></article>
+            <article class="order-panel" id="orderDetails"></article>
+
+            <article class="order-panel order-process-panel">
+              <h3>Order Process</h3>
+              <div id="orderProcessTimeline"></div>
+            </article>
+
+            <article class="order-panel action-required-panel">
+              <h3>Action Required</h3>
+              <p>Please review the recommended order and confirm to proceed.</p>
+              <div class="order-actions">
+                <button id="rejectOrder" class="danger-action">Reject Order</button>
+                <button id="confirmOrder" class="confirm-action">Confirm Order Now</button>
+              </div>
+            </article>
           </section>
         </section>
-
         <section class="analytics view" id="analyticsView">
           <section class="report-head">
             <div>
@@ -414,6 +424,6 @@
       <div id="dialogBody" class="dialog-body"></div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260623-alert-map-balance"></script>
+    <script type="module" src="./app.js?v=20260623-order-summary-rebuild"></script>
   </body>
 </html>
