@@ -205,7 +205,7 @@ let acknowledgedAlertSignature = "";
 const permissionViews = {
   admin: {
     label: "Admin",
-    allowedViews: ["report", "dashboard", "alert", "analytics", "order"]
+    allowedViews: ["report", "dashboard", "alert", "analytics", "order", "administration"]
   },
   "nurse-supervisor": {
     label: "Nurse Supervisor",
@@ -261,6 +261,12 @@ function start() {
   });
   document.getElementById("confirmOrder")?.addEventListener("click", () => {
     window.alert("Order confirmed. Purchase order AUTO-PO-2026-0418-01 is pending supplier acknowledgement.");
+  });
+  document.getElementById("adminAddUserButton")?.addEventListener("click", () => {
+    window.alert("Demo action: open the add user workflow.");
+  });
+  document.getElementById("adminAddDeviceButton")?.addEventListener("click", () => {
+    window.alert("Demo action: open the device registration workflow.");
   });
   document.getElementById("closeDialog").addEventListener("click", () => document.getElementById("wardDialog").close());
   document.getElementById("logoutButton").addEventListener("click", logout);
@@ -577,6 +583,7 @@ function renderAll() {
   renderReportLiveInsights();
   renderMonthlyUsageComparison();
   renderOrderSummary();
+  renderAdministration();
   renderAnalytics();
   updateNotifications();
   updateFooter();
@@ -602,6 +609,7 @@ function setView(view) {
     renderMonthlyUsageComparison();
   }
   if (view === "order") renderOrderSummary();
+  if (view === "administration") renderAdministration();
   if (view === "analytics") renderAnalytics();
   updatePageTitle();
 }
@@ -1136,7 +1144,8 @@ function updatePageTitle() {
     dashboard: "OXYGEN REPORT CENTER",
     alert: "ALERT MONITORING",
     order: "ORDER SUMMARY",
-    analytics: "CALL ANALYTICS"
+    analytics: "CALL ANALYTICS",
+    administration: "ADMINISTRATION"
   };
   document.querySelector(".topbar h1").textContent = titles[activeView] || titles.report;
 }
@@ -2656,6 +2665,122 @@ function renderOrderProcessTimeline() {
       <span>${step[1]}</span>
     </div>
   `).join("")}</div>`;
+}
+
+function renderAdministration() {
+  const adminUsers = [
+    ["JA", "John Admin", "john.admin@hospital.com", "Administrator", "Active", "19 Jun 2026<br>01:58 PM"],
+    ["NM", "Nurse Manager", "nurse.manager@hospital.com", "Nurse Manager", "Active", "19 Jun 2026<br>12:40 PM"],
+    ["NS", "Nurse Station", "nurse.station@hospital.com", "Nurse", "Active", "19 Jun 2026<br>11:32 AM"],
+    ["FS", "Facilities Team", "facilities@hospital.com", "Facilities", "Active", "19 Jun 2026<br>10:15 AM"],
+    ["CF", "CFO", "cfo@hospital.com", "CFO", "Active", "19 Jun 2026<br>09:05 AM"]
+  ];
+  const adminDevices = [
+    ["ESP32-A01", "A&E Ward", "Online", "19 Jun 2026 02:14 PM"],
+    ["ESP32-B01", "Paediatrics Ward", "Online", "19 Jun 2026 02:14 PM"],
+    ["ESP32-C01", "Recovery Bay", "Online", "19 Jun 2026 02:13 PM"],
+    ["ESP32-D01", "Labour Ward", "Online", "19 Jun 2026 02:15 PM"],
+    ["ESP32-E01", "Maternity Ward", "Offline", "19 Jun 2026 01:40 PM"]
+  ];
+  const auditRows = [
+    ["19 Jun 2026 02:12 PM", "John Admin", "Updated Alert Rule", "Ghost Flow Threshold changed to 0.5 Litre/Min"],
+    ["19 Jun 2026 02:05 PM", "John Admin", "User Role Updated", "Nurse Station role changed to Nurse"],
+    ["19 Jun 2026 01:58 PM", "Nurse Manager", "User Login", "Successful login"],
+    ["19 Jun 2026 01:45 PM", "John Admin", "Privacy Setting Changed", "Data Retention Period set to 365 days"],
+    ["19 Jun 2026 01:30 PM", "Facilities Team", "Device Registered", "ESP32-E01 registered to Maternity Ward"]
+  ];
+
+  setOrderHtml("adminUsersTable", `
+    <table class="admin-table">
+      <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${adminUsers.map(([initials, name, email, role, status, login]) => `
+          <tr>
+            <td><div class="admin-user-cell"><span>${initials}</span><div><strong>${name}</strong><small>${email}</small></div></div></td>
+            <td>${adminRoleBadge(role)}</td>
+            <td>${adminStatusBadge(status)}</td>
+            <td>${login}</td>
+            <td><button class="admin-row-action" type="button" aria-label="Open actions for ${name}">...</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `);
+
+  setOrderHtml("adminGovernanceList", `
+    ${adminSettingRow("Patient Anonymization", "Hide patient identifiers in all modules", "Enabled", "toggle")}
+    ${adminSettingRow("Data Retention Period", "Automatic data deletion after period", "365 Days")}
+    ${adminSettingRow("Audit Logging", "Record all system and data access", "Enabled")}
+    ${adminSettingRow("Data Export Restrictions", "Restrict data export to authorized roles", "Administrator Only")}
+  `);
+
+  setOrderHtml("adminAlertRulesList", `
+    ${adminSettingRow("Ghost Flow Threshold", "Minimum flow when flag is OFF", "0.5 Litre/Min")}
+    ${adminSettingRow("Critical Tank Level", "Alert when tank level below", "10%")}
+    ${adminSettingRow("Low Pressure Threshold", "Alert when pressure below", "40 PSI")}
+    ${adminSettingRow("Flow Variance (Patient ON)", "Allowed variance from prescribed flow", "+/-10%")}
+    ${adminSettingRow("Notification Escalation Time", "Time before auto escalation", "15 Minutes")}
+  `);
+
+  setOrderHtml("adminDevicesTable", `
+    <table class="admin-table">
+      <thead><tr><th>Device ID</th><th>Location</th><th>Status</th><th>Last Seen</th><th>Action</th></tr></thead>
+      <tbody>
+        ${adminDevices.map(([device, location, status, seen]) => `
+          <tr>
+            <td><strong>${device}</strong></td>
+            <td>${location}</td>
+            <td>${adminDeviceStatus(status)}</td>
+            <td>${seen}</td>
+            <td><button class="admin-row-action" type="button" aria-label="Open actions for ${device}">...</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `);
+
+  setOrderHtml("adminAuditTable", `
+    <table class="admin-table">
+      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+      <tbody>
+        ${auditRows.map(row => `
+          <tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `);
+}
+
+function adminRoleBadge(role) {
+  const tone = role === "Administrator" ? "blue" : role === "Nurse Manager" ? "purple" : role === "Nurse" ? "green" : role === "Facilities" ? "orange" : "red";
+  return `<span class="admin-role-badge ${tone}">${role}</span>`;
+}
+
+function adminStatusBadge(status) {
+  const tone = status === "Active" ? "good" : "bad";
+  return `<span class="admin-status-badge ${tone}">${status}</span>`;
+}
+
+function adminDeviceStatus(status) {
+  const tone = status === "Online" ? "good" : "bad";
+  return `<span class="admin-device-status ${tone}"><i></i>${status}</span>`;
+}
+
+function adminSettingRow(title, description, value, type = "") {
+  const valueHtml = type === "toggle"
+    ? `<span class="admin-toggle on"><i></i></span><strong>${value}</strong>`
+    : `<strong>${value}</strong>`;
+  return `
+    <div class="admin-setting-row">
+      <span class="admin-setting-icon">${title.slice(0, 1)}</span>
+      <div>
+        <strong>${title}</strong>
+        <small>${description}</small>
+      </div>
+      <div class="admin-setting-value">${valueHtml}</div>
+      <button class="admin-setting-arrow" type="button" aria-label="Edit ${title}">&gt;</button>
+    </div>
+  `;
 }
 
 function orderDetailRows(rows) {

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260623-order-summary-rebuild" />
+    <link rel="stylesheet" href="./styles.css?v=20260623-administration-page" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -47,6 +47,7 @@
         <button class="side-button" data-view="alert" data-role-required="admin">Real Time Alert</button>
         <button class="side-button" data-view="analytics" data-role-required="admin">Analytics</button>
         <button class="side-button" data-view="order" data-role-required="admin">Order Summary</button>
+        <button class="side-button" data-view="administration" data-role-required="admin">Administration</button>
         <button class="side-button" id="logoutButton">Logout</button>
         <div class="sidebar-fill"></div>
         <div class="sidebar-version">
@@ -371,6 +372,80 @@
             </article>
           </section>
         </section>
+        <section class="administration view" id="administrationView">
+          <section class="admin-grid">
+            <article class="admin-panel admin-users-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon blue">UR</span>
+                  <div>
+                    <h3>Users & Roles</h3>
+                    <p>Create and manage system users, roles and permissions.</p>
+                  </div>
+                </div>
+                <button class="admin-add-button" id="adminAddUserButton" type="button">+ Add User</button>
+              </div>
+              <div id="adminUsersTable" class="admin-table-wrap"></div>
+              <button class="admin-link-button" type="button">View all users</button>
+            </article>
+
+            <article class="admin-panel admin-governance-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon green">PG</span>
+                  <div>
+                    <h3>Privacy & Governance</h3>
+                    <p>Configure privacy, data handling and compliance settings.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="adminGovernanceList" class="admin-settings-list"></div>
+            </article>
+
+            <article class="admin-panel admin-rules-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon orange">AR</span>
+                  <div>
+                    <h3>Alert Rules</h3>
+                    <p>Configure thresholds for alerts and notifications.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="adminAlertRulesList" class="admin-settings-list"></div>
+            </article>
+
+            <article class="admin-panel admin-devices-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon blue">DM</span>
+                  <div>
+                    <h3>Device Management</h3>
+                    <p>Manage registered IoT devices and their status.</p>
+                  </div>
+                </div>
+                <button class="admin-add-button" id="adminAddDeviceButton" type="button">+ Add Device</button>
+              </div>
+              <div id="adminDevicesTable" class="admin-table-wrap"></div>
+              <button class="admin-link-button" type="button">View all devices</button>
+            </article>
+
+            <article class="admin-panel admin-audit-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon purple">AL</span>
+                  <div>
+                    <h3>Audit Logs</h3>
+                    <p>Recent system activities and configuration changes.</p>
+                  </div>
+                </div>
+                <button class="admin-link-button" type="button">View all logs</button>
+              </div>
+              <div id="adminAuditTable" class="admin-table-wrap"></div>
+            </article>
+          </section>
+          <p class="admin-footnote">All times are real-time. Changes take effect immediately.</p>
+        </section>
         <section class="analytics view" id="analyticsView">
           <section class="report-head">
             <div>
@@ -424,6 +499,6 @@
       <div id="dialogBody" class="dialog-body"></div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260623-order-summary-rebuild"></script>
+    <script type="module" src="./app.js?v=20260623-administration-page"></script>
   </body>
 </html>
