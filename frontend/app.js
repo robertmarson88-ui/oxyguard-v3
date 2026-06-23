@@ -269,6 +269,14 @@ function start() {
     window.alert("Demo action: open the device registration workflow.");
   });
   document.getElementById("closeDialog").addEventListener("click", () => document.getElementById("wardDialog").close());
+  document.getElementById("closeHeatMapDialog")?.addEventListener("click", () => document.getElementById("heatMapDialog")?.close());
+  document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
+  document.getElementById("dashboardHeatMapCard")?.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openHeatMapDialog();
+    }
+  });
   document.getElementById("logoutButton").addEventListener("click", logout);
   setupNotifications();
   setupPermissionPreview();
@@ -3007,6 +3015,20 @@ function renderHospitalHeatMap() {
       <div class="floorplan-offline-dot"></div>
     </div>
   `;
+}
+
+function openHeatMapDialog() {
+  const dialog = document.getElementById("heatMapDialog");
+  const body = document.getElementById("heatMapDialogBody");
+  const heatMap = document.getElementById("hospitalHeatMap");
+  const legend = document.querySelector(".v5-map-card .v5-map-legend");
+  if (!dialog || !body || !heatMap) return;
+
+  body.innerHTML = `
+    <div class="heatmap-popout-map">${heatMap.innerHTML}</div>
+    ${legend ? `<div class="v5-map-legend heatmap-popout-legend">${legend.innerHTML}</div>` : ""}
+  `;
+  dialog.showModal();
 }
 
 function reportSummaryCard(title, value, status, color, icon = "dot", options = {}) {

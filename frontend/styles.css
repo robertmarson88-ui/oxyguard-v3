@@ -6290,6 +6290,188 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   }
 }
 
+/* Dashboard emphasis update: stronger heading, glowing logo, richer KPI cards, and heat map popout. */
+body:not(.login-active) .topbar h1 {
+  color: #ffffff;
+  font-size: clamp(1.12rem, 1.8vw, 1.55rem);
+  font-weight: 950;
+  letter-spacing: 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+body:not(.login-active) .logo {
+  position: relative;
+  overflow: visible;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  box-shadow:
+    0 0 0 1px rgba(14, 165, 233, 0.18),
+    0 0 22px rgba(34, 197, 94, 0.42),
+    0 0 34px rgba(14, 79, 159, 0.35),
+    0 16px 34px rgba(2, 18, 38, 0.24) !important;
+}
+
+body:not(.login-active) .logo::after {
+  content: "";
+  position: absolute;
+  inset: -7px;
+  z-index: -1;
+  border-radius: 16px;
+  background: radial-gradient(circle at 50% 45%, rgba(34, 197, 94, 0.26), rgba(14, 165, 233, 0.14) 42%, transparent 72%);
+  filter: blur(8px);
+}
+
+.v5-dashboard .v5-kpi-card {
+  border-color: rgba(185, 213, 241, 0.9) !important;
+  box-shadow:
+    0 18px 34px rgba(6, 79, 159, 0.12),
+    0 4px 10px rgba(7, 31, 61, 0.06) !important;
+}
+
+.v5-dashboard .v5-kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 24px 42px rgba(6, 79, 159, 0.15),
+    0 6px 14px rgba(7, 31, 61, 0.08) !important;
+}
+
+.v5-map-card {
+  cursor: zoom-in;
+}
+
+.v5-map-card:focus-visible {
+  outline: 3px solid rgba(47, 128, 237, 0.28);
+  outline-offset: 3px;
+}
+
+.v5-map-card .map-tools {
+  display: none !important;
+}
+
+.v5-map-card .heatmap-head::after {
+  content: "Click to enlarge";
+  align-self: start;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #c9d9ea;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #0b63c7;
+  font-size: 0.58rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.heatmap-dialog {
+  width: min(1180px, calc(100vw - 36px));
+  max-width: 1180px;
+  border: 1px solid #d8e4ef;
+  border-radius: 14px;
+  padding: 0;
+  background: #ffffff;
+  box-shadow: 0 30px 90px rgba(3, 25, 52, 0.34);
+}
+
+.heatmap-dialog::backdrop {
+  background: rgba(3, 25, 52, 0.56);
+  backdrop-filter: blur(4px);
+}
+
+.heatmap-dialog-head {
+  align-items: center;
+  padding: 16px 18px;
+  border-bottom: 1px solid #dce7f2;
+  background: linear-gradient(180deg, #ffffff, #f7fbff);
+}
+
+.heatmap-dialog-head h2,
+.heatmap-dialog-head p {
+  margin: 0;
+}
+
+.heatmap-dialog-head h2 {
+  color: #071f3d;
+  font-size: 1rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.heatmap-dialog-head p {
+  margin-top: 4px;
+  color: #50657e;
+  font-size: 0.72rem;
+}
+
+.heatmap-dialog-head button {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid #c9d9ea;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #0b4f9f;
+  font-size: 0.72rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.heatmap-dialog-body {
+  padding: 18px;
+  background: #eef4fa;
+}
+
+.heatmap-popout-map {
+  position: relative;
+  overflow: auto;
+  min-height: 360px;
+  padding: 16px;
+  border: 1px solid #d8e4ef;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.heatmap-popout-map .oxygen-floorplan-shell {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  min-width: 860px;
+  height: 320px;
+}
+
+.heatmap-popout-legend {
+  margin-top: 12px;
+  justify-content: center;
+}
+
+@media (max-width: 760px) {
+  body:not(.login-active) .topbar h1 {
+    font-size: 1rem;
+  }
+
+  .v5-map-card .heatmap-head::after {
+    display: none;
+  }
+
+  .heatmap-dialog {
+    width: calc(100vw - 18px);
+  }
+
+  .heatmap-dialog-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .heatmap-dialog-body {
+    padding: 10px;
+  }
+
+  .heatmap-popout-map {
+    min-height: 330px;
+  }
+
+  .heatmap-popout-map .oxygen-floorplan-shell {
+    min-width: 780px;
+    height: 290px;
+  }
+}
+
 .order-summary-page {
   display: none;
   gap: 12px;

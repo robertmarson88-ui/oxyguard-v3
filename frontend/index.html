@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260623-global-polish" />
+    <link rel="stylesheet" href="./styles.css?v=20260623-dashboard-map-popout" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -234,7 +234,7 @@
               <div id="systemHealthPanel" class="system-health-list"></div>
             </article>
 
-            <article class="report-card heatmap-card v5-map-card">
+            <article class="report-card heatmap-card v5-map-card" id="dashboardHeatMapCard" role="button" tabindex="0" aria-label="Open Ward Oxygen Usage Heat Map">
               <div class="heatmap-head">
                 <div>
                   <h3>Ward Oxygen Usage Heat Map</h3>
@@ -499,6 +499,17 @@
       <div id="dialogBody" class="dialog-body"></div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260623-global-polish"></script>
+    <dialog id="heatMapDialog" class="heatmap-dialog">
+      <div class="dialog-head heatmap-dialog-head">
+        <div>
+          <h2>Ward Oxygen Usage Heat Map</h2>
+          <p>Expanded telemetry view of ward intensity, pipeline state, and device status.</p>
+        </div>
+        <button id="closeHeatMapDialog" aria-label="Close heat map">Close</button>
+      </div>
+      <div id="heatMapDialogBody" class="heatmap-dialog-body"></div>
+    </dialog>
+
+    <script type="module" src="./app.js?v=20260623-dashboard-map-popout"></script>
   </body>
 </html>
