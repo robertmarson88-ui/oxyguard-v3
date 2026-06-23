@@ -1,0 +1,16 @@
+Database Integration Test
+
+Flow:
+1. FastAPI subscribes to MQTT topic oxyguard/telemetry.
+2. Simulated publisher sends backend/approved-telemetry-payload.json.
+3. FastAPI validates the payload with TelemetryIn.
+4. FastAPI inserts the valid payload into PostgreSQL table public.telemetry_logs.
+
+Latest confirmed inserted row:
+log_id: 6
+device_id: ESP32-WARD1-ICU
+ward_id: ICU-A
+flow_rate: 14.75
+operational_status: normal
+device_timestamp: 2026-06-08 16:45:00
+received_at: 2026-06-23 04:03:23.01697
