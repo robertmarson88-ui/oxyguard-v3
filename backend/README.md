@@ -26,6 +26,26 @@ Health check:
 http://localhost:8000/api/v1/health
 ```
 
+## MQTT Telemetry Topic
+
+Mosquitto topic:
+
+```text
+oxyguard/telemetry
+```
+
+Publish approved test payload:
+
+```powershell
+& "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -p 1883 -t "oxyguard/telemetry" -f ".\approved-telemetry-payload.json"
+```
+
+Subscribe and confirm receipt:
+
+```powershell
+& "C:\Program Files\mosquitto\mosquitto_sub.exe" -h 127.0.0.1 -p 1883 -t "oxyguard/telemetry" -C 1
+```
+
 ## Login Roles
 
 - `user1` is the administrator.
