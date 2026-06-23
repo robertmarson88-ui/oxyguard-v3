@@ -1016,7 +1016,7 @@ body.login-active .app {
 
 .alert-monitor-grid {
   display: grid;
-  grid-template-columns: minmax(420px, 1.25fr) minmax(360px, 1fr) minmax(300px, 0.85fr);
+  grid-template-columns: minmax(410px, 1.12fr) minmax(440px, 1.38fr) minmax(240px, 0.58fr);
   grid-template-areas:
     "incidents map feed"
     "wards wards assignment";
@@ -1284,12 +1284,12 @@ body.login-active .app {
 }
 
 .alert-pipeline-map {
-  min-height: 270px;
+  min-height: 292px;
 }
 
 .pipeline-canvas {
   position: relative;
-  height: 270px;
+  height: 292px;
   border: 1px solid #ecf2f8;
   border-radius: 12px;
   background: linear-gradient(180deg, #fbfdff, #f7fbff);
@@ -1440,25 +1440,25 @@ body.login-active .app {
 
 .alert-feed-row {
   display: grid;
-  grid-template-columns: 70px 24px minmax(0, 1fr);
+  grid-template-columns: 58px 20px minmax(0, 1fr);
   align-items: center;
-  gap: 9px;
-  min-height: 43px;
+  gap: 8px;
+  min-height: 38px;
   border-bottom: 1px solid #edf2f7;
   color: #20384f;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 690;
 }
 
 .alert-feed-row time {
   color: #5c6f86;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 760;
 }
 
 .alert-feed-row i {
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
 }
 
@@ -1495,6 +1495,21 @@ body.login-active .app {
   white-space: normal;
   text-align: center;
   font-size: 9px;
+  line-height: 1.08;
+}
+
+.patient-assignment-panel .alert-data-table th,
+.patient-assignment-panel .alert-data-table td {
+  padding: 9px 5px;
+  font-size: 9.5px;
+}
+
+.patient-assignment-panel .assignment-result {
+  max-width: 58px;
+  padding: 3px 5px;
+  white-space: normal;
+  text-align: center;
+  font-size: 8.5px;
   line-height: 1.08;
 }
 
