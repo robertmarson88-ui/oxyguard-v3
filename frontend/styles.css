@@ -6284,6 +6284,10 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   .admin-setting-arrow {
     grid-column: 2;
   }
+
+  .admin-setting-arrow {
+    display: none;
+  }
 }
 
 .order-summary-page {
@@ -7423,6 +7427,411 @@ body:not(.login-active) .sidebar-user .permission-preview-menu {
 
   .critical-overview-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Cross-page polish layer: keep every screen using the same modern rhythm. */
+:root {
+  --font-ui: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+  --surface: #ffffff;
+  --surface-soft: #f7fafd;
+  --ink: #071f3d;
+  --ink-soft: #50657e;
+  --hairline: #dce7f2;
+  --card-radius: 10px;
+  --button-radius: 8px;
+  --soft-shadow: 0 10px 26px rgba(7, 31, 61, 0.06);
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  background: #eef4fa;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+  letter-spacing: 0;
+}
+
+button {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid rgba(47, 128, 237, 0.24);
+  outline-offset: 2px;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.topbar {
+  min-height: 58px;
+  box-shadow: 0 8px 22px rgba(3, 25, 52, 0.12);
+}
+
+.topbar h1 {
+  font-size: clamp(0.98rem, 1.3vw, 1.25rem);
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.datetime {
+  min-width: 138px;
+  border-radius: 10px;
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+body:not(.login-active) .sidebar {
+  gap: 10px;
+  padding: 14px 12px;
+}
+
+body:not(.login-active) .logo,
+body:not(.login-active) .sidebar-user {
+  border-radius: var(--card-radius);
+  box-shadow: 0 10px 24px rgba(2, 18, 38, 0.13);
+}
+
+body:not(.login-active) .side-button {
+  min-height: 46px;
+  border-radius: var(--button-radius);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fbff;
+  font-size: 0.84rem;
+  font-weight: 850;
+  line-height: 1.15;
+  box-shadow: none;
+}
+
+body:not(.login-active) .side-button:hover,
+body:not(.login-active) .side-button.active {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: #226aa6;
+  color: #ffffff;
+  box-shadow: inset 3px 0 0 #79c2ff, 0 10px 20px rgba(2, 18, 38, 0.14);
+}
+
+.dashboard,
+.report,
+.alert-monitoring,
+.order-summary-page,
+.analytics,
+.administration {
+  background: linear-gradient(180deg, #f5f9fd 0%, #edf4fa 100%);
+}
+
+.report-card,
+.metrics-panel,
+.ward-card,
+.pipeline-tab,
+.alert-panel,
+.order-summary-page .order-panel,
+.order-summary-page .order-recommendation,
+.admin-panel,
+.v5-dashboard .report-card,
+.v5-dashboard .report-card.v5-kpi-card,
+.v5-map-card,
+.report-center-card,
+.oxygen-waste-card,
+.monthly-comparison-card {
+  border-color: var(--hairline) !important;
+  border-radius: var(--card-radius) !important;
+  background: var(--surface) !important;
+  box-shadow: var(--soft-shadow) !important;
+}
+
+.report-card h3,
+.alert-panel-head h3,
+.order-summary-page .order-panel h3,
+.admin-panel-title h3,
+.v5-dashboard .report-card h3,
+.pipeline-tab h2,
+.metrics-panel h2,
+.ward-card h3 {
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.report-card p,
+.admin-panel-title p,
+.alert-panel p,
+.order-recommend-copy p,
+.report-center-head p,
+.v5-dashboard .report-card p {
+  color: var(--ink-soft);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
+.report-table table,
+.admin-table,
+.order-data-table,
+.alert-table-wrap table,
+.patient-table,
+.tank-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.report-table th,
+.report-table td,
+.admin-table th,
+.admin-table td,
+.order-data-table th,
+.order-data-table td,
+.alert-table-wrap th,
+.alert-table-wrap td,
+.patient-table th,
+.patient-table td,
+.tank-table th,
+.tank-table td {
+  border-bottom: 1px solid #edf3f9;
+  font-family: var(--font-ui);
+  letter-spacing: 0;
+}
+
+.report-table th,
+.admin-table th,
+.order-data-table th,
+.alert-table-wrap th,
+.patient-table th,
+.tank-table th {
+  color: #64748b;
+  font-size: 0.58rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.report-table td,
+.admin-table td,
+.order-data-table td,
+.alert-table-wrap td,
+.patient-table td,
+.tank-table td {
+  color: #243b55;
+  font-size: 0.68rem;
+  font-weight: 650;
+}
+
+.primary-report-button,
+.ghost-report-button,
+.report-actions button,
+.report-generate-button,
+.status-filter button,
+.order-protocol-box button,
+.action-required-panel button,
+.admin-add-button,
+.admin-link-button,
+.alert-panel-link,
+.alert-panel-head a,
+.footer button,
+.dialog-head button,
+.secondary-action,
+.danger-action,
+.confirm-action,
+.login-card button {
+  border-radius: var(--button-radius) !important;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.primary-report-button,
+.confirm-action,
+.login-card button {
+  border: 1px solid #0b72d9 !important;
+  background: linear-gradient(180deg, #1684eb, #0b63c7) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(11, 99, 199, 0.18);
+}
+
+.primary-report-button:hover,
+.confirm-action:hover,
+.login-card button:hover {
+  background: linear-gradient(180deg, #1c91ff, #0a5fbf) !important;
+}
+
+.ghost-report-button,
+.secondary-action,
+.order-protocol-box button,
+.admin-add-button,
+.footer button,
+.dialog-head button {
+  border: 1px solid #c9d9ea !important;
+  background: #f8fbff !important;
+  color: #0b4f9f !important;
+}
+
+.ghost-report-button:hover,
+.secondary-action:hover,
+.order-protocol-box button:hover,
+.admin-add-button:hover,
+.footer button:hover,
+.dialog-head button:hover {
+  border-color: #93bdf0 !important;
+  background: #eef6ff !important;
+}
+
+.danger-action {
+  border: 1px solid #fb7185 !important;
+  background: #fff7f8 !important;
+  color: #dc2626 !important;
+}
+
+.danger-action:hover {
+  background: #ffe8eb !important;
+}
+
+.admin-link-button,
+.alert-panel-head a,
+.alert-panel-link,
+.order-card-link {
+  color: #0b63c7 !important;
+  text-decoration: none;
+}
+
+.admin-link-button:hover,
+.alert-panel-head a:hover,
+.alert-panel-link:hover,
+.order-card-link:hover {
+  color: #064f9f !important;
+  text-decoration: underline;
+  transform: none;
+}
+
+.notification-button,
+.permission-preview-button,
+.reportTypeSelect,
+select,
+input {
+  border-radius: var(--button-radius);
+}
+
+.v5-kpi-card strong,
+.top-detail strong,
+.metric-value,
+.summary-value {
+  letter-spacing: 0;
+}
+
+.v5-kpi-card small,
+.v5-kpi-card span,
+.metric-label,
+.summary-label {
+  color: var(--ink-soft);
+}
+
+@media (max-width: 1180px) {
+  .report-center-grid,
+  .analytics-grid,
+  .alert-monitor-grid,
+  .order-dashboard-grid,
+  .admin-grid {
+    gap: 10px;
+  }
+
+  .report-card,
+  .alert-panel,
+  .admin-panel,
+  .order-summary-page .order-panel {
+    padding: 12px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  body {
+    font-size: 12px;
+  }
+
+  .topbar {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+
+  .topbar h1 {
+    font-size: 0.95rem;
+    line-height: 1.2;
+  }
+
+  .datetime {
+    min-width: 112px;
+    padding: 7px 8px;
+    font-size: 0.66rem;
+  }
+
+  .notification-button {
+    width: 38px;
+    height: 38px;
+  }
+
+  body:not(.login-active) .side-button {
+    min-height: 42px;
+    padding: 0.68rem 0.75rem;
+    font-size: 0.78rem;
+  }
+
+  .dashboard,
+  .report,
+  .alert-monitoring,
+  .order-summary-page,
+  .analytics,
+  .administration {
+    padding: 10px !important;
+  }
+
+  .report-table,
+  .admin-table-wrap,
+  .order-table-wrap,
+  .alert-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .report-table table,
+  .admin-table,
+  .order-data-table,
+  .alert-table-wrap table {
+    min-width: 520px;
+  }
+
+  .report-card h3,
+  .alert-panel-head h3,
+  .order-summary-page .order-panel h3,
+  .admin-panel-title h3,
+  .v5-dashboard .report-card h3 {
+    font-size: 0.72rem;
+  }
+
+  .primary-report-button,
+  .ghost-report-button,
+  .report-actions button,
+  .report-generate-button,
+  .status-filter button,
+  .order-protocol-box button,
+  .action-required-panel button,
+  .admin-add-button,
+  .footer button {
+    min-height: 38px;
   }
 }
 
