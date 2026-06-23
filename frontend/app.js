@@ -608,6 +608,11 @@ function setView(view) {
 
 function renderWards() {
   const grid = document.getElementById("wardGrid");
+  const alertGrid = document.getElementById("alertKpiGrid");
+  if (alertGrid) {
+    renderRealTimeAlert();
+  }
+  if (!grid) return;
   updatePipelineFilterButtons();
   const visibleWards = wards
     .map(ward => ({ ward, tanks: getVisibleTanks(ward) }))
@@ -627,6 +632,202 @@ function renderWards() {
   grid.querySelectorAll(".ward-card[data-ward]").forEach(card => {
     card.addEventListener("click", () => openWard(card.dataset.ward));
   });
+}
+
+function renderRealTimeAlert() {
+  const activeTanks = wards.flatMap(w => w.tanks).filter(t => t.active);
+  const alertRows = getAlertIncidentRows();
+  const criticalTanks = activeTanks.filter(t => getReportVolumePercent(t) < 10);
+  const activeTankCount = activeTanks.length;
+  const totalTankCount = 40;
+
+  const kpiGrid = document.getElementById("alertKpiGrid");
+  if (kpiGrid) {
+    kpiGrid.innerHTML = [
+      alertKpiCard("Critical Alerts", alertRows.filter(r => r.priority === "Critical").length, "Require immediate action", "danger", "View Alerts"),
+      alertKpiCard("Active Alerts", alertRows.length, "Across all wards", "warning", "View All"),
+      alertKpiCard("Total Tanks", `<span id="activePatients">${activeTankCount} / ${totalTankCount}</span>`, "Tanks in use", "blue"),
+      alertKpiCard("System Status", `<span id="systemAlert">Monitoring</span>`, `<span id="alertText">All systems normal</span>`, "success"),
+      alertKpiCard("Wastage Today", `<span id="wastage">${wastage}%</span>`, `<span id="wastageStatus">vs yesterday</span>`, "purple", "+ 8%"),
+      alertKpiCard("Critical Tanks", criticalTanks.length, "Need attention", "danger", "View Tanks")
+    ].join("");
+  }
+
+  const incidentCount = document.getElementById("activeIncidentCount");
+  if (incidentCount) incidentCount.textContent = String(alertRows.length);
+
+  const incidentTarget = document.getElementById("alertIncidentsTable");
+  if (incidentTarget) {
+    incidentTarget.innerHTML = `
+      <table class="alert-data-table">
+        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Status</th><th>Assigned To</th></tr></thead>
+        <tbody>${alertRows.map(row => `
+          <tr>
+            <td>${row.time}</td>
+            <td>${row.ward}</td>
+            <td>${row.type}</td>
+            <td>${alertPill(row.priority)}</td>
+            <td>${row.asset}</td>
+            <td>${alertStatus(row.status)}</td>
+            <td>${row.assigned}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    `;
+  }
+
+  const mapTarget = document.getElementById("alertPipelineMap");
+  if (mapTarget) mapTarget.innerHTML = renderAlertPipelineMap();
+
+  const feedTarget = document.getElementById("alertActivityFeed");
+  if (feedTarget) {
+    const feed = [
+      ["11:42 AM", "danger", "Ghost flow detected at Bed 07, A&E Ward"],
+      ["11:43 AM", "info", "Alert sent to Facilities Team"],
+      ["11:44 AM", "success", "Facilities acknowledged the alert"],
+      ["11:46 AM", "warning", "Investigation started at Bed 07"],
+      ["11:47 AM", "success", "Pressure normal at Tank C1"]
+    ];
+    feedTarget.innerHTML = feed.map(item => `
+      <div class="alert-feed-row">
+        <time>${item[0]}</time>
+        <i class="${item[1]}"></i>
+        <span>${item[2]}</span>
+      </div>
+    `).join("");
+  }
+
+  const wardTarget = document.getElementById("alertWardCards");
+  if (wardTarget) {
+    wardTarget.innerHTML = getAlertWardCards().map(renderAlertWardCard).join("");
+  }
+
+  const assignmentTarget = document.getElementById("patientAssignmentPanel");
+  if (assignmentTarget) {
+    const rows = [
+      ["Bed 07", "Off", "Flow detected", "Ghost Flow"],
+      ["Bed 11", "On", "No Flow", "Supply Failure"],
+      ["Bed 12", "On", "Abnormal Flow", "Flow Anomaly"],
+      ["Bed 05", "On", "Normal Flow", "Normal"],
+      ["Bed 16", "Off", "No Flow", "Normal"]
+    ];
+    assignmentTarget.innerHTML = `
+      <table class="alert-data-table compact">
+        <thead><tr><th>Bed</th><th>Patient Flag</th><th>Flow Status</th><th>Result</th></tr></thead>
+        <tbody>${rows.map(row => `
+          <tr>
+            <td>${row[0]}</td>
+            <td>${assignmentFlag(row[1])}</td>
+            <td>${row[2]}</td>
+            <td>${assignmentResult(row[3])}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    `;
+  }
+}
+
+function alertKpiCard(label, value, detail, tone, action = "") {
+  const iconLabels = { danger: "!", warning: "A", blue: "O2", success: "~", purple: "%"};
+  return `
+    <article class="alert-kpi ${tone}">
+      <div class="alert-kpi-icon">${iconLabels[tone] || "O2"}</div>
+      <div class="alert-kpi-copy">
+        <span>${label}</span>
+        <strong>${value}</strong>
+        <small>${detail}</small>
+      </div>
+      ${action ? `<button type="button">${action}</button>` : ""}
+    </article>
+  `;
+}
+
+function getAlertIncidentRows() {
+  const rows = [
+    { time: "11:42 AM", ward: "A&E Ward", type: "Ghost Flow", priority: "Critical", asset: "Bed 07", status: "Awaiting Response", assigned: "Facilities" },
+    { time: "11:43 AM", ward: "Recovery Bay", type: "Leakage Detected", priority: "High", asset: "Tank R1", status: "Investigating", assigned: "Maintenance" },
+    { time: "11:44 AM", ward: "Labour Ward", type: "Oxygen Supply Failure", priority: "High", asset: "Bed 03", status: "Acknowledged", assigned: "Nurse Station" },
+    { time: "11:45 AM", ward: "Paediatric Ward", type: "Flow Anomaly", priority: "Medium", asset: "Bed 12", status: "Investigating", assigned: "Nurse Station" },
+    { time: "11:47 AM", ward: "A&E Ward", type: "Critical Tank", priority: "Medium", asset: "Tank A2", status: "Awaiting Response", assigned: "Facilities" }
+  ];
+  activeAlerts().slice(0, 2).forEach((alert, index) => {
+    rows[index].type = alert.includes("critical") ? "Critical Tank" : rows[index].type;
+  });
+  return rows;
+}
+
+function alertPill(priority) {
+  const tone = priority === "Critical" ? "bad" : priority === "High" ? "warn" : "medium";
+  return `<span class="alert-pill ${tone}">${priority}</span>`;
+}
+
+function alertStatus(status) {
+  const tone = status === "Acknowledged" ? "info" : status === "Investigating" ? "warn" : "bad";
+  return `<span class="alert-status ${tone}">${status}</span>`;
+}
+
+function assignmentFlag(value) {
+  return `<span class="assignment-flag ${value === "On" ? "on" : "off"}">${value}</span>`;
+}
+
+function assignmentResult(value) {
+  const tone = value === "Normal" ? "normal" : value === "Supply Failure" ? "failure" : value === "Flow Anomaly" ? "warning" : "danger";
+  return `<span class="assignment-result ${tone}">${value}</span>`;
+}
+
+function getAlertWardCards() {
+  return [
+    { ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [["Bed 05", "PT-0005", "On", "4.0", "Normal"], ["Bed 06", "PT-0006", "On", "3.8", "Normal"], ["Bed 07", "PT-0007", "Off", "2.8", "Ghost Flow"]] },
+    { ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [["Bed 10", "PT-0010", "On", "2.5", "Normal"], ["Bed 11", "PT-0011", "On", "0.0", "Supply Failure"], ["Bed 12", "PT-0012", "On", "5.2", "Flow Anomaly"]] },
+    { ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [["Bed 15", "PT-0015", "On", "4.1", "Normal"], ["Bed 16", "PT-0016", "Off", "0.0", "Normal"], ["Tank R1", "TANK-R1", "-", "-", "Leakage"]] },
+    { ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [["Bed 20", "PT-0020", "On", "3.9", "Normal"], ["Bed 21", "PT-0021", "On", "0.0", "Supply Failure"], ["Bed 22", "PT-0022", "Off", "0.0", "Normal"]] }
+  ];
+}
+
+function renderAlertWardCard(card) {
+  return `
+    <article class="alert-panel alert-ward-panel">
+      <div class="alert-panel-head">
+        <h3>${card.ward}</h3>
+        <span class="live-dot">Live</span>
+      </div>
+      <table class="alert-data-table compact">
+        <thead><tr><th>Bed / Tank</th><th>Patient Flag</th><th>Flow</th><th>Status</th></tr></thead>
+        <tbody>${card.rows.map(row => `
+          <tr>
+            <td><b>${row[0]}</b><small>${row[1]}</small></td>
+            <td>${assignmentFlag(row[2])}</td>
+            <td>${row[3]}</td>
+            <td>${assignmentResult(row[4])}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+      <footer>Avg Pressure: ${card.pressure} PSI | Total Flow: ${card.totalFlow} Litre/Min</footer>
+    </article>
+  `;
+}
+
+function renderAlertPipelineMap() {
+  return `
+    <div class="pipeline-canvas">
+      <div class="tank-farm">
+        <strong>Main Tank Farm</strong>
+        <span>4 Tanks</span>
+        <div><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="pipe horizontal main"></div>
+      <div class="pipe vertical center"></div>
+      <div class="pipe horizontal top"></div>
+      <div class="pipe horizontal bottom"></div>
+      <div class="pipe vertical branch-left"></div>
+      <div class="pipe vertical branch-right"></div>
+      <span class="pipe-node"></span>
+      <button class="map-ward ae" type="button">A&E Ward<small>2 Tanks</small></button>
+      <button class="map-ward paed" type="button">Paediatrics Ward<small>2 Tanks</small></button>
+      <button class="map-ward recovery" type="button">Recovery Bay<small>2 Tanks</small></button>
+      <button class="map-ward labour" type="button">Labour Ward<small>2 Tanks</small></button>
+    </div>
+  `;
 }
 
 function updatePipelineFilterButtons() {
@@ -709,39 +910,52 @@ function renderTankRow(t) {
 
 function updateMetrics() {
   const active = wards.flatMap(w => w.tanks).filter(t => t.active).length;
-  document.getElementById("activePatients").textContent = `${active}/40`;
-  document.getElementById("wastage").textContent = `${wastage}%`;
-  document.getElementById("wastageStatus").textContent = "Across all wards";
+  const activePatientsEl = document.getElementById("activePatients");
+  if (activePatientsEl) activePatientsEl.textContent = `${active}/40`;
+  const wastageEl = document.getElementById("wastage");
+  if (wastageEl) wastageEl.textContent = `${wastage}%`;
+  const wastageStatusEl = document.getElementById("wastageStatus");
+  if (wastageStatusEl) wastageStatusEl.textContent = "vs yesterday";
 
   const lowVolume = wards.flatMap(w => w.tanks)
     .map(t => ({ name: t.name, percent: Math.round((t.volumeRemaining * 100) / t.maxVolume) }))
     .filter(t => t.percent < 10);
   const lowVolumeEl = document.getElementById("lowVolume");
-  lowVolumeEl.classList.toggle("low-volume-list", lowVolume.length > 0);
-  lowVolumeEl.innerHTML = lowVolume.length ? renderLowVolumeList(lowVolume) : "None";
-  lowVolumeEl.style.color = lowVolume.length ? colors.red : colors.green;
+  if (lowVolumeEl) {
+    lowVolumeEl.classList.toggle("low-volume-list", lowVolume.length > 0);
+    lowVolumeEl.innerHTML = lowVolume.length ? renderLowVolumeList(lowVolume) : "None";
+    lowVolumeEl.style.color = lowVolume.length ? colors.red : colors.green;
+  }
 
   const flowWard = wards[flowIndex % wards.length];
-  document.getElementById("rotatingWard").textContent = flowWard.name;
-  document.getElementById("rotatingWard").style.color = flowWard.accent;
-  document.getElementById("rotatingFlow").textContent = `${totalFlow(flowWard)} Litre/Min`;
-  document.getElementById("rotatingFlow").style.color = flowWard.accent;
+  const rotatingWardEl = document.getElementById("rotatingWard");
+  const rotatingFlowEl = document.getElementById("rotatingFlow");
+  if (rotatingWardEl) {
+    rotatingWardEl.textContent = flowWard.name;
+    rotatingWardEl.style.color = flowWard.accent;
+  }
+  if (rotatingFlowEl) {
+    rotatingFlowEl.textContent = `${totalFlow(flowWard)} Litre/Min`;
+    rotatingFlowEl.style.color = flowWard.accent;
+  }
 
   const alerts = activeAlerts();
   const systemAlert = document.getElementById("systemAlert");
   const alertText = document.getElementById("alertText");
-  if (alerts.length > 1) {
-    systemAlert.innerHTML = "MULTIPLE<br>LEAKS";
-    systemAlert.style.color = colors.red;
-    alertText.innerHTML = alerts.join("<br>");
-  } else if (alerts.length === 1) {
-    systemAlert.innerHTML = "LEAKAGE<br>DETECTED";
-    systemAlert.style.color = colors.red;
-    alertText.innerHTML = alerts[0];
-  } else {
-    systemAlert.textContent = "NORMAL";
-    systemAlert.style.color = colors.green;
-    alertText.textContent = "System running normally";
+  if (systemAlert && alertText) {
+    if (alerts.length > 1) {
+      systemAlert.innerHTML = "Monitoring";
+      systemAlert.style.color = colors.green;
+      alertText.innerHTML = "All systems normal";
+    } else if (alerts.length === 1) {
+      systemAlert.innerHTML = "Monitoring";
+      systemAlert.style.color = colors.green;
+      alertText.innerHTML = "All systems normal";
+    } else {
+      systemAlert.textContent = "Monitoring";
+      systemAlert.style.color = colors.green;
+      alertText.textContent = "All systems normal";
+    }
   }
   updateNotifications(alerts);
 }

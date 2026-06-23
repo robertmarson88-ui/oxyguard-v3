@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260622-wastage-image-render" />
+    <link rel="stylesheet" href="./styles.css?v=20260623-realtime-alert-rebuild" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -175,55 +175,53 @@
           </section>
         </section>
 
-        <section class="dashboard view" id="alertView">
-          <section class="metrics-panel">
-            <h2>SYSTEM METRICS (REAL-TIME)</h2>
-            <div class="metrics-grid">
-              <article class="metric-card">
-                <span>Active Tanks</span>
-                <strong id="activePatients">0</strong>
-                <small>Active tanks deducted from inventory</small>
-              </article>
-              <article class="metric-card">
-                <span>Total Estimated Wastage</span>
-                <strong id="wastage">3%</strong>
-                <small id="wastageStatus">Across all wards</small>
-              </article>
-              <article class="metric-card">
-                <span>Critical Tank Level</span>
-                <strong id="lowVolume">None</strong>
-                <small>Oxygen tanks below the 10% threshold that require urgent review.</small>
-              </article>
-              <article class="metric-card ward-flow">
-                <span>Average Flow Per Ward</span>
-                <strong id="rotatingWard">Labour Ward</strong>
-                <b id="rotatingFlow">0 L/min</b>
-                <small>Rotates every 3 sec</small>
-              </article>
-              <article class="metric-card">
-                <span>System Alert</span>
-                <strong id="systemAlert">NORMAL</strong>
-                <small id="alertText">System running normally</small>
-              </article>
-              <article class="metric-card">
-                <span>System Status</span>
-                <strong class="status-ok">Monitoring</strong>
-                <small>Auto Refresh: 10 sec</small>
-              </article>
-            </div>
-          </section>
+        <section class="dashboard view alert-monitoring" id="alertView">
+          <section class="alert-kpi-grid" id="alertKpiGrid"></section>
 
-          <section class="pipeline-tab">
-            <h2>WARD OXYGEN USAGE HEAT MAP</h2>
-            <div class="legend">
-              <button class="legend-filter" type="button" data-pipeline-filter="normal"><i class="line green"></i>Normal (Good)</button>
-              <button class="legend-filter" type="button" data-pipeline-filter="suspicious"><i class="line yellow"></i>Suspicious</button>
-              <button class="legend-filter" type="button" data-pipeline-filter="leak"><i class="line red"></i>Leak Detected</button>
-              <button class="legend-filter" type="button" data-pipeline-filter="inactive"><i class="line grey dashed"></i>Inactive / Isolated</button>
-            </div>
-          </section>
+          <section class="alert-monitor-grid">
+            <article class="alert-panel active-incidents-panel">
+              <div class="alert-panel-head">
+                <h3>Active Incidents <span id="activeIncidentCount">0</span></h3>
+                <a href="#alertIncidentsTable">View all incidents</a>
+              </div>
+              <div id="alertIncidentsTable" class="alert-table-wrap"></div>
+            </article>
 
-          <section class="ward-grid" id="wardGrid"></section>
+            <article class="alert-panel oxygen-map-panel">
+              <div class="alert-panel-head">
+                <h3>Hospital Oxygen Pipeline Map</h3>
+                <div class="alert-map-legend">
+                  <span><i class="normal"></i>Normal</span>
+                  <span><i class="high"></i>High Usage</span>
+                  <span><i class="alert"></i>Alert</span>
+                  <span><i class="offline"></i>Offline</span>
+                  <span><i class="maintenance"></i>Maintenance</span>
+                </div>
+              </div>
+              <div id="alertPipelineMap" class="alert-pipeline-map"></div>
+              <a class="alert-panel-link" href="#alertPipelineMap">View full map</a>
+            </article>
+
+            <article class="alert-panel live-feed-panel">
+              <div class="alert-panel-head">
+                <h3>Live Activity Feed</h3>
+                <span class="live-dot">Live</span>
+              </div>
+              <div id="alertActivityFeed" class="alert-activity-feed"></div>
+              <a class="alert-panel-link" href="#alertActivityFeed">View full activity</a>
+            </article>
+
+            <section id="alertWardCards" class="alert-ward-cards"></section>
+
+            <article class="alert-panel patient-assignment-panel">
+              <div class="alert-panel-head">
+                <h3>Patient Assignment <span>(Live Breathing)</span></h3>
+                <span class="live-dot">Live</span>
+              </div>
+              <div id="patientAssignmentPanel" class="alert-table-wrap"></div>
+              <a class="alert-panel-link" href="#patientAssignmentPanel">View all beds</a>
+            </article>
+          </section>
         </section>
 
         <section class="report view active-view v5-dashboard" id="reportView">
@@ -416,6 +414,6 @@
       <div id="dialogBody" class="dialog-body"></div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260622-wastage-image-render"></script>
+    <script type="module" src="./app.js?v=20260623-realtime-alert-rebuild"></script>
   </body>
 </html>
