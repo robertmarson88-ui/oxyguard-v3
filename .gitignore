@@ -4,6 +4,14 @@ __pycache__/
 *.pyc
 *.log
 *.db
+*.err.txt
+*mqtt*output.txt
+mqtt-*.txt
+backend/mqtt-*-error.txt
+backend/mqtt-recheck.txt
+design-preview*.png
+design-qa.md
+edge-render-profile-copy/
 node_modules/
 dist/
 build/
