@@ -40,6 +40,12 @@ Publish approved test payload:
 & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -p 1883 -t "oxyguard/telemetry" -f ".\approved-telemetry-payload.json"
 ```
 
+Or use the temporary simulated telemetry publisher:
+
+```powershell
+python .\simulate_telemetry_publisher.py
+```
+
 Subscribe and confirm receipt:
 
 ```powershell

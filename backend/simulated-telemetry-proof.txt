@@ -1,0 +1,8 @@
+Simulated Telemetry MQTT Test
+Topic: oxyguard/telemetry
+Publisher: backend/simulate_telemetry_publisher.py
+Payload: backend/approved-telemetry-payload.json
+
+Result:
+FastAPI subscribed to oxyguard/telemetry, validated the approved payload, and processed it.
+Latest processed telemetry log_id: 5

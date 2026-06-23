@@ -109,7 +109,7 @@ def get_telemetry(
     limit: int = Query(default=100, ge=1, le=500),
     db: Session = Depends(get_db),
 ) -> list[TelemetryLog]:
-    query = select(TelemetryLog).order_by(TelemetryLog.device_timestamp.desc())
+    query = select(TelemetryLog).order_by(TelemetryLog.device_timestamp.desc(), TelemetryLog.log_id.desc())
     if device_id:
         query = query.where(TelemetryLog.device_id == device_id)
     if ward_id:
