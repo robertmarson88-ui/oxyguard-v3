@@ -14,6 +14,18 @@ Then open:
 http://127.0.0.1:4180
 ```
 
+## Run FastAPI Backend
+
+```powershell
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Health check:
+
+```text
+http://localhost:8000/api/v1/health
+```
+
 ## Login Roles
 
 - `user1` is the administrator.
