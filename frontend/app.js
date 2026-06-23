@@ -205,7 +205,7 @@ let acknowledgedAlertSignature = "";
 const permissionViews = {
   admin: {
     label: "Admin",
-    allowedViews: ["report", "dashboard", "alert", "analytics", "order"]
+    allowedViews: ["report", "dashboard", "alert", "analytics", "order", "administration"]
   },
   "nurse-supervisor": {
     label: "Nurse Supervisor",
@@ -250,19 +250,33 @@ function start() {
   setupLogin();
   document.getElementById("resetDemo").addEventListener("click", resetState);
   document.getElementById("refreshAnalytics").addEventListener("click", renderAnalytics);
-  document.getElementById("protocolDetails").addEventListener("click", () => {
+  document.getElementById("protocolDetails")?.addEventListener("click", () => {
     window.alert("Protocol details: automated replenishment is triggered when projected depletion falls below the safety buffer.");
   });
-  document.getElementById("downloadOrderSummary").addEventListener("click", () => {
+  document.getElementById("downloadOrderSummary")?.addEventListener("click", () => {
     window.alert("Order summary downloaded.");
   });
-  document.getElementById("rejectOrder").addEventListener("click", () => {
+  document.getElementById("rejectOrder")?.addEventListener("click", () => {
     window.alert("Automated order was rejected and marked for review.");
   });
-  document.getElementById("confirmOrder").addEventListener("click", () => {
+  document.getElementById("confirmOrder")?.addEventListener("click", () => {
     window.alert("Order confirmed. Purchase order AUTO-PO-2026-0418-01 is pending supplier acknowledgement.");
   });
+  document.getElementById("adminAddUserButton")?.addEventListener("click", () => {
+    window.alert("Demo action: open the add user workflow.");
+  });
+  document.getElementById("adminAddDeviceButton")?.addEventListener("click", () => {
+    window.alert("Demo action: open the device registration workflow.");
+  });
   document.getElementById("closeDialog").addEventListener("click", () => document.getElementById("wardDialog").close());
+  document.getElementById("closeHeatMapDialog")?.addEventListener("click", () => document.getElementById("heatMapDialog")?.close());
+  document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
+  document.getElementById("dashboardHeatMapCard")?.addEventListener("keydown", event => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openHeatMapDialog();
+    }
+  });
   document.getElementById("logoutButton").addEventListener("click", logout);
   setupNotifications();
   setupPermissionPreview();
@@ -577,6 +591,7 @@ function renderAll() {
   renderReportLiveInsights();
   renderMonthlyUsageComparison();
   renderOrderSummary();
+  renderAdministration();
   renderAnalytics();
   updateNotifications();
   updateFooter();
@@ -602,12 +617,18 @@ function setView(view) {
     renderMonthlyUsageComparison();
   }
   if (view === "order") renderOrderSummary();
+  if (view === "administration") renderAdministration();
   if (view === "analytics") renderAnalytics();
   updatePageTitle();
 }
 
 function renderWards() {
   const grid = document.getElementById("wardGrid");
+  const alertGrid = document.getElementById("alertKpiGrid");
+  if (alertGrid) {
+    renderRealTimeAlert();
+  }
+  if (!grid) return;
   updatePipelineFilterButtons();
   const visibleWards = wards
     .map(ward => ({ ward, tanks: getVisibleTanks(ward) }))
@@ -627,6 +648,202 @@ function renderWards() {
   grid.querySelectorAll(".ward-card[data-ward]").forEach(card => {
     card.addEventListener("click", () => openWard(card.dataset.ward));
   });
+}
+
+function renderRealTimeAlert() {
+  const activeTanks = wards.flatMap(w => w.tanks).filter(t => t.active);
+  const alertRows = getAlertIncidentRows();
+  const criticalTanks = activeTanks.filter(t => getReportVolumePercent(t) < 10);
+  const activeTankCount = activeTanks.length;
+  const totalTankCount = 40;
+
+  const kpiGrid = document.getElementById("alertKpiGrid");
+  if (kpiGrid) {
+    kpiGrid.innerHTML = [
+      alertKpiCard("Critical Alerts", alertRows.filter(r => r.priority === "Critical").length, "Require immediate action", "danger", "View Alerts"),
+      alertKpiCard("Active Alerts", alertRows.length, "Across all wards", "warning", "View All"),
+      alertKpiCard("Total Tanks", `<span id="activePatients">${activeTankCount} / ${totalTankCount}</span>`, "Tanks in use", "blue"),
+      alertKpiCard("System Status", `<span id="systemAlert">Monitoring</span>`, `<span id="alertText">All systems normal</span>`, "success"),
+      alertKpiCard("Wastage Today", `<span id="wastage">${wastage}%</span>`, `<span id="wastageStatus">vs yesterday</span>`, "purple", "+ 8%"),
+      alertKpiCard("Critical Tanks", criticalTanks.length, "Need attention", "danger", "View Tanks")
+    ].join("");
+  }
+
+  const incidentCount = document.getElementById("activeIncidentCount");
+  if (incidentCount) incidentCount.textContent = String(alertRows.length);
+
+  const incidentTarget = document.getElementById("alertIncidentsTable");
+  if (incidentTarget) {
+    incidentTarget.innerHTML = `
+      <table class="alert-data-table">
+        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Status</th><th>Assigned To</th></tr></thead>
+        <tbody>${alertRows.map(row => `
+          <tr>
+            <td>${row.time}</td>
+            <td>${row.ward}</td>
+            <td>${row.type}</td>
+            <td>${alertPill(row.priority)}</td>
+            <td>${row.asset}</td>
+            <td>${alertStatus(row.status)}</td>
+            <td>${row.assigned}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    `;
+  }
+
+  const mapTarget = document.getElementById("alertPipelineMap");
+  if (mapTarget) mapTarget.innerHTML = renderAlertPipelineMap();
+
+  const feedTarget = document.getElementById("alertActivityFeed");
+  if (feedTarget) {
+    const feed = [
+      ["11:42 AM", "danger", "Ghost flow detected at Bed 07, A&E Ward"],
+      ["11:43 AM", "info", "Alert sent to Facilities Team"],
+      ["11:44 AM", "success", "Facilities acknowledged the alert"],
+      ["11:46 AM", "warning", "Investigation started at Bed 07"],
+      ["11:47 AM", "success", "Pressure normal at Tank C1"]
+    ];
+    feedTarget.innerHTML = feed.map(item => `
+      <div class="alert-feed-row">
+        <time>${item[0]}</time>
+        <i class="${item[1]}"></i>
+        <span>${item[2]}</span>
+      </div>
+    `).join("");
+  }
+
+  const wardTarget = document.getElementById("alertWardCards");
+  if (wardTarget) {
+    wardTarget.innerHTML = getAlertWardCards().map(renderAlertWardCard).join("");
+  }
+
+  const assignmentTarget = document.getElementById("patientAssignmentPanel");
+  if (assignmentTarget) {
+    const rows = [
+      ["Bed 07", "Off", "Flow detected", "Ghost Flow"],
+      ["Bed 11", "On", "No Flow", "Supply Failure"],
+      ["Bed 12", "On", "Abnormal Flow", "Flow Anomaly"],
+      ["Bed 05", "On", "Normal Flow", "Normal"],
+      ["Bed 16", "Off", "No Flow", "Normal"]
+    ];
+    assignmentTarget.innerHTML = `
+      <table class="alert-data-table compact">
+        <thead><tr><th>Bed</th><th>Patient Flag</th><th>Flow Status</th><th>Result</th></tr></thead>
+        <tbody>${rows.map(row => `
+          <tr>
+            <td>${row[0]}</td>
+            <td>${assignmentFlag(row[1])}</td>
+            <td>${row[2]}</td>
+            <td>${assignmentResult(row[3])}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    `;
+  }
+}
+
+function alertKpiCard(label, value, detail, tone, action = "") {
+  const iconLabels = { danger: "!", warning: "A", blue: "O2", success: "~", purple: "%"};
+  return `
+    <article class="alert-kpi ${tone}">
+      <div class="alert-kpi-icon">${iconLabels[tone] || "O2"}</div>
+      <div class="alert-kpi-copy">
+        <span>${label}</span>
+        <strong>${value}</strong>
+        <small>${detail}</small>
+      </div>
+      ${action ? `<button type="button">${action}</button>` : ""}
+    </article>
+  `;
+}
+
+function getAlertIncidentRows() {
+  const rows = [
+    { time: "11:42 AM", ward: "A&E Ward", type: "Ghost Flow", priority: "Critical", asset: "Bed 07", status: "Awaiting Response", assigned: "Facilities" },
+    { time: "11:43 AM", ward: "Recovery Bay", type: "Leakage Detected", priority: "High", asset: "Tank R1", status: "Investigating", assigned: "Maintenance" },
+    { time: "11:44 AM", ward: "Labour Ward", type: "Oxygen Supply Failure", priority: "High", asset: "Bed 03", status: "Acknowledged", assigned: "Nurse Station" },
+    { time: "11:45 AM", ward: "Paediatric Ward", type: "Flow Anomaly", priority: "Medium", asset: "Bed 12", status: "Investigating", assigned: "Nurse Station" },
+    { time: "11:47 AM", ward: "A&E Ward", type: "Critical Tank", priority: "Medium", asset: "Tank A2", status: "Awaiting Response", assigned: "Facilities" }
+  ];
+  activeAlerts().slice(0, 2).forEach((alert, index) => {
+    rows[index].type = alert.includes("critical") ? "Critical Tank" : rows[index].type;
+  });
+  return rows;
+}
+
+function alertPill(priority) {
+  const tone = priority === "Critical" ? "bad" : priority === "High" ? "warn" : "medium";
+  return `<span class="alert-pill ${tone}">${priority}</span>`;
+}
+
+function alertStatus(status) {
+  const tone = status === "Acknowledged" ? "info" : status === "Investigating" ? "warn" : "bad";
+  return `<span class="alert-status ${tone}">${status}</span>`;
+}
+
+function assignmentFlag(value) {
+  return `<span class="assignment-flag ${value === "On" ? "on" : "off"}">${value}</span>`;
+}
+
+function assignmentResult(value) {
+  const tone = value === "Normal" ? "normal" : value === "Supply Failure" ? "failure" : value === "Flow Anomaly" ? "warning" : "danger";
+  return `<span class="assignment-result ${tone}">${value}</span>`;
+}
+
+function getAlertWardCards() {
+  return [
+    { ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [["Bed 05", "PT-0005", "On", "4.0", "Normal"], ["Bed 06", "PT-0006", "On", "3.8", "Normal"], ["Bed 07", "PT-0007", "Off", "2.8", "Ghost Flow"]] },
+    { ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [["Bed 10", "PT-0010", "On", "2.5", "Normal"], ["Bed 11", "PT-0011", "On", "0.0", "Supply Failure"], ["Bed 12", "PT-0012", "On", "5.2", "Flow Anomaly"]] },
+    { ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [["Bed 15", "PT-0015", "On", "4.1", "Normal"], ["Bed 16", "PT-0016", "Off", "0.0", "Normal"], ["Tank R1", "TANK-R1", "-", "-", "Leakage"]] },
+    { ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [["Bed 20", "PT-0020", "On", "3.9", "Normal"], ["Bed 21", "PT-0021", "On", "0.0", "Supply Failure"], ["Bed 22", "PT-0022", "Off", "0.0", "Normal"]] }
+  ];
+}
+
+function renderAlertWardCard(card) {
+  return `
+    <article class="alert-panel alert-ward-panel">
+      <div class="alert-panel-head">
+        <h3>${card.ward}</h3>
+        <span class="live-dot">Live</span>
+      </div>
+      <table class="alert-data-table compact">
+        <thead><tr><th>Bed / Tank</th><th>Patient Flag</th><th>Flow</th><th>Status</th></tr></thead>
+        <tbody>${card.rows.map(row => `
+          <tr>
+            <td><b>${row[0]}</b><small>${row[1]}</small></td>
+            <td>${assignmentFlag(row[2])}</td>
+            <td>${row[3]}</td>
+            <td>${assignmentResult(row[4])}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+      <footer>Avg Pressure: ${card.pressure} PSI | Total Flow: ${card.totalFlow} Litre/Min</footer>
+    </article>
+  `;
+}
+
+function renderAlertPipelineMap() {
+  return `
+    <div class="pipeline-canvas">
+      <div class="tank-farm">
+        <strong>Main Tank Farm</strong>
+        <span>4 Tanks</span>
+        <div><i></i><i></i><i></i><i></i></div>
+      </div>
+      <div class="pipe horizontal main"></div>
+      <div class="pipe vertical center"></div>
+      <div class="pipe horizontal top"></div>
+      <div class="pipe horizontal bottom"></div>
+      <div class="pipe vertical branch-left"></div>
+      <div class="pipe vertical branch-right"></div>
+      <span class="pipe-node"></span>
+      <button class="map-ward ae" type="button">A&E Ward<small>2 Tanks</small></button>
+      <button class="map-ward paed" type="button">Paediatrics Ward<small>2 Tanks</small></button>
+      <button class="map-ward recovery" type="button">Recovery Bay<small>2 Tanks</small></button>
+      <button class="map-ward labour" type="button">Labour Ward<small>2 Tanks</small></button>
+    </div>
+  `;
 }
 
 function updatePipelineFilterButtons() {
@@ -709,39 +926,52 @@ function renderTankRow(t) {
 
 function updateMetrics() {
   const active = wards.flatMap(w => w.tanks).filter(t => t.active).length;
-  document.getElementById("activePatients").textContent = `${active}/40`;
-  document.getElementById("wastage").textContent = `${wastage}%`;
-  document.getElementById("wastageStatus").textContent = "Across all wards";
+  const activePatientsEl = document.getElementById("activePatients");
+  if (activePatientsEl) activePatientsEl.textContent = `${active}/40`;
+  const wastageEl = document.getElementById("wastage");
+  if (wastageEl) wastageEl.textContent = `${wastage}%`;
+  const wastageStatusEl = document.getElementById("wastageStatus");
+  if (wastageStatusEl) wastageStatusEl.textContent = "vs yesterday";
 
   const lowVolume = wards.flatMap(w => w.tanks)
     .map(t => ({ name: t.name, percent: Math.round((t.volumeRemaining * 100) / t.maxVolume) }))
     .filter(t => t.percent < 10);
   const lowVolumeEl = document.getElementById("lowVolume");
-  lowVolumeEl.classList.toggle("low-volume-list", lowVolume.length > 0);
-  lowVolumeEl.innerHTML = lowVolume.length ? renderLowVolumeList(lowVolume) : "None";
-  lowVolumeEl.style.color = lowVolume.length ? colors.red : colors.green;
+  if (lowVolumeEl) {
+    lowVolumeEl.classList.toggle("low-volume-list", lowVolume.length > 0);
+    lowVolumeEl.innerHTML = lowVolume.length ? renderLowVolumeList(lowVolume) : "None";
+    lowVolumeEl.style.color = lowVolume.length ? colors.red : colors.green;
+  }
 
   const flowWard = wards[flowIndex % wards.length];
-  document.getElementById("rotatingWard").textContent = flowWard.name;
-  document.getElementById("rotatingWard").style.color = flowWard.accent;
-  document.getElementById("rotatingFlow").textContent = `${totalFlow(flowWard)} Litre/Min`;
-  document.getElementById("rotatingFlow").style.color = flowWard.accent;
+  const rotatingWardEl = document.getElementById("rotatingWard");
+  const rotatingFlowEl = document.getElementById("rotatingFlow");
+  if (rotatingWardEl) {
+    rotatingWardEl.textContent = flowWard.name;
+    rotatingWardEl.style.color = flowWard.accent;
+  }
+  if (rotatingFlowEl) {
+    rotatingFlowEl.textContent = `${totalFlow(flowWard)} Litre/Min`;
+    rotatingFlowEl.style.color = flowWard.accent;
+  }
 
   const alerts = activeAlerts();
   const systemAlert = document.getElementById("systemAlert");
   const alertText = document.getElementById("alertText");
-  if (alerts.length > 1) {
-    systemAlert.innerHTML = "MULTIPLE<br>LEAKS";
-    systemAlert.style.color = colors.red;
-    alertText.innerHTML = alerts.join("<br>");
-  } else if (alerts.length === 1) {
-    systemAlert.innerHTML = "LEAKAGE<br>DETECTED";
-    systemAlert.style.color = colors.red;
-    alertText.innerHTML = alerts[0];
-  } else {
-    systemAlert.textContent = "NORMAL";
-    systemAlert.style.color = colors.green;
-    alertText.textContent = "System running normally";
+  if (systemAlert && alertText) {
+    if (alerts.length > 1) {
+      systemAlert.innerHTML = "Monitoring";
+      systemAlert.style.color = colors.green;
+      alertText.innerHTML = "All systems normal";
+    } else if (alerts.length === 1) {
+      systemAlert.innerHTML = "Monitoring";
+      systemAlert.style.color = colors.green;
+      alertText.innerHTML = "All systems normal";
+    } else {
+      systemAlert.textContent = "Monitoring";
+      systemAlert.style.color = colors.green;
+      alertText.textContent = "All systems normal";
+    }
   }
   updateNotifications(alerts);
 }
@@ -922,7 +1152,8 @@ function updatePageTitle() {
     dashboard: "OXYGEN REPORT CENTER",
     alert: "ALERT MONITORING",
     order: "ORDER SUMMARY",
-    analytics: "CALL ANALYTICS"
+    analytics: "CALL ANALYTICS",
+    administration: "ADMINISTRATION"
   };
   document.querySelector(".topbar h1").textContent = titles[activeView] || titles.report;
 }
@@ -2238,32 +2469,47 @@ function renderOrderSummary() {
   if (!replacementSummary) return;
 
   const activeTanks = wards.flatMap(w => w.tanks).filter(t => t.active);
-  const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
-  const lowestPercent = Math.min(...activeTanks.map(t => Math.round((t.volumeRemaining * 100) / t.maxVolume)));
-  const replacementTanks = tanksUnderVolumePercent(10);
-  const replacementCost = replacementTanks.length * TANK_COST;
+  const replacementTanks = getOrderCriticalTanks(activeTanks);
+  const replacementCount = 20;
+  const replacementCost = replacementCount * TANK_COST;
 
-  document.getElementById("orderDetails").innerHTML = orderDetailRows([
-    ["Supplier", "Caribbean Oxygen Ltd."],
-    ["Product", replacementTanks.length ? "Replacement Oxygen Tanks" : "Liquid Oxygen (LOX)"],
-    ["Quantity", replacementTanks.length ? `${replacementTanks.length} tank${replacementTanks.length === 1 ? "" : "s"}` : "20,000 Liters"],
-    ["Order Type", "Automated Replenishment"],
-    ["Estimated Cost", replacementTanks.length ? currency(replacementCost) : "JMD 4,950,000.00"],
-    ["PO Number", "AUTO-PO-2026-0418-01"],
-    ["Order Channel", "EDI"],
-    ["Order Status", "Pending Confirmation"]
-  ]);
-
-  document.getElementById("capacitySummary").innerHTML = orderDetailRows([
-    ["Current Usable Capacity", "8,500 Liters"],
-    ["Current Average Flow", `${totalFlowValue} Litre/Min`],
-    ["Order Quantity", "20,000 Liters"],
-    ["Projected Capacity After Delivery", "28,500 Liters"],
-    ["Projected Depletion Date", "~14 May 2026"],
-    ["Time Until Next Anticipated Order", "26 days"]
-  ]);
+  setOrderHtml("orderRecommendMetrics", `
+    ${orderMetric("Reason", "3 tanks below 10% capacity", "R")}
+    ${orderMetric("Predicted Shortage", "In 2 hours 05 min", "T", "bad")}
+    ${orderMetric("Recommendation", "Order 20 replacement tanks", "O")}
+    ${orderMetric("Confidence", "96%", "%", "good")}
+  `);
 
   renderReplacementSummary(replacementTanks);
+  setOrderHtml("capacityForecastChart", renderCapacityForecastChart());
+  setOrderHtml("riskAssessmentPanel", renderRiskAssessment());
+  setOrderHtml("orderTriggerSummary", orderMiniPanel("Order Trigger Summary", [
+    ["Tanks below threshold", replacementTanks.length],
+    ["Forecasted demand increase", "18%"],
+    ["Current system capacity", "15%"],
+    ["Threshold exceeded", "<b class=\"order-red\">Yes</b>"]
+  ]));
+  setOrderHtml("financialSummary", orderMiniPanel("Financial Summary", [
+    ["Order Value (Est.)", currency(replacementCost)],
+    ["Estimated Waste Prevented", "JMD 820,000"],
+    ["Potential Downtime Avoided", "JMD 3,100,000"],
+    ["Projected Monthly Savings", "JMD 1,200,000"]
+  ], "money"));
+  setOrderHtml("supplierInformation", orderMiniPanel("Supplier Information", [
+    ["Supplier", "Caribbean Oxygen Ltd."],
+    ["Expected Delivery", "Tomorrow, 08:00 AM"],
+    ["Lead Time", "14 hours"],
+    ["Past Orders", "23"],
+    ["Reliability", "<b class=\"order-green\">99%</b>"]
+  ]));
+  setOrderHtml("orderDetails", orderMiniPanel("Order Details (Preview)", [
+    ["Product", "Oxygen Tank (Medical)"],
+    ["Quantity", `${replacementCount} Tanks`],
+    ["Tank Type", "D-Type (6,800 L)"],
+    ["PO Number (Auto)", "AUTO-PO-2026-0619-0018"],
+    ["Order Status", "Pending Approval"]
+  ]));
+  setOrderHtml("orderProcessTimeline", renderOrderProcessTimeline());
 }
 
 function tanksUnderVolumePercent(threshold) {
@@ -2287,35 +2533,261 @@ function renderReplacementSummary(replacementTanks) {
   const summary = document.getElementById("replacementSummary");
   if (!summary) return;
 
-  if (!replacementTanks.length) {
-    summary.innerHTML = `
-      <div class="replacement-empty">
-        <strong>No replacement tanks required</strong>
-        <span>There are no active tanks below 10% volume.</span>
-      </div>
-    `;
-    return;
-  }
-
-  const totalCost = replacementTanks.reduce((sum, tankItem) => sum + tankItem.replacementCost, 0);
   summary.innerHTML = `
-    <div class="replacement-total">
-      <span>${replacementTanks.length} tank${replacementTanks.length === 1 ? "" : "s"} below 10%</span>
-      <strong>${currency(totalCost)}</strong>
+    <table class="order-data-table">
+      <thead><tr><th>Tank</th><th>Ward</th><th>Remaining</th><th>Est. Empty</th><th>Status</th></tr></thead>
+      <tbody>
+        ${replacementTanks.map(t => `
+          <tr>
+            <td><b>${t.name}</b></td>
+            <td>${t.wardName}</td>
+            <td>
+              <span class="order-remaining"><b>${t.volumePercent}%</b><i><em style="width:${Math.max(4, t.volumePercent)}%"></em></i></span>
+            </td>
+            <td class="${t.volumePercent < 8 ? "order-red" : "order-orange"}">${t.emptyIn}</td>
+            <td>${orderBadge(t.volumePercent < 10 ? "Critical" : "Low", t.volumePercent < 10 ? "bad" : "warn")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+    <a class="order-card-link" href="#replacementSummary">View all tanks</a>
+  `;
+}
+
+function getOrderCriticalTanks(activeTanks) {
+  const rows = tanksUnderVolumePercent(30).map(t => ({
+    ...t,
+    emptyIn: t.name === "Tank B3" ? "2h 05m" : t.name === "Tank C1" ? "2h 40m" : "3h 10m"
+  }));
+  const existing = new Set(rows.map(t => t.name));
+  const fallback = [
+    { name: "Tank B3", wardName: "Recovery Bay", volumePercent: 6, emptyIn: "2h 05m" },
+    { name: "Tank C1", wardName: "Labour Ward", volumePercent: 8, emptyIn: "2h 40m" },
+    { name: "Tank A2", wardName: "A&E Ward", volumePercent: 9, emptyIn: "3h 10m" }
+  ].filter(t => !existing.has(t.name));
+  return [...rows, ...fallback].slice(0, 3);
+}
+
+function setOrderHtml(id, html) {
+  const target = document.getElementById(id);
+  if (target) target.innerHTML = html;
+}
+
+function orderMetric(label, value, icon, tone = "") {
+  return `
+    <div class="order-rec-metric ${tone}">
+      <i>${icon}</i>
+      <span>${label}</span>
+      <strong>${value}</strong>
     </div>
-    ${replacementTanks.map(t => `
-      <div class="replacement-row">
-        <div>
-          <strong>${t.wardName}</strong>
-          <span>${t.name} - ${t.serial}</span>
+  `;
+}
+
+function orderMiniPanel(title, rows, tone = "") {
+  return `
+    <h3>${title}</h3>
+    <div class="order-mini-list ${tone}">
+      ${rows.map(([label, value]) => `
+        <div class="order-mini-row">
+          <span>${label}</span>
+          <strong>${value}</strong>
         </div>
-        <div>
-          <b>${t.volumePercent}%</b>
-          <small>${estimateDepletion(t)}</small>
-        </div>
-        <em>${currency(t.replacementCost)}</em>
+      `).join("")}
+    </div>
+  `;
+}
+
+function orderBadge(text, tone) {
+  return `<span class="order-badge ${tone}">${text}</span>`;
+}
+
+function renderRiskAssessment() {
+  return `
+    <div class="risk-callout">
+      <i>!</i>
+      <div>
+        <strong>Operational Risk: High</strong>
+        <span>Delay in ordering may cause ward disruption and impact patient care.</span>
       </div>
-    `).join("")}
+    </div>
+    <div class="risk-list">
+      ${orderMiniRow("Affected Wards", "Recovery Bay, Labour Ward")}
+      ${orderMiniRow("Estimated Impact", "Service interruption, patient care delay")}
+      ${orderMiniRow("Time Until Shortage", "<b class=\"order-red\">2 hours 05 minutes</b>")}
+    </div>
+  `;
+}
+
+function orderMiniRow(label, value) {
+  return `<div class="order-mini-row"><span>${label}</span><strong>${value}</strong></div>`;
+}
+
+function renderCapacityForecastChart() {
+  const points = [
+    { x: 70, y: 42, label: "8,500 L", color: "#2563eb" },
+    { x: 210, y: 105, label: "4,200 L", color: "#2563eb" },
+    { x: 350, y: 154, label: "1,100 L", color: "#ef4444" },
+    { x: 490, y: 28, label: "10,300 L", color: "#16a34a" }
+  ];
+  return `
+    <svg viewBox="0 0 560 230" role="img" aria-label="Capacity forecast chart">
+      <defs>
+        <linearGradient id="orderCapacityFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#7db6ff" stop-opacity="0.28"/>
+          <stop offset="100%" stop-color="#7db6ff" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <g class="order-chart-axis">
+        <line x1="42" y1="184" x2="530" y2="184"/>
+        <text x="18" y="185">0</text>
+        <text x="10" y="132">3,000</text>
+        <text x="10" y="79">6,000</text>
+        <text x="10" y="26">9,000</text>
+      </g>
+      <path d="M70 42 C120 55 160 90 210 105 S305 140 350 154" fill="none" stroke="#6aa5ff" stroke-width="4"/>
+      <path d="M70 42 C120 55 160 90 210 105 S305 140 350 154 L350 184 L70 184 Z" fill="url(#orderCapacityFill)"/>
+      <path d="M350 154 C395 120 440 70 490 28" fill="none" stroke="#16a34a" stroke-width="4" stroke-dasharray="7 8"/>
+      ${points.map(p => `<circle cx="${p.x}" cy="${p.y}" r="7" fill="${p.color}" stroke="#fff" stroke-width="3"/><text x="${p.x - 20}" y="${p.y - 15}" fill="${p.color}">${p.label}</text>`).join("")}
+      <g class="order-chart-labels">
+        <text x="60" y="208">Now</text><text x="192" y="208">12 Hours</text><text x="328" y="208">24 Hours</text><text x="456" y="208">After Delivery</text>
+      </g>
+    </svg>
+    <div class="order-chart-legend"><span><i></i>Without Delivery</span><span><i class="green"></i>With Recommended Order</span></div>
+  `;
+}
+
+function renderOrderProcessTimeline() {
+  const steps = [
+    ["Forecast", "Demand predicted", "done"],
+    ["Recommendation", "Order recommended", "done"],
+    ["Manager Approval", "Awaiting approval", "active"],
+    ["Purchase Order", "To be generated", ""],
+    ["Supplier", "Processing", ""],
+    ["Delivery", "Pending", ""],
+    ["Inventory Update", "After delivery", ""]
+  ];
+  return `<div class="order-timeline">${steps.map((step, index) => `
+    <div class="order-step ${step[2]}">
+      <i>${index + 1}</i>
+      <strong>${step[0]}</strong>
+      <span>${step[1]}</span>
+    </div>
+  `).join("")}</div>`;
+}
+
+function renderAdministration() {
+  const adminUsers = [
+    ["JA", "John Admin", "john.admin@hospital.com", "Administrator", "Active", "19 Jun 2026<br>01:58 PM"],
+    ["NM", "Nurse Manager", "nurse.manager@hospital.com", "Nurse Manager", "Active", "19 Jun 2026<br>12:40 PM"],
+    ["NS", "Nurse Station", "nurse.station@hospital.com", "Nurse", "Active", "19 Jun 2026<br>11:32 AM"],
+    ["FS", "Facilities Team", "facilities@hospital.com", "Facilities", "Active", "19 Jun 2026<br>10:15 AM"],
+    ["CF", "CFO", "cfo@hospital.com", "CFO", "Active", "19 Jun 2026<br>09:05 AM"]
+  ];
+  const adminDevices = [
+    ["ESP32-A01", "A&E Ward", "Online", "19 Jun 2026 02:14 PM"],
+    ["ESP32-B01", "Paediatrics Ward", "Online", "19 Jun 2026 02:14 PM"],
+    ["ESP32-C01", "Recovery Bay", "Online", "19 Jun 2026 02:13 PM"],
+    ["ESP32-D01", "Labour Ward", "Online", "19 Jun 2026 02:15 PM"],
+    ["ESP32-E01", "Maternity Ward", "Offline", "19 Jun 2026 01:40 PM"]
+  ];
+  const auditRows = [
+    ["19 Jun 2026 02:12 PM", "John Admin", "Updated Alert Rule", "Ghost Flow Threshold changed to 0.5 Litre/Min"],
+    ["19 Jun 2026 02:05 PM", "John Admin", "User Role Updated", "Nurse Station role changed to Nurse"],
+    ["19 Jun 2026 01:58 PM", "Nurse Manager", "User Login", "Successful login"],
+    ["19 Jun 2026 01:45 PM", "John Admin", "Privacy Setting Changed", "Data Retention Period set to 365 days"],
+    ["19 Jun 2026 01:30 PM", "Facilities Team", "Device Registered", "ESP32-E01 registered to Maternity Ward"]
+  ];
+
+  setOrderHtml("adminUsersTable", `
+    <table class="admin-table">
+      <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
+      <tbody>
+        ${adminUsers.map(([initials, name, email, role, status, login]) => `
+          <tr>
+            <td><div class="admin-user-cell"><span>${initials}</span><div><strong>${name}</strong><small>${email}</small></div></div></td>
+            <td>${adminRoleBadge(role)}</td>
+            <td>${adminStatusBadge(status)}</td>
+            <td>${login}</td>
+            <td><button class="admin-row-action" type="button" aria-label="Open actions for ${name}">...</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `);
+
+  setOrderHtml("adminGovernanceList", `
+    ${adminSettingRow("Patient Anonymization", "Hide patient identifiers in all modules", "Enabled", "toggle")}
+    ${adminSettingRow("Data Retention Period", "Automatic data deletion after period", "365 Days")}
+    ${adminSettingRow("Audit Logging", "Record all system and data access", "Enabled")}
+    ${adminSettingRow("Data Export Restrictions", "Restrict data export to authorized roles", "Administrator Only")}
+  `);
+
+  setOrderHtml("adminAlertRulesList", `
+    ${adminSettingRow("Ghost Flow Threshold", "Minimum flow when flag is OFF", "0.5 Litre/Min")}
+    ${adminSettingRow("Critical Tank Level", "Alert when tank level below", "10%")}
+    ${adminSettingRow("Low Pressure Threshold", "Alert when pressure below", "40 PSI")}
+    ${adminSettingRow("Flow Variance (Patient ON)", "Allowed variance from prescribed flow", "+/-10%")}
+    ${adminSettingRow("Notification Escalation Time", "Time before auto escalation", "15 Minutes")}
+  `);
+
+  setOrderHtml("adminDevicesTable", `
+    <table class="admin-table">
+      <thead><tr><th>Device ID</th><th>Location</th><th>Status</th><th>Last Seen</th><th>Action</th></tr></thead>
+      <tbody>
+        ${adminDevices.map(([device, location, status, seen]) => `
+          <tr>
+            <td><strong>${device}</strong></td>
+            <td>${location}</td>
+            <td>${adminDeviceStatus(status)}</td>
+            <td>${seen}</td>
+            <td><button class="admin-row-action" type="button" aria-label="Open actions for ${device}">...</button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `);
+
+  setOrderHtml("adminAuditTable", `
+    <table class="admin-table">
+      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+      <tbody>
+        ${auditRows.map(row => `
+          <tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `);
+}
+
+function adminRoleBadge(role) {
+  const tone = role === "Administrator" ? "blue" : role === "Nurse Manager" ? "purple" : role === "Nurse" ? "green" : role === "Facilities" ? "orange" : "red";
+  return `<span class="admin-role-badge ${tone}">${role}</span>`;
+}
+
+function adminStatusBadge(status) {
+  const tone = status === "Active" ? "good" : "bad";
+  return `<span class="admin-status-badge ${tone}">${status}</span>`;
+}
+
+function adminDeviceStatus(status) {
+  const tone = status === "Online" ? "good" : "bad";
+  return `<span class="admin-device-status ${tone}"><i></i>${status}</span>`;
+}
+
+function adminSettingRow(title, description, value, type = "") {
+  const valueHtml = type === "toggle"
+    ? `<span class="admin-toggle on"><i></i></span><strong>${value}</strong>`
+    : `<strong>${value}</strong>`;
+  return `
+    <div class="admin-setting-row">
+      <span class="admin-setting-icon">${title.slice(0, 1)}</span>
+      <div>
+        <strong>${title}</strong>
+        <small>${description}</small>
+      </div>
+      <div class="admin-setting-value">${valueHtml}</div>
+      <button class="admin-setting-arrow" type="button" aria-label="Edit ${title}">&gt;</button>
+    </div>
   `;
 }
 
@@ -2543,6 +3015,20 @@ function renderHospitalHeatMap() {
       <div class="floorplan-offline-dot"></div>
     </div>
   `;
+}
+
+function openHeatMapDialog() {
+  const dialog = document.getElementById("heatMapDialog");
+  const body = document.getElementById("heatMapDialogBody");
+  const heatMap = document.getElementById("hospitalHeatMap");
+  const legend = document.querySelector(".v5-map-card .v5-map-legend");
+  if (!dialog || !body || !heatMap) return;
+
+  body.innerHTML = `
+    <div class="heatmap-popout-map">${heatMap.innerHTML}</div>
+    ${legend ? `<div class="v5-map-legend heatmap-popout-legend">${legend.innerHTML}</div>` : ""}
+  `;
+  dialog.showModal();
 }
 
 function reportSummaryCard(title, value, status, color, icon = "dot", options = {}) {

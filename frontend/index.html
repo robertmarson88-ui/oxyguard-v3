@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260622-wastage-image-render" />
+    <link rel="stylesheet" href="./styles.css?v=20260623-dashboard-map-popout" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -47,6 +47,7 @@
         <button class="side-button" data-view="alert" data-role-required="admin">Real Time Alert</button>
         <button class="side-button" data-view="analytics" data-role-required="admin">Analytics</button>
         <button class="side-button" data-view="order" data-role-required="admin">Order Summary</button>
+        <button class="side-button" data-view="administration" data-role-required="admin">Administration</button>
         <button class="side-button" id="logoutButton">Logout</button>
         <div class="sidebar-fill"></div>
         <div class="sidebar-version">
@@ -175,55 +176,53 @@
           </section>
         </section>
 
-        <section class="dashboard view" id="alertView">
-          <section class="metrics-panel">
-            <h2>SYSTEM METRICS (REAL-TIME)</h2>
-            <div class="metrics-grid">
-              <article class="metric-card">
-                <span>Active Tanks</span>
-                <strong id="activePatients">0</strong>
-                <small>Active tanks deducted from inventory</small>
-              </article>
-              <article class="metric-card">
-                <span>Total Estimated Wastage</span>
-                <strong id="wastage">3%</strong>
-                <small id="wastageStatus">Across all wards</small>
-              </article>
-              <article class="metric-card">
-                <span>Critical Tank Level</span>
-                <strong id="lowVolume">None</strong>
-                <small>Oxygen tanks below the 10% threshold that require urgent review.</small>
-              </article>
-              <article class="metric-card ward-flow">
-                <span>Average Flow Per Ward</span>
-                <strong id="rotatingWard">Labour Ward</strong>
-                <b id="rotatingFlow">0 L/min</b>
-                <small>Rotates every 3 sec</small>
-              </article>
-              <article class="metric-card">
-                <span>System Alert</span>
-                <strong id="systemAlert">NORMAL</strong>
-                <small id="alertText">System running normally</small>
-              </article>
-              <article class="metric-card">
-                <span>System Status</span>
-                <strong class="status-ok">Monitoring</strong>
-                <small>Auto Refresh: 10 sec</small>
-              </article>
-            </div>
-          </section>
+        <section class="dashboard view alert-monitoring" id="alertView">
+          <section class="alert-kpi-grid" id="alertKpiGrid"></section>
 
-          <section class="pipeline-tab">
-            <h2>WARD OXYGEN USAGE HEAT MAP</h2>
-            <div class="legend">
-              <button class="legend-filter" type="button" data-pipeline-filter="normal"><i class="line green"></i>Normal (Good)</button>
-              <button class="legend-filter" type="button" data-pipeline-filter="suspicious"><i class="line yellow"></i>Suspicious</button>
-              <button class="legend-filter" type="button" data-pipeline-filter="leak"><i class="line red"></i>Leak Detected</button>
-              <button class="legend-filter" type="button" data-pipeline-filter="inactive"><i class="line grey dashed"></i>Inactive / Isolated</button>
-            </div>
-          </section>
+          <section class="alert-monitor-grid">
+            <article class="alert-panel active-incidents-panel">
+              <div class="alert-panel-head">
+                <h3>Active Incidents <span id="activeIncidentCount">0</span></h3>
+                <a href="#alertIncidentsTable">View all incidents</a>
+              </div>
+              <div id="alertIncidentsTable" class="alert-table-wrap"></div>
+            </article>
 
-          <section class="ward-grid" id="wardGrid"></section>
+            <article class="alert-panel oxygen-map-panel">
+              <div class="alert-panel-head">
+                <h3>Hospital Oxygen Pipeline Map</h3>
+                <div class="alert-map-legend">
+                  <span><i class="normal"></i>Normal</span>
+                  <span><i class="high"></i>High Usage</span>
+                  <span><i class="alert"></i>Alert</span>
+                  <span><i class="offline"></i>Offline</span>
+                  <span><i class="maintenance"></i>Maintenance</span>
+                </div>
+              </div>
+              <div id="alertPipelineMap" class="alert-pipeline-map"></div>
+              <a class="alert-panel-link" href="#alertPipelineMap">View full map</a>
+            </article>
+
+            <article class="alert-panel live-feed-panel">
+              <div class="alert-panel-head">
+                <h3>Live Activity Feed</h3>
+                <span class="live-dot">Live</span>
+              </div>
+              <div id="alertActivityFeed" class="alert-activity-feed"></div>
+              <a class="alert-panel-link" href="#alertActivityFeed">View full activity</a>
+            </article>
+
+            <section id="alertWardCards" class="alert-ward-cards"></section>
+
+            <article class="alert-panel patient-assignment-panel">
+              <div class="alert-panel-head">
+                <h3>Patient Assignment <span>(Live Breathing)</span></h3>
+                <span class="live-dot">Live</span>
+              </div>
+              <div id="patientAssignmentPanel" class="alert-table-wrap"></div>
+              <a class="alert-panel-link" href="#patientAssignmentPanel">View all beds</a>
+            </article>
+          </section>
         </section>
 
         <section class="report view active-view v5-dashboard" id="reportView">
@@ -235,7 +234,7 @@
               <div id="systemHealthPanel" class="system-health-list"></div>
             </article>
 
-            <article class="report-card heatmap-card v5-map-card">
+            <article class="report-card heatmap-card v5-map-card" id="dashboardHeatMapCard" role="button" tabindex="0" aria-label="Open Ward Oxygen Usage Heat Map">
               <div class="heatmap-head">
                 <div>
                   <h3>Ward Oxygen Usage Heat Map</h3>
@@ -313,56 +312,140 @@
           <p class="v5-privacy-note">All patient information is anonymized to protect privacy. Data shown is for monitoring and operational purposes only.</p>
         </section>
 
-        <section class="order view" id="orderView">
-          <section class="order-alert">
-            <div class="order-check">✓</div>
-            <div>
-              <h2>Order Automation Triggered</h2>
-              <p>System generated a purchase order from live oxygen forecasting. Review and confirm.</p>
+        <section class="order view order-summary-page" id="orderView">
+          <section class="order-recommendation">
+            <div class="order-check">OK</div>
+            <div class="order-recommend-copy">
+              <h2>Replacement Order Recommended</h2>
+              <p>System has detected low oxygen capacity and forecasted shortage.</p>
             </div>
-            <div class="order-protocol">
-              <span>Automation Protocol</span>
+            <div class="order-recommend-metrics" id="orderRecommendMetrics"></div>
+            <div class="order-protocol-box">
+              <span>Protocol</span>
               <strong>10-Minute Protocol</strong>
-            </div>
-            <div class="order-timer">
+              <i></i>
               <span>Time Remaining</span>
-              <strong id="orderTimeRemaining">08:47</strong>
+              <strong id="orderTimeRemaining">05:41</strong>
+              <button id="protocolDetails">View Protocol Details</button>
             </div>
-            <button id="protocolDetails">View Protocol Details</button>
           </section>
 
-          <nav class="order-tabs" aria-label="Order summary sections">
+          <nav class="order-tabs order-flow-tabs" aria-label="Order summary sections">
             <span class="active">1. Replacement Tanks</span>
             <span>2. Order Details</span>
-            <span>3. Capacity Summary</span>
+            <span>3. Capacity & Forecast</span>
           </nav>
 
-          <section class="order-grid">
-            <article class="order-card replacement-card">
-              <h3>1. Replacement Tanks Required</h3>
-              <p>Active tanks below 10% from the depletion table.</p>
-              <div id="replacementSummary" class="replacement-list"></div>
+          <section class="order-dashboard-grid">
+            <article class="order-panel critical-tanks-panel">
+              <h3>Critical Tanks (3)</h3>
+              <div id="replacementSummary" class="order-table-wrap"></div>
             </article>
 
-            <article class="order-card">
-              <h3>2. Projected Order Details</h3>
-              <div id="orderDetails" class="order-detail-list"></div>
+            <article class="order-panel capacity-forecast-panel">
+              <h3>Capacity Forecast</h3>
+              <div id="capacityForecastChart" class="capacity-forecast-chart"></div>
             </article>
 
-            <article class="order-card capacity-card">
-              <h3>3. Capacity & Forecast Summary</h3>
-              <div id="capacitySummary" class="order-detail-list"></div>
+            <article class="order-panel risk-assessment-panel">
+              <h3>Risk Assessment</h3>
+              <div id="riskAssessmentPanel"></div>
             </article>
-          </section>
-          <section class="order-actions">
-            <button id="downloadOrderSummary" class="secondary-action">Download Summary</button>
-            <div>
-              <button id="rejectOrder" class="danger-action">Reject Order</button>
-              <button id="confirmOrder" class="confirm-action">Confirm Order Now</button>
-            </div>
+
+            <article class="order-panel" id="orderTriggerSummary"></article>
+            <article class="order-panel" id="financialSummary"></article>
+            <article class="order-panel" id="supplierInformation"></article>
+            <article class="order-panel" id="orderDetails"></article>
+
+            <article class="order-panel order-process-panel">
+              <h3>Order Process</h3>
+              <div id="orderProcessTimeline"></div>
+            </article>
+
+            <article class="order-panel action-required-panel">
+              <h3>Action Required</h3>
+              <p>Please review the recommended order and confirm to proceed.</p>
+              <div class="order-actions">
+                <button id="rejectOrder" class="danger-action">Reject Order</button>
+                <button id="confirmOrder" class="confirm-action">Confirm Order Now</button>
+              </div>
+            </article>
           </section>
         </section>
+        <section class="administration view" id="administrationView">
+          <section class="admin-grid">
+            <article class="admin-panel admin-users-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon blue">UR</span>
+                  <div>
+                    <h3>Users & Roles</h3>
+                    <p>Create and manage system users, roles and permissions.</p>
+                  </div>
+                </div>
+                <button class="admin-add-button" id="adminAddUserButton" type="button">+ Add User</button>
+              </div>
+              <div id="adminUsersTable" class="admin-table-wrap"></div>
+              <button class="admin-link-button" type="button">View all users</button>
+            </article>
 
+            <article class="admin-panel admin-governance-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon green">PG</span>
+                  <div>
+                    <h3>Privacy & Governance</h3>
+                    <p>Configure privacy, data handling and compliance settings.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="adminGovernanceList" class="admin-settings-list"></div>
+            </article>
+
+            <article class="admin-panel admin-rules-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon orange">AR</span>
+                  <div>
+                    <h3>Alert Rules</h3>
+                    <p>Configure thresholds for alerts and notifications.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="adminAlertRulesList" class="admin-settings-list"></div>
+            </article>
+
+            <article class="admin-panel admin-devices-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon blue">DM</span>
+                  <div>
+                    <h3>Device Management</h3>
+                    <p>Manage registered IoT devices and their status.</p>
+                  </div>
+                </div>
+                <button class="admin-add-button" id="adminAddDeviceButton" type="button">+ Add Device</button>
+              </div>
+              <div id="adminDevicesTable" class="admin-table-wrap"></div>
+              <button class="admin-link-button" type="button">View all devices</button>
+            </article>
+
+            <article class="admin-panel admin-audit-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon purple">AL</span>
+                  <div>
+                    <h3>Audit Logs</h3>
+                    <p>Recent system activities and configuration changes.</p>
+                  </div>
+                </div>
+                <button class="admin-link-button" type="button">View all logs</button>
+              </div>
+              <div id="adminAuditTable" class="admin-table-wrap"></div>
+            </article>
+          </section>
+          <p class="admin-footnote">All times are real-time. Changes take effect immediately.</p>
+        </section>
         <section class="analytics view" id="analyticsView">
           <section class="report-head">
             <div>
@@ -416,6 +499,17 @@
       <div id="dialogBody" class="dialog-body"></div>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260622-wastage-image-render"></script>
+    <dialog id="heatMapDialog" class="heatmap-dialog">
+      <div class="dialog-head heatmap-dialog-head">
+        <div>
+          <h2>Ward Oxygen Usage Heat Map</h2>
+          <p>Expanded telemetry view of ward intensity, pipeline state, and device status.</p>
+        </div>
+        <button id="closeHeatMapDialog" aria-label="Close heat map">Close</button>
+      </div>
+      <div id="heatMapDialogBody" class="heatmap-dialog-body"></div>
+    </dialog>
+
+    <script type="module" src="./app.js?v=20260623-dashboard-map-popout"></script>
   </body>
 </html>
