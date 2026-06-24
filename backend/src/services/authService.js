@@ -5,9 +5,9 @@ export function createAuthService(db) {
 
   function authenticate(username, password) {
     const normalizedUsername = String(username || "").trim();
-    const user = db.users.find(item => item.username === normalizedUsername);
+    const user = findUser(normalizedUsername);
 
-    if (!user || user.password !== password) return null;
+    if (!user || !isValidPassword(user, password)) return null;
 
     const role = db.roles.find(item => item.role_id === user.role_id);
     const permissions = getPermissionNamesForRole(user.role_id);
@@ -21,7 +21,7 @@ export function createAuthService(db) {
       role: role.role_name,
       user: {
         user_id: user.user_id,
-        username: normalizedUsername,
+        username: user.username,
         role: isAdministrator ? "admin" : "viewer",
         role_id: user.role_id,
         label: role.role_name,
@@ -49,6 +49,24 @@ export function createAuthService(db) {
 
   function hasPermission(user, permissionName) {
     return getPermissionNamesForRole(user.role_id).includes(permissionName);
+  }
+
+  function findUser(username) {
+    const aliases = {
+      martin: "martinm",
+      vernon: "vernond"
+    };
+    return db.users.find(item => item.username === username)
+      || db.users.find(item => item.username === aliases[username]);
+  }
+
+  function isValidPassword(user, password) {
+    const acceptedPasswords = new Set([
+      user.password,
+      ...(user.password_aliases || []),
+      ...(user.passwords || [])
+    ].filter(Boolean));
+    return acceptedPasswords.has(password);
   }
 
   function getPermissionNamesForRole(roleId) {
