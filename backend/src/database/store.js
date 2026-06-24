@@ -64,6 +64,7 @@ export async function createRelationalStore() {
     const pool = await connectPostgres(Pool);
 
     const remote = await loadSupabaseTables(pool);
+    await seedSupabaseDemoAlerts(pool, remote);
     Object.assign(store, remote, {
       source: "supabase",
       pgPool: pool,
@@ -154,6 +155,39 @@ async function loadPermissions(pool) {
   const columnNames = new Set(columns.map(column => column.column_name));
   const labelColumn = columnNames.has("permission_key") ? "permission_key" : "permission_name";
   return queryRows(pool, `select permission_id, ${labelColumn} as permission_name from public.permissions order by permission_id`);
+}
+
+async function seedSupabaseDemoAlerts(pool, remote) {
+  if (remote.alerts.some(alert => !alert.is_resolved)) return;
+
+  const demoEvents = [
+    { device_id: "TK007", ward_id: "X002", flow_rate: 34.6, operational_status: "critical", alert_type: "critical_flow", severity: "critical" },
+    { device_id: "TK004", ward_id: "X003", flow_rate: 31.2, operational_status: "warning", alert_type: "high_flow", severity: "high" },
+    { device_id: "TK001", ward_id: "X001", flow_rate: 28.8, operational_status: "warning", alert_type: "warning", severity: "medium" },
+    { device_id: "TK005", ward_id: "X003", flow_rate: 0, operational_status: "hardware_fault", alert_type: "hardware_fault", severity: "high" },
+    { device_id: "TK008", ward_id: "X002", flow_rate: 15.4, operational_status: "warning", alert_type: "leakage", severity: "medium" }
+  ];
+
+  for (const [index, event] of demoEvents.entries()) {
+    const createdAt = new Date(Date.now() - (demoEvents.length - index) * 120000).toISOString();
+    const logResult = await pool.query(
+      `insert into public.telemetry_logs
+        (device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at)
+       values ($1, $2, $3, $4, $5, $5)
+       returning log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at`,
+      [event.device_id, event.ward_id, event.flow_rate, event.operational_status, createdAt]
+    );
+    const log = logResult.rows[0];
+    const alertResult = await pool.query(
+      `insert into public.alerts
+        (log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
+       values ($1, $2, $3, $4, false, null, null, $5)
+       returning alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
+      [log.log_id, event.device_id, event.alert_type, event.severity, createdAt]
+    );
+    remote.telemetry_logs.push(log);
+    remote.alerts.push(alertResult.rows[0]);
+  }
 }
 
 function nextId(rows, key) {
