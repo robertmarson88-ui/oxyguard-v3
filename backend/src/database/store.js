@@ -128,7 +128,8 @@ async function loadSupabaseTables(pool) {
     role_permissions: rolePermissions,
     users: users.map(user => ({
       ...user,
-      password: demoPasswordFor(user.username)
+      password: demoPasswordFor(user.username),
+      password_aliases: demoPasswordAliasesFor(user.username)
     })),
     wards,
     devices,
@@ -172,6 +173,15 @@ function demoPasswordFor(username) {
     user2: "password2"
   };
   return passwords[username] || "";
+}
+
+function demoPasswordAliasesFor(username) {
+  const aliases = {
+    robertm: ["password2"],
+    martinm: ["martin1"],
+    vernond: ["vernon1"]
+  };
+  return aliases[username] || [];
 }
 
 function createUser(user_id, username, password, email, role_id, password_hash) {
