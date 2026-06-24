@@ -12,3 +12,7 @@ services:
         value: OxyGuard <onboarding@resend.dev>
       - key: RESEND_API_KEY
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_SSL
+        value: "true"
