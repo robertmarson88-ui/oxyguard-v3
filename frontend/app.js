@@ -201,6 +201,8 @@ let permissionPreview = "admin";
 let esp32OfflineDevices = 1;
 let esp32LastFluctuation = 0;
 let acknowledgedAlertSignature = "";
+let databaseAlertRows = [];
+let databaseAlertsLoaded = false;
 
 const permissionViews = {
   admin: {
@@ -434,6 +436,7 @@ function setupLogin() {
 
       currentUser = {
         ...result.user,
+        accessToken: result.access_token,
         loginAt: new Date().toISOString()
       };
       sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
@@ -462,6 +465,7 @@ function showApp() {
   applyRoleAccess();
   updateCurrentUserDisplay();
   updatePageTitle();
+  loadDatabaseAlerts();
 }
 
 function logout() {
@@ -482,6 +486,69 @@ function readSavedUser() {
   } catch {
     return null;
   }
+}
+
+async function loadDatabaseAlerts() {
+  if (!currentUser?.accessToken) return;
+  try {
+    const response = await fetch("/api/alerts?is_resolved=false", {
+      cache: "no-store",
+      headers: { authorization: `Bearer ${currentUser.accessToken}` }
+    });
+    if (!response.ok) return;
+    const alerts = await response.json();
+    databaseAlertRows = Array.isArray(alerts) ? alerts.map(mapDatabaseAlertRow) : [];
+    databaseAlertsLoaded = true;
+    if (activeView === "alert") renderRealTimeAlert();
+    updateNotifications(activeAlerts());
+  } catch {
+    databaseAlertsLoaded = false;
+  }
+}
+
+function mapDatabaseAlertRow(alert, index) {
+  const ward = getWardLabelFromDevice(alert.device_id);
+  const priority = mapAlertPriority(alert.severity);
+  return {
+    time: formatActivityTime(alert.created_at || new Date().toISOString()),
+    ward,
+    type: formatAlertType(alert.alert_type),
+    priority,
+    asset: alert.device_id || `Sensor ${index + 1}`,
+    status: priority === "Critical" ? "Awaiting Response" : "Investigating",
+    assigned: priority === "Critical" ? "Facilities" : "Nurse Station",
+    source: "database"
+  };
+}
+
+function getWardLabelFromDevice(deviceId = "") {
+  const value = String(deviceId).toLowerCase();
+  if (value.includes("icu") || value.includes("ae") || value.includes("a&e")) return "A&E Ward";
+  if (value.includes("paed") || value.includes("c1") || value.includes("c2") || value.includes("c3")) return "Paediatric Ward";
+  if (value.includes("recovery") || value.includes("r1") || value.includes("r2")) return "Recovery Bay";
+  if (value.includes("labour") || value.includes("b1") || value.includes("b2") || value.includes("b3")) return "Labour Ward";
+  if (value.includes("nurse")) return "Nurse Station";
+  return "Telemetry Ward";
+}
+
+function formatAlertType(type = "") {
+  const labels = {
+    critical_flow: "Critical Flow",
+    high_flow: "High Abnormal Flow",
+    hardware_fault: "Device Offline",
+    warning: "Flow Warning",
+    leakage: "Leakage Detected",
+    ghost_flow: "Ghost Flow"
+  };
+  return labels[type] || String(type).replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase()) || "Telemetry Alert";
+}
+
+function mapAlertPriority(severity = "") {
+  const value = String(severity).toLowerCase();
+  if (value === "critical") return "Critical";
+  if (value === "high") return "High";
+  if (value === "medium") return "Medium";
+  return "Low";
 }
 
 function applyRoleAccess() {
@@ -580,6 +647,7 @@ function resetState() {
     renderWards();
   }, 500));
   timers.push(setInterval(renderV5TrendAnalytics, 3000));
+  timers.push(setInterval(loadDatabaseAlerts, 7000));
   updateClock();
 }
 
@@ -697,7 +765,11 @@ function renderRealTimeAlert() {
 
   const feedTarget = document.getElementById("alertActivityFeed");
   if (feedTarget) {
-    const feed = [
+    const feed = databaseAlertRows.length ? databaseAlertRows.slice(0, 5).map(row => [
+      row.time,
+      row.priority === "Critical" ? "danger" : row.priority === "High" ? "warning" : "info",
+      `${row.type} at ${row.asset}, ${row.ward}`
+    ]) : [
       ["11:42 AM", "danger", "Ghost flow detected at Bed 07, A&E Ward"],
       ["11:43 AM", "info", "Alert sent to Facilities Team"],
       ["11:44 AM", "success", "Facilities acknowledged the alert"],
@@ -759,13 +831,16 @@ function alertKpiCard(label, value, detail, tone, action = "") {
 }
 
 function getAlertIncidentRows() {
-  const rows = [
+  const demoRows = [
     { time: "11:42 AM", ward: "A&E Ward", type: "Ghost Flow", priority: "Critical", asset: "Bed 07", status: "Awaiting Response", assigned: "Facilities" },
     { time: "11:43 AM", ward: "Recovery Bay", type: "Leakage Detected", priority: "High", asset: "Tank R1", status: "Investigating", assigned: "Maintenance" },
     { time: "11:44 AM", ward: "Labour Ward", type: "Oxygen Supply Failure", priority: "High", asset: "Bed 03", status: "Acknowledged", assigned: "Nurse Station" },
     { time: "11:45 AM", ward: "Paediatric Ward", type: "Flow Anomaly", priority: "Medium", asset: "Bed 12", status: "Investigating", assigned: "Nurse Station" },
     { time: "11:47 AM", ward: "A&E Ward", type: "Critical Tank", priority: "Medium", asset: "Tank A2", status: "Awaiting Response", assigned: "Facilities" }
   ];
+  const rows = databaseAlertRows.length
+    ? [...databaseAlertRows, ...demoRows].slice(0, 6)
+    : demoRows;
   activeAlerts().slice(0, 2).forEach((alert, index) => {
     rows[index].type = alert.includes("critical") ? "Critical Tank" : rows[index].type;
   });
@@ -824,24 +899,26 @@ function renderAlertWardCard(card) {
 }
 
 function renderAlertPipelineMap() {
+  const flowTotal = Math.round(wards.reduce((sum, ward) => sum + totalFlow(ward), 0));
   return `
-    <div class="pipeline-canvas">
+    <div class="pipeline-canvas live-pipeline" style="--flow-speed:${Math.max(2.6, 7 - flowTotal / 10)}s">
       <div class="tank-farm">
         <strong>Main Tank Farm</strong>
         <span>4 Tanks</span>
         <div><i></i><i></i><i></i><i></i></div>
       </div>
-      <div class="pipe horizontal main"></div>
-      <div class="pipe vertical center"></div>
-      <div class="pipe horizontal top"></div>
-      <div class="pipe horizontal bottom"></div>
-      <div class="pipe vertical branch-left"></div>
-      <div class="pipe vertical branch-right"></div>
+      <div class="pipe horizontal main"><b></b><b></b><b></b></div>
+      <div class="pipe vertical center"><b></b><b></b></div>
+      <div class="pipe horizontal top"><b></b><b></b></div>
+      <div class="pipe horizontal bottom"><b></b><b></b></div>
+      <div class="pipe vertical branch-left"><b></b></div>
+      <div class="pipe vertical branch-right"><b></b></div>
       <span class="pipe-node"></span>
-      <button class="map-ward ae" type="button">A&E Ward<small>2 Tanks</small></button>
-      <button class="map-ward paed" type="button">Paediatrics Ward<small>2 Tanks</small></button>
-      <button class="map-ward recovery" type="button">Recovery Bay<small>2 Tanks</small></button>
-      <button class="map-ward labour" type="button">Labour Ward<small>2 Tanks</small></button>
+      <span class="flow-label main">${flowTotal} Litre/Min</span>
+      <button class="map-ward ae" type="button">A&E Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "ae")))} Litre/Min</small></button>
+      <button class="map-ward paed" type="button">Paediatrics Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "paediatric")))} Litre/Min</small></button>
+      <button class="map-ward recovery" type="button">Recovery Bay<small>${Math.round(totalFlow(wards.find(w => w.id === "recovery")))} Litre/Min</small></button>
+      <button class="map-ward labour" type="button">Labour Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "labour")))} Litre/Min</small></button>
     </div>
   `;
 }
@@ -1598,6 +1675,8 @@ function renderReportCenterSummary(report) {
   const leakageEvents = Math.max(2, Math.round(demoSummary.totalAlerts * 0.18));
   const systemHealth = getEsp32DeviceStatus();
   const rangeLabel = getReportRangeLabel().replace("Report period: ", "");
+  const periodTarget = document.getElementById("reportGeneratedPeriod");
+  if (periodTarget) periodTarget.textContent = `Report period: ${rangeLabel}`;
   const kpis = [
     ["Total Oxygen Consumed", `${totalConsumption.toLocaleString()} L`, rangeLabel, "good", "drop"],
     ["Estimated Wastage", `${demoSummary.avgWastage}%`, `${wastageLitres.toLocaleString()} Litre`, "good", "leak"],
@@ -1622,7 +1701,6 @@ function renderReportCenterSummary(report) {
   generated.innerHTML = `
     <div class="generated-report-head compact">
       <div>
-        <span>${report.range}</span>
         <h3>${report.title}</h3>
         <p>${report.description}</p>
       </div>
@@ -3072,7 +3150,7 @@ function updateFooter() {
 }
 
 function activeAlerts() {
-  const alerts = [];
+  const alerts = databaseAlertRows.map(row => `${row.ward} ${row.type} - ${row.asset}`);
   if (getTank("Tank A2").leakageAlert || getTank("Tank A2").highFlowAlert) alerts.push("A&E Ward alert - flow normal");
   if (getTank("Tank B3").leakageAlert) alerts.push("Labour Ward wastage");
   if (getTank("Tank C3").leakageAlert) alerts.push("Paediatric C3 wastage");

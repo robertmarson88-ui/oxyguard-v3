@@ -48,7 +48,14 @@ export function createAuthService(db) {
   }
 
   function hasPermission(user, permissionName) {
-    return getPermissionNamesForRole(user.role_id).includes(permissionName);
+    const permissions = getPermissionNamesForRole(user.role_id);
+    if (permissions.includes(permissionName)) return true;
+    const aliases = {
+      view_logs: ["alerts:view", "reports:view", "dashboard:view"],
+      resolve_alert: ["alerts:acknowledge"],
+      telemetry_write: ["telemetry:write"]
+    };
+    return (aliases[permissionName] || []).some(alias => permissions.includes(alias));
   }
 
   function findUser(username) {
