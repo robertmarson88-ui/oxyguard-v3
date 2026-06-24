@@ -5098,12 +5098,19 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 }
 
 .health-row i {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
-  background: #16a34a;
+  background: #006b3a;
   animation: healthPulse 1.25s ease-in-out infinite;
-  box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+  box-shadow:
+    0 0 0 0 rgba(0, 107, 58, 0.68),
+    0 0 12px rgba(0, 107, 58, 0.72);
+}
+
+.health-row.good i,
+.health-row:not(.warn) i {
+  background: #006b3a;
 }
 
 .health-row.warn i {
@@ -5114,15 +5121,21 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 @keyframes healthPulse {
   0% {
     transform: scale(0.88);
-    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.55);
+    box-shadow:
+      0 0 0 0 rgba(0, 107, 58, 0.7),
+      0 0 12px rgba(0, 107, 58, 0.72);
   }
   70% {
     transform: scale(1);
-    box-shadow: 0 0 0 8px rgba(22, 163, 74, 0);
+    box-shadow:
+      0 0 0 9px rgba(0, 107, 58, 0),
+      0 0 18px rgba(0, 107, 58, 0.76);
   }
   100% {
     transform: scale(0.88);
-    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0);
+    box-shadow:
+      0 0 0 0 rgba(0, 107, 58, 0),
+      0 0 12px rgba(0, 107, 58, 0.72);
   }
 }
 
@@ -6302,22 +6315,23 @@ body:not(.login-active) .topbar h1 {
 body:not(.login-active) .logo {
   position: relative;
   overflow: visible;
-  border: 1px solid rgba(34, 197, 94, 0.28);
+  border: 1px solid rgba(0, 90, 210, 0.42);
   box-shadow:
-    0 0 0 1px rgba(14, 165, 233, 0.18),
-    0 0 22px rgba(34, 197, 94, 0.42),
-    0 0 34px rgba(14, 79, 159, 0.35),
-    0 16px 34px rgba(2, 18, 38, 0.24) !important;
+    0 0 0 1px rgba(11, 99, 199, 0.36),
+    0 0 18px rgba(34, 197, 94, 0.28),
+    0 0 34px rgba(0, 78, 170, 0.62),
+    0 0 58px rgba(0, 36, 92, 0.68),
+    0 18px 38px rgba(2, 18, 38, 0.32) !important;
 }
 
 body:not(.login-active) .logo::after {
   content: "";
   position: absolute;
-  inset: -7px;
+  inset: -11px;
   z-index: -1;
-  border-radius: 16px;
-  background: radial-gradient(circle at 50% 45%, rgba(34, 197, 94, 0.26), rgba(14, 165, 233, 0.14) 42%, transparent 72%);
-  filter: blur(8px);
+  border-radius: 18px;
+  background: radial-gradient(circle at 50% 45%, rgba(0, 45, 120, 0.66), rgba(0, 105, 210, 0.38) 42%, rgba(34, 197, 94, 0.18) 62%, transparent 78%);
+  filter: blur(10px);
 }
 
 .v5-dashboard .v5-kpi-card {

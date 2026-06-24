@@ -19,7 +19,7 @@ const contentTypes = {
   ".png": "image/png"
 };
 
-const db = createRelationalStore();
+const db = await createRelationalStore();
 const handleApi = createApiHandler({ db, nurseStationDataPath });
 
 createServer(async (req, res) => {

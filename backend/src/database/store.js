@@ -1,7 +1,8 @@
 export const demoCreatedAt = "2026-06-09T08:00:00Z";
 
-export function createRelationalStore() {
-  return {
+export async function createRelationalStore() {
+  const store = {
+    source: "demo",
     roles: [
       { role_id: 1, role_name: "Administrator" },
       { role_id: 2, role_name: "Executive / CFO" },
@@ -55,6 +56,115 @@ export function createRelationalStore() {
     nextAlertId: 1,
     nextAuditId: 1
   };
+
+  if (!process.env.DATABASE_URL) return store;
+
+  try {
+    const { Pool } = await import("pg");
+    const pool = await connectPostgres(Pool);
+
+    const remote = await loadSupabaseTables(pool);
+    Object.assign(store, remote, {
+      source: "supabase",
+      pgPool: pool,
+      nextLogId: nextId(remote.telemetry_logs, "log_id"),
+      nextAlertId: nextId(remote.alerts, "alert_id"),
+      nextAuditId: nextId(remote.audit_logs, "audit_id")
+    });
+    return store;
+  } catch (error) {
+    console.warn(`OxyGuard Supabase connection failed; using demo data. ${error.message}`);
+    return store;
+  }
+}
+
+async function connectPostgres(Pool) {
+  const ssl = process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false };
+  try {
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl });
+    await pool.query("select 1");
+    return pool;
+  } catch (error) {
+    if (!String(error.message || "").toLowerCase().includes("ssl")) throw error;
+    const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: false });
+    await pool.query("select 1");
+    return pool;
+  }
+}
+
+async function loadSupabaseTables(pool) {
+  const [
+    roles,
+    permissions,
+    rolePermissions,
+    users,
+    wards,
+    devices,
+    telemetryLogs,
+    alerts,
+    auditLogs
+  ] = await Promise.all([
+    queryRows(pool, "select role_id, role_name from public.roles order by role_id"),
+    loadPermissions(pool),
+    queryRows(pool, "select role_id, permission_id from public.role_permissions"),
+    queryRows(pool, "select user_id, username, email, email_verified, password_hash, role_id, created_at from public.users order by user_id"),
+    queryRows(pool, "select ward_id, ward_name, location from public.wards order by ward_id"),
+    queryRows(pool, "select device_id, ward_id, created_at, device_name, device_status, last_seen, bed_id from public.devices order by device_id"),
+    queryRows(pool, "select log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at from public.telemetry_logs order by log_id"),
+    queryRows(pool, "select alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at from public.alerts order by alert_id"),
+    queryRows(pool, "select audit_id, user_id, action, target_resource, ip_address, performed_at from public.audit_logs order by audit_id")
+  ]);
+
+  return {
+    roles,
+    permissions,
+    role_permissions: rolePermissions,
+    users: users.map(user => ({
+      ...user,
+      password: demoPasswordFor(user.username)
+    })),
+    wards,
+    devices,
+    telemetry_logs: telemetryLogs,
+    alerts,
+    audit_logs: auditLogs
+  };
+}
+
+async function queryRows(pool, sql, params = []) {
+  const result = await pool.query(sql, params);
+  return result.rows;
+}
+
+async function loadPermissions(pool) {
+  const columns = await queryRows(
+    pool,
+    `select column_name
+     from information_schema.columns
+     where table_schema = 'public' and table_name = 'permissions'`
+  );
+  const columnNames = new Set(columns.map(column => column.column_name));
+  const labelColumn = columnNames.has("permission_key") ? "permission_key" : "permission_name";
+  return queryRows(pool, `select permission_id, ${labelColumn} as permission_name from public.permissions order by permission_id`);
+}
+
+function nextId(rows, key) {
+  return rows.reduce((max, row) => Math.max(max, Number(row[key]) || 0), 0) + 1;
+}
+
+function demoPasswordFor(username) {
+  const passwords = {
+    robertm: "robert1",
+    martinm: "martin1",
+    martin: "martin1",
+    vernond: "vernon1",
+    vernon: "vernon1",
+    nurse1: "nurse1",
+    facilities: "facilities1",
+    user1: "password1",
+    user2: "password2"
+  };
+  return passwords[username] || "";
 }
 
 function createUser(user_id, username, password, email, role_id, password_hash) {

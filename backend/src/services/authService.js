@@ -58,7 +58,7 @@ export function createAuthService(db) {
 
     return db.permissions
       .filter(permission => permissionIds.includes(permission.permission_id))
-      .map(permission => permission.permission_name);
+      .map(permission => permission.permission_name || permission.permission_key);
   }
 
   return { authenticate, authorizeRequest };

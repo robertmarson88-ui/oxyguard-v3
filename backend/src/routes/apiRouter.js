@@ -18,7 +18,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     if (!apiPath) return false;
 
     if (req.method === "GET" && apiPath === "/health") {
-      sendJson(res, 200, { status: "healthy" });
+      sendJson(res, 200, { status: "healthy", database: db.source || "demo" });
       return true;
     }
 
@@ -103,7 +103,7 @@ async function login(req, res, auth, apiV1) {
 
 async function createTelemetry(req, res, db) {
   const payload = await readJson(req);
-  const result = ingestTelemetry(db, payload);
+  const result = await ingestTelemetry(db, payload);
 
   if (!result.ok) {
     sendJson(res, 400, { ok: false, errors: result.errors });

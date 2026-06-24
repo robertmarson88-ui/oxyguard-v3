@@ -1,15 +1,15 @@
 import { validateTelemetryPayload } from "../schemas/telemetryContract.js";
 
-const alertSeverities = new Set(["High", "Medium", "Low"]);
+const alertSeverities = new Set(["high", "medium", "low", "critical"]);
 
-export function ingestTelemetry(db, payload) {
+export async function ingestTelemetry(db, payload) {
   const validation = validateTelemetryPayload(payload);
   if (!validation.ok) return validation;
 
   ensureWard(db, payload.ward_id);
   ensureDevice(db, payload.device_id, payload.ward_id);
 
-  const telemetry_log = {
+  let telemetry_log = {
     log_id: db.nextLogId++,
     device_id: payload.device_id,
     ward_id: payload.ward_id,
@@ -19,10 +19,17 @@ export function ingestTelemetry(db, payload) {
     received_at: new Date().toISOString()
   };
 
+  if (db.pgPool) {
+    telemetry_log = await insertTelemetryLog(db, telemetry_log);
+  }
+
   db.telemetry_logs.push(telemetry_log);
 
   const alert = evaluateAlert(db, telemetry_log);
-  if (alert) db.alerts.push(alert);
+  if (alert) {
+    const persistedAlert = db.pgPool ? await insertAlert(db, alert, telemetry_log.log_id) : alert;
+    db.alerts.push(persistedAlert);
+  }
 
   return { ok: true, telemetry_log, alert };
 }
@@ -40,17 +47,17 @@ export function queryTelemetry(db, url) {
 
 function evaluateAlert(db, log) {
   let alert_type = "";
-  let severity = "Low";
+  let severity = "low";
 
   if (log.operational_status === "hardware_fault") {
     alert_type = "hardware_fault";
-    severity = "High";
+    severity = "high";
   } else if (log.operational_status === "critical") {
     alert_type = "critical_flow";
-    severity = "High";
+    severity = "critical";
   } else if (log.operational_status === "warning" || log.flow_rate >= 30) {
     alert_type = log.flow_rate >= 30 ? "high_flow" : "warning";
-    severity = log.flow_rate >= 50 ? "High" : "Medium";
+    severity = log.flow_rate >= 50 ? "high" : "medium";
   }
 
   if (!alert_type || !alertSeverities.has(severity)) return null;
@@ -75,6 +82,28 @@ function ensureWard(db, wardId) {
 function ensureDevice(db, deviceId, wardId) {
   if (db.devices.some(device => device.device_id === deviceId)) return;
   db.devices.push({ device_id: deviceId, ward_id: wardId, created_at: new Date().toISOString() });
+}
+
+async function insertTelemetryLog(db, log) {
+  const result = await db.pgPool.query(
+    `insert into public.telemetry_logs
+      (device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at)
+     values ($1, $2, $3, $4, $5, $6)
+     returning log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at`,
+    [log.device_id, log.ward_id, log.flow_rate, log.operational_status, log.device_timestamp, log.received_at]
+  );
+  return result.rows[0];
+}
+
+async function insertAlert(db, alert, logId) {
+  const result = await db.pgPool.query(
+    `insert into public.alerts
+      (log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
+     values ($1, $2, $3, $4, $5, $6, $7, $8)
+     returning alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
+    [logId, alert.device_id, alert.alert_type, alert.severity, alert.is_resolved, alert.resolved_by, alert.resolved_at, alert.created_at]
+  );
+  return result.rows[0];
 }
 
 function clampNumber(value, min, max) {
