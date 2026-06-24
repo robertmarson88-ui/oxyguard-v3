@@ -18,7 +18,12 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     if (!apiPath) return false;
 
     if (req.method === "GET" && apiPath === "/health") {
-      sendJson(res, 200, { status: "healthy", database: db.source || "demo" });
+      sendJson(res, 200, {
+        status: "healthy",
+        database: db.source || "demo",
+        database_url_configured: Boolean(process.env.DATABASE_URL),
+        database_error: db.connection_error || null
+      });
       return true;
     }
 
