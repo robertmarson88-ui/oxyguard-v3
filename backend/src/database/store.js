@@ -73,9 +73,16 @@ export async function createRelationalStore() {
     });
     return store;
   } catch (error) {
-    console.warn(`OxyGuard Supabase connection failed; using demo data. ${error.message}`);
+    store.connection_error = sanitizeDatabaseError(error);
+    console.warn(`OxyGuard Supabase connection failed; using demo data. ${store.connection_error}`);
     return store;
   }
+}
+
+function sanitizeDatabaseError(error) {
+  return String(error?.message || "Unknown database connection error")
+    .replace(/postgresql:\/\/[^@\s]+@/gi, "postgresql://***:***@")
+    .replace(/password=[^&\s]+/gi, "password=***");
 }
 
 async function connectPostgres(Pool) {
