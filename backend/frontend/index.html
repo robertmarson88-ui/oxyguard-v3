@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OxyGuard Web Dashboard</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css?v=20260623-dashboard-map-popout" />
+  </head>
+  <body class="login-active">
+    <section class="login-screen" id="loginScreen">
+      <div class="login-brand">
+        <span class="login-mark">+</span>
+        <div>
+          <strong>OXYGUARD</strong>
+          <small>Hospital Oxygen Monitoring System</small>
+        </div>
+      </div>
+
+      <form class="login-card" id="loginForm">
+        <div>
+          <h1>Welcome Back</h1>
+          <p>Sign in to open the live OxyGuard dashboard.</p>
+        </div>
+        <label>
+          Username
+          <input id="loginUsername" type="text" autocomplete="username" placeholder="user1" />
+        </label>
+        <label>
+          Password
+          <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter password" />
+        </label>
+        <button type="submit" id="loginSubmit">Login</button>
+        <span class="login-error" id="loginError">Invalid username or password.</span>
+        <span class="login-hint" id="loginHint"></span>
+      </form>
+    </section>
+
+    <div class="app" id="appShell" aria-hidden="true">
+      <aside class="sidebar">
+        <div class="logo">
+          <img class="logo-image" src="./oxyguardlogo.png" alt="OxyGuard" />
+        </div>
+        <div class="sidebar-user" id="sidebarUser"></div>
+        <button class="side-button active" data-view="report">Dashboard</button>
+        <button class="side-button" data-view="dashboard" data-role-required="admin">Report</button>
+        <button class="side-button" data-view="alert" data-role-required="admin">Real Time Alert</button>
+        <button class="side-button" data-view="analytics" data-role-required="admin">Analytics</button>
+        <button class="side-button" data-view="order" data-role-required="admin">Order Summary</button>
+        <button class="side-button" data-view="administration" data-role-required="admin">Administration</button>
+        <button class="side-button" id="logoutButton">Logout</button>
+        <div class="sidebar-fill"></div>
+        <div class="sidebar-version">
+          <strong>Version 1.01</strong>
+          <span>Copyright 2026</span>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <h1>OXYGUARD MONITORING DASHBOARD</h1>
+          <div class="topbar-status">
+            <div class="notification-wrap">
+              <button class="notification-button" id="alertNotificationButton" type="button" aria-expanded="false" aria-controls="alertNotificationPanel">
+                <span class="notification-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" role="img" focusable="false">
+                    <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                    <path d="M10 21h4"></path>
+                  </svg>
+                </span>
+                <span class="notification-count" id="alertNotificationCount">0</span>
+              </button>
+              <div class="notification-panel" id="alertNotificationPanel" hidden>
+                <strong>System Notifications</strong>
+                <div id="alertNotificationList">No active alerts.</div>
+              </div>
+            </div>
+            <div class="datetime" id="dateTime">--</div>
+          </div>
+        </header>
+
+        <section class="dashboard view" id="dashboardView">
+          <section class="report-center">
+            <div class="report-center-head">
+              <div>
+                <span>Report Generation Center</span>
+                <h2>Oxygen Report Center</h2>
+                <p>Generate operational, exception, audit, and compliance-ready oxygen reports from ward telemetry and tank activity.</p>
+              </div>
+              <div class="report-center-controls">
+                <label>
+                  <span>Select Report Type</span>
+                  <select id="reportTypeSelect">
+                    <option value="operations">Operations Summary</option>
+                    <option value="critical">Critical Tank Review</option>
+                    <option value="wastage">Wastage & Leakage Report</option>
+                    <option value="ward">Ward Usage Comparison</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Start Date</span>
+                  <input id="reportStartDate" type="date" />
+                  <input id="reportStartMonth" type="month" hidden />
+                </label>
+                <label>
+                  <span>End Date</span>
+                  <input id="reportEndDate" type="date" />
+                  <input id="reportEndMonth" type="month" hidden />
+                </label>
+                <button type="button" id="printGeneratedReport" class="ghost-report-button">Preview Report</button>
+                <button type="button" id="emailGeneratedReport" class="primary-report-button">Generate Report</button>
+              </div>
+            </div>
+
+            <article class="report-card report-center-card report-generated-top" id="reportGeneratedSummaryCard">
+              <div class="generated-summary-title">
+                <h3>Generated Report Summary</h3>
+                <span id="reportGeneratedPeriod">Report period: Jan 01, 2026 - Jun 21, 2026</span>
+              </div>
+              <div id="reportGeneratedSummary"></div>
+            </article>
+
+            <section id="reportExecutiveSummary" class="report-executive-grid"></section>
+
+            <section class="report-center-grid" id="generatedReport">
+              <article class="report-card report-center-card fill-card">
+                <h3>Exception Report</h3>
+                <div id="reportExceptionTable" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card fill-card">
+                <h3>Tank Depletion Report</h3>
+                <div id="reportDepletionTable" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Alert Resolution Performance</h3>
+                <div id="reportResolutionPerformance"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Device & System Health Report</h3>
+                <div id="reportSystemHealth" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Audit Trail Summary</h3>
+                <div id="reportAuditTrail" class="report-table"></div>
+              </article>
+              <article class="report-card report-center-card">
+                <h3>Key Recommendations</h3>
+                <div id="reportRecommendations" class="recommendation-list"></div>
+              </article>
+            </section>
+
+            <article class="report-card oxygen-waste-card" id="operationsWasteComparisonCard" hidden>
+              <h3>Oxygen Volume Used vs Wastage</h3>
+              <div id="operationsWasteComparison"></div>
+            </article>
+
+            <section class="report-alert-tables">
+              <article class="report-card" id="highAbnormalFlowCard">
+                <h3>High Abnormal Flow</h3>
+                <div id="highFlowReportCard" class="report-table"></div>
+              </article>
+              <article class="report-card" id="highAbnormalPressureCard">
+                <h3>High Abnormal Pressure</h3>
+                <div id="highPressureReportCard" class="report-table"></div>
+              </article>
+            </section>
+
+            <article class="report-card monthly-comparison-card">
+              <h3>Monthly Tank Usage Comparison</h3>
+              <div id="monthlyUsageComparison" class="report-table"></div>
+            </article>
+
+            <section class="report-live-grid">
+              <article class="report-card wide">
+                <h3>Depletion Detail</h3>
+                <div id="reportDepletionDetailTable" class="report-table"></div>
+              </article>
+            </section>
+          </section>
+        </section>
+
+        <section class="dashboard view alert-monitoring" id="alertView">
+          <section class="alert-kpi-grid" id="alertKpiGrid"></section>
+
+          <section class="alert-monitor-grid">
+            <article class="alert-panel active-incidents-panel">
+              <div class="alert-panel-head">
+                <h3>Active Incidents <span id="activeIncidentCount">0</span></h3>
+                <a href="#alertIncidentsTable">View all incidents</a>
+              </div>
+              <div id="alertIncidentsTable" class="alert-table-wrap"></div>
+            </article>
+
+            <article class="alert-panel oxygen-map-panel">
+              <div class="alert-panel-head">
+                <h3>Hospital Oxygen Pipeline Map</h3>
+                <div class="alert-map-legend">
+                  <span><i class="normal"></i>Normal</span>
+                  <span><i class="high"></i>High Usage</span>
+                  <span><i class="alert"></i>Alert</span>
+                  <span><i class="offline"></i>Offline</span>
+                  <span><i class="maintenance"></i>Maintenance</span>
+                </div>
+              </div>
+              <div id="alertPipelineMap" class="alert-pipeline-map"></div>
+              <a class="alert-panel-link" href="#alertPipelineMap">View full map</a>
+            </article>
+
+            <article class="alert-panel live-feed-panel">
+              <div class="alert-panel-head">
+                <h3>Live Activity Feed</h3>
+                <span class="live-dot">Live</span>
+              </div>
+              <div id="alertActivityFeed" class="alert-activity-feed"></div>
+              <a class="alert-panel-link" href="#alertActivityFeed">View full activity</a>
+            </article>
+
+            <section id="alertWardCards" class="alert-ward-cards"></section>
+
+            <article class="alert-panel patient-assignment-panel">
+              <div class="alert-panel-head">
+                <h3>Patient Assignment <span>(Live Breathing)</span></h3>
+                <span class="live-dot">Live</span>
+              </div>
+              <div id="patientAssignmentPanel" class="alert-table-wrap"></div>
+              <a class="alert-panel-link" href="#patientAssignmentPanel">View all beds</a>
+            </article>
+          </section>
+        </section>
+
+        <section class="report view active-view v5-dashboard" id="reportView">
+          <section class="report-summary v5-kpi-grid" id="reportSummary"></section>
+
+          <section class="v5-dashboard-grid">
+            <article class="report-card v5-system-card">
+              <h3>System Health</h3>
+              <div id="systemHealthPanel" class="system-health-list"></div>
+            </article>
+
+            <article class="report-card heatmap-card v5-map-card" id="dashboardHeatMapCard" role="button" tabindex="0" aria-label="Open Ward Oxygen Usage Heat Map">
+              <div class="heatmap-head">
+                <div>
+                  <h3>Ward Oxygen Usage Heat Map</h3>
+                  <p>Ward intensity and pipeline state from live telemetry.</p>
+                </div>
+                <div class="map-tools" aria-hidden="true">
+                  <span>+</span>
+                  <span>-</span>
+                  <span>⛶</span>
+                </div>
+              </div>
+              <div id="hospitalHeatMap" class="hospital-heatmap"></div>
+              <div class="v5-map-legend">
+                <span><i class="normal"></i>Normal</span>
+                <span><i class="high"></i>High Usage</span>
+                <span><i class="ghost"></i>Ghost Flow</span>
+                <span><i class="offline"></i>Offline</span>
+                <span><i class="maintenance"></i>Maintenance</span>
+              </div>
+            </article>
+
+            <article class="report-card v5-critical-overview">
+              <h3>Critical Alerts Overview</h3>
+              <div id="criticalOverviewCards" class="critical-overview-grid"></div>
+              <div class="card-toolbar tight">
+                <h3>Critical Tanks</h3>
+                <a href="#depletionTable">View All</a>
+              </div>
+              <div id="tankVolumeChart" class="critical-tank-list"></div>
+            </article>
+
+            <article class="report-card v5-table-card v5-patient-card">
+              <div class="card-toolbar tight">
+                <h3>Patient Alerts (Anonymized)</h3>
+                <a href="#leakageTable">View All</a>
+              </div>
+              <div id="patientAlertsTable" class="report-table compact-table"></div>
+            </article>
+
+            <article class="report-card v5-depletion-card">
+              <div class="card-toolbar tight">
+                <h3>Tank Depletion Monitoring</h3>
+                <a href="#depletionTable">View All</a>
+              </div>
+              <div id="depletionTable" class="report-table compact-table"></div>
+            </article>
+
+            <article class="report-card v5-activity-card">
+              <h3>Recent Activity</h3>
+              <div id="recentActivityList" class="activity-list"></div>
+            </article>
+
+            <article class="report-card v5-trend-card">
+              <div class="card-toolbar tight">
+                <h3>Trend Analytics</h3>
+                <button type="button" class="period-select">Daily</button>
+              </div>
+              <div id="v5TrendAnalytics" class="v5-trend-analytics"></div>
+            </article>
+
+            <article class="report-card v5-insights-card">
+              <h3>Predictive Insights</h3>
+              <div id="predictiveInsights" class="predictive-list"></div>
+            </article>
+
+            <article class="report-card v5-table-card v5-alerts-ward-card">
+              <div class="card-toolbar tight">
+                <h3>Alerts by Ward</h3>
+                <a href="#leakageTable">View All</a>
+              </div>
+              <div id="leakageTable" class="report-table compact-table"></div>
+            </article>
+
+          </section>
+          <p class="v5-privacy-note">All patient information is anonymized to protect privacy. Data shown is for monitoring and operational purposes only.</p>
+        </section>
+
+        <section class="order view order-summary-page" id="orderView">
+          <section class="order-recommendation">
+            <div class="order-check">OK</div>
+            <div class="order-recommend-copy">
+              <h2>Replacement Order Recommended</h2>
+              <p>System has detected low oxygen capacity and forecasted shortage.</p>
+            </div>
+            <div class="order-recommend-metrics" id="orderRecommendMetrics"></div>
+            <div class="order-protocol-box">
+              <span>Protocol</span>
+              <strong>10-Minute Protocol</strong>
+              <i></i>
+              <span>Time Remaining</span>
+              <strong id="orderTimeRemaining">05:41</strong>
+              <button id="protocolDetails">View Protocol Details</button>
+            </div>
+          </section>
+
+          <nav class="order-tabs order-flow-tabs" aria-label="Order summary sections">
+            <span class="active">1. Replacement Tanks</span>
+            <span>2. Order Details</span>
+            <span>3. Capacity & Forecast</span>
+          </nav>
+
+          <section class="order-dashboard-grid">
+            <article class="order-panel critical-tanks-panel">
+              <h3>Critical Tanks (3)</h3>
+              <div id="replacementSummary" class="order-table-wrap"></div>
+            </article>
+
+            <article class="order-panel capacity-forecast-panel">
+              <h3>Capacity Forecast</h3>
+              <div id="capacityForecastChart" class="capacity-forecast-chart"></div>
+            </article>
+
+            <article class="order-panel risk-assessment-panel">
+              <h3>Risk Assessment</h3>
+              <div id="riskAssessmentPanel"></div>
+            </article>
+
+            <article class="order-panel" id="orderTriggerSummary"></article>
+            <article class="order-panel" id="financialSummary"></article>
+            <article class="order-panel" id="supplierInformation"></article>
+            <article class="order-panel" id="orderDetails"></article>
+
+            <article class="order-panel order-process-panel">
+              <h3>Order Process</h3>
+              <div id="orderProcessTimeline"></div>
+            </article>
+
+            <article class="order-panel action-required-panel">
+              <h3>Action Required</h3>
+              <p>Please review the recommended order and confirm to proceed.</p>
+              <div class="order-actions">
+                <button id="rejectOrder" class="danger-action">Reject Order</button>
+                <button id="confirmOrder" class="confirm-action">Confirm Order Now</button>
+              </div>
+            </article>
+          </section>
+        </section>
+        <section class="administration view" id="administrationView">
+          <section class="admin-grid">
+            <article class="admin-panel admin-users-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon blue">UR</span>
+                  <div>
+                    <h3>Users & Roles</h3>
+                    <p>Create and manage system users, roles and permissions.</p>
+                  </div>
+                </div>
+                <button class="admin-add-button" id="adminAddUserButton" type="button">+ Add User</button>
+              </div>
+              <div id="adminUsersTable" class="admin-table-wrap"></div>
+              <button class="admin-link-button" type="button">View all users</button>
+            </article>
+
+            <article class="admin-panel admin-governance-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon green">PG</span>
+                  <div>
+                    <h3>Privacy & Governance</h3>
+                    <p>Configure privacy, data handling and compliance settings.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="adminGovernanceList" class="admin-settings-list"></div>
+            </article>
+
+            <article class="admin-panel admin-rules-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon orange">AR</span>
+                  <div>
+                    <h3>Alert Rules</h3>
+                    <p>Configure thresholds for alerts and notifications.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="adminAlertRulesList" class="admin-settings-list"></div>
+            </article>
+
+            <article class="admin-panel admin-devices-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon blue">DM</span>
+                  <div>
+                    <h3>Device Management</h3>
+                    <p>Manage registered IoT devices and their status.</p>
+                  </div>
+                </div>
+                <button class="admin-add-button" id="adminAddDeviceButton" type="button">+ Add Device</button>
+              </div>
+              <div id="adminDevicesTable" class="admin-table-wrap"></div>
+              <button class="admin-link-button" type="button">View all devices</button>
+            </article>
+
+            <article class="admin-panel admin-audit-panel">
+              <div class="admin-panel-head">
+                <div class="admin-panel-title">
+                  <span class="admin-icon purple">AL</span>
+                  <div>
+                    <h3>Audit Logs</h3>
+                    <p>Recent system activities and configuration changes.</p>
+                  </div>
+                </div>
+                <button class="admin-link-button" type="button">View all logs</button>
+              </div>
+              <div id="adminAuditTable" class="admin-table-wrap"></div>
+            </article>
+          </section>
+          <p class="admin-footnote">All times are real-time. Changes take effect immediately.</p>
+        </section>
+        <section class="analytics view" id="analyticsView">
+          <section class="report-head">
+            <div>
+              <h2>Call Analytics</h2>
+              <p>Monthly oxygen tank usage, consumption cost, and leakage wastage by ward.</p>
+            </div>
+            <div class="report-actions">
+              <span>Tank Cost: JMD 588,000</span>
+              <button id="refreshAnalytics">Refresh Analytics</button>
+            </div>
+          </section>
+
+          <section class="analytics-summary" id="analyticsSummary"></section>
+
+          <section class="analytics-grid">
+            <article class="report-card analytics-wide">
+              <h3>Monthly Tank Usage by Ward</h3>
+              <div id="monthlyUsageChart" class="month-chart"></div>
+            </article>
+            <article class="report-card">
+              <h3>Top Ward Consumption</h3>
+              <div id="topConsumption" class="top-insight"></div>
+            </article>
+            <article class="report-card analytics-wide">
+              <h3>Monthly Leakage Wastage Summary</h3>
+              <div id="monthlyWastageChart" class="month-chart"></div>
+            </article>
+            <article class="report-card">
+              <h3>Top Ward Wastage</h3>
+              <div id="topWastage" class="top-insight"></div>
+            </article>
+            <article class="report-card analytics-wide">
+              <h3>Ward Monthly Totals</h3>
+              <div id="analyticsTable" class="report-table"></div>
+            </article>
+          </section>
+        </section>
+
+        <footer class="footer">
+          <span id="lastUpdated">Last Updated: Just now</span>
+          <button id="resetDemo">Reset Demo</button>
+        </footer>
+      </main>
+    </div>
+
+    <dialog id="wardDialog">
+      <div class="dialog-head">
+        <h2 id="dialogTitle">Ward details</h2>
+        <button id="closeDialog" aria-label="Close">Close</button>
+      </div>
+      <div id="dialogBody" class="dialog-body"></div>
+    </dialog>
+
+    <dialog id="heatMapDialog" class="heatmap-dialog">
+      <div class="dialog-head heatmap-dialog-head">
+        <div>
+          <h2>Ward Oxygen Usage Heat Map</h2>
+          <p>Expanded telemetry view of ward intensity, pipeline state, and device status.</p>
+        </div>
+        <button id="closeHeatMapDialog" aria-label="Close heat map">Close</button>
+      </div>
+      <div id="heatMapDialogBody" class="heatmap-dialog-body"></div>
+    </dialog>
+
+    <script type="module" src="./app.js?v=20260623-dashboard-map-popout"></script>
+  </body>
+</html>

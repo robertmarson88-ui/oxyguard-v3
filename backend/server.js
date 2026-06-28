@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { extname, join, normalize, sep } from "node:path";
 
 import { loadLocalEnv } from "./src/config/env.js";
@@ -10,7 +10,9 @@ await loadLocalEnv();
 
 const port = Number(process.env.PORT || 4180);
 const backendRoot = process.cwd();
-const frontendRoot = normalize(process.env.FRONTEND_ROOT || join(backendRoot, "..", "frontend"));
+const bundledFrontendRoot = normalize(join(backendRoot, "frontend"));
+const siblingFrontendRoot = normalize(join(backendRoot, "..", "frontend"));
+const frontendRoot = normalize(process.env.FRONTEND_ROOT || await resolveFrontendRoot());
 const nurseStationDataPath = join(process.env.USERPROFILE || "C:\\Users\\twcl.ssa", "Desktop", "data.txt");
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -21,6 +23,15 @@ const contentTypes = {
 
 const db = await createRelationalStore();
 const handleApi = createApiHandler({ db, nurseStationDataPath });
+
+async function resolveFrontendRoot() {
+  try {
+    await access(join(bundledFrontendRoot, "index.html"));
+    return bundledFrontendRoot;
+  } catch {
+    return siblingFrontendRoot;
+  }
+}
 
 function applyPatientAlertPatch(source) {
   const patientRowsBlock = `const ACTIVE_PATIENT_TARGET = 35;
