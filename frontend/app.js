@@ -93,28 +93,28 @@ const dashboardDemoAlertsByWard = {
 const dashboardDemoPatientRows = [
   ["PT-0001", "Paediatric Ward / Station 1", "2 Litre/Min", "3.4 Litre/Min", "+70%", badge("High Flow", "bad"), "Demo high-flow variance"],
   ["PT-0002", "Recovery Bay / Bay 1", "3 Litre/Min", "1.8 Litre/Min", "-40%", badge("Low Flow", "warn"), "Demo oxygen flow drop"],
-  ["PT-0003", "Labour Ward / Station 3", "4 Litre/Min", "4.2 Litre/Min", "+5%", badge("Normal", "good"), "Stable demo reading"],
+  ["PT-0003", "Labour Ward / Station 3", "4 Litre/Min", "4.2 Litre/Min", "+5%", "", ""],
   ["PT-0004", "A&E Ward / Station 1", "3 Litre/Min", "4.1 Litre/Min", "+37%", badge("Review", "warn"), "Demo usage spike"],
-  ["PT-0005", "Nurse Station", "2 Litre/Min", "2.0 Litre/Min", "0%", badge("Normal", "good"), "Routine demo check"]
+  ["PT-0005", "Nurse Station", "2 Litre/Min", "2.0 Litre/Min", "0%", "", ""]
 ];
 const dashboardDemoDepletionRows = {
   all: [
-    ["Paediatric Ward", "Tank C1", "C1-OXY-3017", "2 Litre/Min", "60 L (5%)", "3h 10m", badge("Empty", "bad")],
-    ["Recovery Bay", "Tank R1", "R1-OXY-4106", "4 Litre/Min", "96 L (8%)", "5h 15m", badge("Empty", "bad")],
-    ["Labour Ward", "Tank B3", "B3-OXY-2390", "4 Litre/Min", "312 L (26%)", "9h 30m", badge("Moderate", "warn")],
-    ["A&E Ward", "Tank A2", "A2-OXY-1186", "3 Litre/Min", "834 L (70%)", "12h 40m", badge("Full", "good")]
+    ["Paediatric Ward", "Tank C1", "C1-OXY-3017", "60 L (5%)", "3h 10m", badge("Empty", "bad")],
+    ["Recovery Bay", "Tank R1", "R1-OXY-4106", "96 L (8%)", "5h 15m", badge("Empty", "bad")],
+    ["Labour Ward", "Tank B3", "B3-OXY-2390", "312 L (26%)", "9h 30m", badge("Moderate", "warn")],
+    ["A&E Ward", "Tank A2", "A2-OXY-1186", "834 L (70%)", "12h 40m", badge("Full", "good")]
   ],
   critical: [
-    ["Paediatric Ward", "Tank C1", "C1-OXY-3017", "2 Litre/Min", "60 L (5%)", "3h 10m", badge("Empty", "bad")],
-    ["Recovery Bay", "Tank R1", "R1-OXY-4106", "4 Litre/Min", "96 L (8%)", "5h 15m", badge("Empty", "bad")]
+    ["Paediatric Ward", "Tank C1", "C1-OXY-3017", "60 L (5%)", "3h 10m", badge("Empty", "bad")],
+    ["Recovery Bay", "Tank R1", "R1-OXY-4106", "96 L (8%)", "5h 15m", badge("Empty", "bad")]
   ],
   warning: [
-    ["Labour Ward", "Tank B3", "B3-OXY-2390", "4 Litre/Min", "312 L (26%)", "9h 30m", badge("Moderate", "warn")],
-    ["A&E Ward", "Tank A1", "A1-OXY-1042", "4 Litre/Min", "288 L (24%)", "7h 45m", badge("Moderate", "warn")]
+    ["Labour Ward", "Tank B3", "B3-OXY-2390", "312 L (26%)", "9h 30m", badge("Moderate", "warn")],
+    ["A&E Ward", "Tank A1", "A1-OXY-1042", "288 L (24%)", "7h 45m", badge("Moderate", "warn")]
   ],
   normal: [
-    ["A&E Ward", "Tank A2", "A2-OXY-1186", "3 Litre/Min", "834 L (70%)", "12h 40m", badge("Full", "good")],
-    ["Labour Ward", "Tank B1", "B1-OXY-2108", "5 Litre/Min", "756 L (63%)", "8h 15m", badge("Full", "good")]
+    ["A&E Ward", "Tank A2", "A2-OXY-1186", "834 L (70%)", "12h 40m", badge("Full", "good")],
+    ["Labour Ward", "Tank B1", "B1-OXY-2108", "756 L (63%)", "8h 15m", badge("Full", "good")]
   ]
 };
 const reportDemoData = [
@@ -1314,33 +1314,39 @@ function renderReport() {
   renderAlertsByWard();
 
   updateDepletionFilterButtons();
-  const depletionRows = activeTanks
-    .map(t => {
-      const percent = Math.round((t.volumeRemaining * 100) / t.maxVolume);
-      const status = tankDepletionStatus(t);
-      return {
-        status,
-        row: [
-          t.wardName,
-          t.name,
-          t.serial,
-          `${t.flowRate} Litre/Min`,
-          `${t.volumeRemaining} L (${percent}%)`,
-          estimateDepletion(t),
-          badge(status.label, status.tone)
-        ]
-      };
-    })
-    .filter(item => depletionStatusFilter === "all" || item.status.key === depletionStatusFilter);
+  const depletionRows = getTankDepletionMonitoringRows(activeTanks, depletionStatusFilter);
 
   const depletionTarget = document.getElementById("depletionTable");
   const depletionTableRows = depletionRows.length
     ? depletionRows.slice(0, 5).map(item => item.row)
     : dashboardDemoDepletionRows[depletionStatusFilter] || dashboardDemoDepletionRows.all;
   if (depletionTarget) depletionTarget.innerHTML = tableHtml(
-    ["Ward", "Tank", "Serial #", "Flow", "Volume", "Est. Depletion", "Status"],
+    ["Ward", "Tank", "Serial #", "Volume", "Est. Depletion", "Status"],
     depletionTableRows
   );
+}
+
+function getTankDepletionMonitoringRows(activeTanks, statusFilter = "all") {
+  return activeTanks
+    .map(t => {
+      const percent = Math.round((t.volumeRemaining * 100) / t.maxVolume);
+      const status = tankDepletionStatus(t);
+      return {
+        tank: t,
+        status,
+        minutes: minutesUntilDepletion(t),
+        row: [
+          t.wardName,
+          t.name,
+          t.serial,
+          `${t.volumeRemaining} L (${percent}%)`,
+          estimateDepletion(t),
+          badge(status.label, status.tone)
+        ]
+      };
+    })
+    .filter(item => statusFilter === "all" || item.status.key === statusFilter)
+    .sort((a, b) => a.minutes - b.minutes);
 }
 
 function renderSystemHealth(status = getEsp32DeviceStatus()) {
@@ -1440,8 +1446,8 @@ function renderPatientAlerts(activeTanks) {
   const hasLiveAlerts = activeTanks.some(t => t.leakageAlert || t.highFlowAlert || getReportVolumePercent(t) < 10);
   const liveRows = activeTanks.slice(0, 5).map((tankItem, index) => {
     const warning = tankItem.highFlowAlert ? "+92%" : tankItem.leakageAlert ? "+55%" : index % 2 ? "+10%" : "-5%";
-    const status = tankItem.highFlowAlert ? badge("Ghost Flow", "bad") : tankItem.leakageAlert ? badge("Low Flow", "warn") : getReportVolumePercent(tankItem) < 10 ? badge("Critical", "bad") : badge("Normal", "good");
-    const alert = tankItem.highFlowAlert ? "Ghost flow detected" : tankItem.leakageAlert ? "Flow below prescription" : getReportVolumePercent(tankItem) < 10 ? "Critical tank feeding station" : "Stable demo reading";
+    const status = tankItem.highFlowAlert ? badge("Ghost Flow", "bad") : tankItem.leakageAlert ? badge("Low Flow", "warn") : getReportVolumePercent(tankItem) < 10 ? badge("Critical", "bad") : "";
+    const alert = tankItem.highFlowAlert ? "Ghost flow detected" : tankItem.leakageAlert ? "Flow below prescription" : getReportVolumePercent(tankItem) < 10 ? "Critical tank feeding station" : "";
     return [
       `PT-${String(index + 1).padStart(4, "0")}`,
       `${tankItem.wardName} / ${tankItem.station}`,
@@ -1596,13 +1602,17 @@ function renderV5TrendAnalytics() {
 function renderPredictiveInsights(activeTanks, alertRows) {
   const target = document.getElementById("predictiveInsights");
   if (!target) return;
-  const lowest = [...activeTanks].sort((a, b) => getReportVolumePercent(a) - getReportVolumePercent(b))[0];
+  const depletionOrder = getTankDepletionMonitoringRows(activeTanks, "all")
+    .filter(item => Number.isFinite(item.minutes))
+    .slice(0, 3);
   const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
   const todayConsumptionLitres = Math.round(totalFlowValue * 60 * 24);
   const yesterdayDelta = formatSignedPercent((todayConsumptionLitres - YESTERDAY_CONSUMPTION_LITRES) / YESTERDAY_CONSUMPTION_LITRES);
   const wastageTodayLitres = Math.round(todayConsumptionLitres * (wastage / 100));
+  const firstTank = depletionOrder[0]?.tank || activeTanks[0] || { name: "Tank B3", wardName: "Labour Ward", volumeRemaining: 120, flowRate: 1 };
   const insights = [
-    ["danger", `${lowest?.name || "Tank B3"} will deplete in`, estimateDepletion(lowest || activeTanks[0] || { volumeRemaining: 120, flowRate: 1 }), "Suggested refill"],
+    ["danger", "Depleting first", `${firstTank.name} - ${estimateDepletion(firstTank)}`, firstTank.wardName || "Highest refill priority"],
+    ["danger", "Next queue", formatDepletionQueue(depletionOrder.slice(1)), "Refill route"],
     ["blue", "Today's oxygen demand", `${todayConsumptionLitres.toLocaleString()} Litre`, `${yesterdayDelta} vs Yesterday`],
     ["warn", "Estimated wastage today", `${wastageTodayLitres.toLocaleString()} Litre`, "Cost exposure"],
     ["good", "Potential savings", currency((alertRows.length + 1) * 8200), "If issues resolved"]
@@ -1613,6 +1623,15 @@ function renderPredictiveInsights(activeTanks, alertRows) {
       <div><small>${label}</small><strong>${value}</strong><em>${note}</em></div>
     </div>
   `).join("");
+}
+
+function minutesUntilDepletion(t) {
+  return t.flowRate <= 0 ? Number.POSITIVE_INFINITY : Math.max(1, Math.floor(t.volumeRemaining / Math.max(1, t.flowRate)));
+}
+
+function formatDepletionQueue(tanks) {
+  if (!tanks.length) return "No active tank queue";
+  return tanks.map(item => `${item.tank.name} (${estimateDepletion(item.tank)})`).join(", ");
 }
 
 function renderRecentActivity(alertRows) {
@@ -3076,9 +3095,13 @@ function renderHospitalHeatMap() {
 
   heatMap.innerHTML = `
     <div class="oxygen-floorplan-shell">
+      <div class="floorplan-label main-entry">Main Entrance</div>
+      <div class="floorplan-label plant-label">Oxygen Plant</div>
+      <div class="floorplan-label ward-wing-label">Patient Ward Wing</div>
       <div class="floorplan-maintenance-dot"></div>
       <div class="floorplan-pipeline main"></div>
       <div class="floorplan-pipeline lower"></div>
+      <div class="floorplan-corridor">Central Corridor</div>
       ${mapRooms.map(room => `
         <div class="oxygen-room ${room.className} ${room.state}">
           <b class="room-status ${room.state}"></b>
@@ -3090,6 +3113,8 @@ function renderHospitalHeatMap() {
       <div class="floorplan-wall wall-b"></div>
       <div class="floorplan-wall wall-c"></div>
       <div class="floorplan-wall wall-d"></div>
+      <div class="floorplan-door door-a"></div>
+      <div class="floorplan-door door-b"></div>
       <div class="floorplan-offline-dot"></div>
     </div>
   `;
