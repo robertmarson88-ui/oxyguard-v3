@@ -4070,6 +4070,10 @@ dialog {
   padding: 0;
 }
 
+.user-dialog {
+  width: min(920px, calc(100vw - 32px));
+}
+
 dialog::backdrop {
   background: rgba(14, 32, 55, 0.42);
 }
@@ -4107,6 +4111,97 @@ dialog::backdrop {
 .detail-row.header {
   background: #f6f9fc;
   font-weight: 800;
+}
+
+.user-manager {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(220px, 0.8fr) minmax(240px, 1fr);
+  gap: 14px;
+  padding: 18px 20px 8px;
+}
+
+.user-form,
+.user-list article {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+}
+
+.user-form {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 14px;
+}
+
+.user-form h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.user-form label {
+  display: grid;
+  gap: 6px;
+  color: #344054;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.user-form input,
+.user-form select {
+  min-height: 40px;
+  border: 1px solid #cfd9e4;
+  border-radius: 9px;
+  padding: 0 10px;
+  color: var(--text);
+  background: #fff;
+  font: inherit;
+}
+
+.user-form button {
+  min-height: 40px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--blue);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.user-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  max-height: 330px;
+  overflow: auto;
+}
+
+.user-list article {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px;
+}
+
+.user-list strong {
+  overflow-wrap: anywhere;
+}
+
+.user-list span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  text-align: right;
+}
+
+.user-message {
+  min-height: 20px;
+  margin: 0;
+  padding: 0 20px 18px;
+  color: var(--blue-dark);
+  font-size: 13px;
+  font-weight: 720;
 }
 
 @media (max-width: 1150px) {
@@ -4167,6 +4262,10 @@ dialog::backdrop {
   }
 
   .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-manager {
     grid-template-columns: 1fr;
   }
 
@@ -6103,6 +6202,13 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
+}
+
+.admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .admin-panel-title {

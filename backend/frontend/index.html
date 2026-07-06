@@ -386,7 +386,10 @@
                     <p>Create and manage system users, roles and permissions.</p>
                   </div>
                 </div>
-                <button class="admin-add-button" id="adminAddUserButton" type="button">+ Add User</button>
+                <div class="admin-user-actions">
+                  <button class="admin-add-button" id="adminAddUserButton" type="button">+ Add User</button>
+                  <button class="admin-link-button" id="manageUsersButton" type="button">Manage Users</button>
+                </div>
               </div>
               <div id="adminUsersTable" class="admin-table-wrap"></div>
               <button class="admin-link-button" type="button">View all users</button>
@@ -511,6 +514,59 @@
         <button id="closeHeatMapDialog" aria-label="Close heat map">Close</button>
       </div>
       <div id="heatMapDialogBody" class="heatmap-dialog-body"></div>
+    </dialog>
+
+    <dialog class="user-dialog" id="userDialog">
+      <div class="dialog-head">
+        <h2>User Management</h2>
+        <button id="closeUserDialog" aria-label="Close user management">Close</button>
+      </div>
+      <section class="user-manager">
+        <form class="user-form" id="createUserForm">
+          <h3>Create User</h3>
+          <label>
+            Username
+            <input id="newUsername" type="text" autocomplete="off" required />
+          </label>
+          <label>
+            Password
+            <input id="newPassword" type="password" autocomplete="new-password" required />
+          </label>
+          <label>
+            Permission
+            <select id="newUserRole">
+              <option value="5">Nurse</option>
+              <option value="4">Nurse Manager</option>
+              <option value="3">Facilities Manager</option>
+              <option value="2">Executive / CFO</option>
+              <option value="1">Administrator</option>
+            </select>
+          </label>
+          <button type="submit">Create User</button>
+        </form>
+
+        <form class="user-form" id="updateUserForm">
+          <h3>Modify Permission</h3>
+          <label>
+            User
+            <select id="existingUser"></select>
+          </label>
+          <label>
+            Permission
+            <select id="existingUserRole">
+              <option value="5">Nurse</option>
+              <option value="4">Nurse Manager</option>
+              <option value="3">Facilities Manager</option>
+              <option value="2">Executive / CFO</option>
+              <option value="1">Administrator</option>
+            </select>
+          </label>
+          <button type="submit">Update Permission</button>
+        </form>
+
+        <section class="user-list" id="userList"></section>
+      </section>
+      <p class="user-message" id="userMessage"></p>
     </dialog>
 
     <script type="module" src="./app.js?v=20260623-dashboard-map-popout"></script>
