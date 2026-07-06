@@ -5385,6 +5385,7 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 
 .oxygen-room {
   position: relative;
+  z-index: 3;
   display: grid;
   place-items: center;
   align-content: center;
@@ -5557,8 +5558,8 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   border-left: 0;
   border-right: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  z-index: 2;
+  background: rgba(215, 226, 238, 0.18);
+  z-index: 1;
 }
 
 .floorplan-pipeline.main {
@@ -5569,6 +5570,9 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   top: 142px;
   left: 118px;
   right: 116px;
+  height: 5px;
+  border: 0;
+  background: rgba(116, 139, 165, 0.2);
 }
 
 .floorplan-wall {
