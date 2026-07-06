@@ -172,12 +172,18 @@ function requireAdmin(req, res, auth) {
 }
 
 async function createUser(req, res, db, actor) {
-  const { username, password, role_id } = await readJson(req);
+  const { username, email, password, role_id } = await readJson(req);
   const normalizedUsername = String(username || "").trim();
+  const normalizedEmail = String(email || "").trim().toLowerCase();
   const roleId = Number(role_id);
 
-  if (!normalizedUsername || !password || !findRole(db, roleId)) {
-    sendJson(res, 400, { ok: false, message: "Enter a username, password, and valid permission." });
+  if (!normalizedUsername || !normalizedEmail || !password || !findRole(db, roleId)) {
+    sendJson(res, 400, { ok: false, message: "Enter a username, email, password, and valid permission." });
+    return;
+  }
+
+  if (!isValidEmail(normalizedEmail)) {
+    sendJson(res, 400, { ok: false, message: "Enter a valid email address." });
     return;
   }
 
@@ -186,10 +192,15 @@ async function createUser(req, res, db, actor) {
     return;
   }
 
+  if (db.users.some(user => String(user.email || "").toLowerCase() === normalizedEmail)) {
+    sendJson(res, 409, { ok: false, message: "That email already exists." });
+    return;
+  }
+
   const user = {
     user_id: nextUserId(db),
     username: normalizedUsername,
-    email: `${normalizedUsername.toLowerCase()}@oxyguard.local`,
+    email: normalizedEmail,
     email_verified: true,
     password,
     password_hash: `demo-plain:${password}`,
@@ -250,6 +261,10 @@ function listUsers(db) {
 
 function findRole(db, roleId) {
   return db.roles.find(role => Number(role.role_id) === Number(roleId));
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function nextUserId(db) {

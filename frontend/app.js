@@ -1066,6 +1066,7 @@ async function createUser(event) {
   event.preventDefault();
   const message = document.getElementById("userMessage");
   const username = document.getElementById("newUsername").value.trim();
+  const email = document.getElementById("newEmail").value.trim();
   const password = document.getElementById("newPassword").value;
   const roleId = Number(document.getElementById("newUserRole").value);
 
@@ -1073,7 +1074,7 @@ async function createUser(event) {
     const response = await fetch("/api/users", {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify({ username, password, role_id: roleId })
+      body: JSON.stringify({ username, email, password, role_id: roleId })
     });
     const result = await response.json();
 
