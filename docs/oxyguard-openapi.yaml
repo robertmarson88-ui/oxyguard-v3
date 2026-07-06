@@ -1,0 +1,1494 @@
+openapi: 3.1.0
+info:
+  title: OxyGuard API
+  version: 1.0.0
+  description: API framework for hospital oxygen monitoring, telemetry, alerts, analytics, reporting, and order automation.
+servers:
+  - url: https://oxyguard-v3.onrender.com/api/v1
+    description: Prototype host
+  - url: https://api.oxyguard.example.com/api/v1
+    description: Production placeholder
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Dashboard
+  - name: Wards
+  - name: Devices
+  - name: Tanks
+  - name: Telemetry
+  - name: Alerts
+  - name: Patients
+  - name: Analytics
+  - name: Reports
+  - name: Orders
+  - name: Admin
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Authenticate a dashboard user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh an access token
+      responses:
+        "200":
+          description: Refreshed token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenPair"
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke the current session
+      responses:
+        "204":
+          description: Logged out
+  /me:
+    get:
+      tags: [Auth]
+      summary: Return current user profile and permissions
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Current operational dashboard summary
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+  /dashboard/heatmap:
+    get:
+      tags: [Dashboard]
+      summary: Ward heatmap state for floorplan visualization
+      responses:
+        "200":
+          description: Heatmap state
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HeatmapZone"
+  /wards:
+    get:
+      tags: [Wards]
+      summary: List wards
+      responses:
+        "200":
+          description: Wards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Ward"
+    post:
+      tags: [Wards]
+      summary: Create a ward
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WardCreate"
+      responses:
+        "201":
+          description: Created ward
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ward"
+  /wards/{wardId}:
+    get:
+      tags: [Wards]
+      summary: Get a ward
+      parameters:
+        - $ref: "#/components/parameters/WardId"
+      responses:
+        "200":
+          description: Ward
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ward"
+    patch:
+      tags: [Wards]
+      summary: Update a ward
+      parameters:
+        - $ref: "#/components/parameters/WardId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WardUpdate"
+      responses:
+        "200":
+          description: Updated ward
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Ward"
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List registered devices
+      parameters:
+        - name: ward_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Device"
+    post:
+      tags: [Devices]
+      summary: Register a device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceCreate"
+      responses:
+        "201":
+          description: Registered device
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+  /devices/{deviceId}:
+    patch:
+      tags: [Devices]
+      summary: Update a device
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceUpdate"
+      responses:
+        "200":
+          description: Updated device
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+  /tanks:
+    get:
+      tags: [Tanks]
+      summary: List tanks
+      parameters:
+        - name: ward_id
+          in: query
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [normal, warning, critical, empty, offline]
+      responses:
+        "200":
+          description: Tanks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Tank"
+  /tanks/{tankId}:
+    patch:
+      tags: [Tanks]
+      summary: Update tank metadata or operational state
+      parameters:
+        - $ref: "#/components/parameters/TankId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TankUpdate"
+      responses:
+        "200":
+          description: Updated tank
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tank"
+  /telemetry/readings:
+    post:
+      tags: [Telemetry]
+      summary: Ingest a single device telemetry reading
+      security:
+        - deviceKeyAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TelemetryReadingCreate"
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelemetryIngestResult"
+  /telemetry/batch:
+    post:
+      tags: [Telemetry]
+      summary: Ingest multiple telemetry readings
+      security:
+        - deviceKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [readings]
+              properties:
+                readings:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/TelemetryReadingCreate"
+      responses:
+        "202":
+          description: Batch accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TelemetryIngestResult"
+  /telemetry/latest:
+    get:
+      tags: [Telemetry]
+      summary: Latest normalized telemetry by ward, tank, or device
+      parameters:
+        - name: ward_id
+          in: query
+          schema:
+            type: string
+        - name: device_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Latest readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelemetryReading"
+  /telemetry/history:
+    get:
+      tags: [Telemetry]
+      summary: Historical telemetry
+      parameters:
+        - name: ward_id
+          in: query
+          schema:
+            type: string
+        - name: tank_id
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Historical readings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TelemetryReading"
+  /telemetry/stream:
+    get:
+      tags: [Telemetry]
+      summary: Realtime telemetry event stream
+      responses:
+        "200":
+          description: Server-sent event stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: List alerts
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, acknowledged, escalated, resolved, suppressed]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [info, warning, critical]
+        - name: ward_id
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Alerts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Alert"
+  /alerts/{alertId}:
+    get:
+      tags: [Alerts]
+      summary: Get alert detail
+      parameters:
+        - $ref: "#/components/parameters/AlertId"
+      responses:
+        "200":
+          description: Alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+  /alerts/{alertId}/acknowledge:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge an active alert
+      parameters:
+        - $ref: "#/components/parameters/AlertId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+      responses:
+        "200":
+          description: Acknowledged alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+  /alerts/{alertId}/resolve:
+    post:
+      tags: [Alerts]
+      summary: Resolve an alert
+      parameters:
+        - $ref: "#/components/parameters/AlertId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [resolution_note]
+              properties:
+                resolution_note:
+                  type: string
+      responses:
+        "200":
+          description: Resolved alert
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Alert"
+  /alert-rules:
+    get:
+      tags: [Alerts]
+      summary: List alert rules
+      responses:
+        "200":
+          description: Alert rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AlertRule"
+  /alert-rules/{ruleId}:
+    patch:
+      tags: [Alerts]
+      summary: Update an alert rule
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertRuleUpdate"
+      responses:
+        "200":
+          description: Updated alert rule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AlertRule"
+  /patients/active:
+    get:
+      tags: [Patients]
+      summary: List active anonymized patient oxygen assignments
+      parameters:
+        - name: ward_id
+          in: query
+          schema:
+            type: string
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 35
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: Active patients
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [total, rows]
+                properties:
+                  total:
+                    type: integer
+                    example: 35
+                  rows:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PatientAssignment"
+  /patients/active/count:
+    get:
+      tags: [Patients]
+      summary: Count active patient oxygen assignments
+      responses:
+        "200":
+          description: Active patient count
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [active_patients]
+                properties:
+                  active_patients:
+                    type: integer
+                    example: 35
+  /patient-assignments:
+    post:
+      tags: [Patients]
+      summary: Create an anonymized patient oxygen assignment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientAssignmentCreate"
+      responses:
+        "201":
+          description: Created patient assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientAssignment"
+  /patient-assignments/{assignmentId}:
+    patch:
+      tags: [Patients]
+      summary: Update a patient oxygen assignment
+      parameters:
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatientAssignmentUpdate"
+      responses:
+        "200":
+          description: Updated patient assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientAssignment"
+  /patient-assignments/{assignmentId}/discharge:
+    post:
+      tags: [Patients]
+      summary: Mark a patient oxygen assignment inactive
+      parameters:
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Discharged patient assignment
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatientAssignment"
+  /analytics/usage:
+    get:
+      tags: [Analytics]
+      summary: Oxygen usage analytics
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [ward, month, day]
+      responses:
+        "200":
+          description: Usage analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSeries"
+  /analytics/wastage:
+    get:
+      tags: [Analytics]
+      summary: Leakage and wastage analytics
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+        - name: group_by
+          in: query
+          schema:
+            type: string
+            enum: [ward, month, day]
+      responses:
+        "200":
+          description: Wastage analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSeries"
+  /analytics/trends:
+    get:
+      tags: [Analytics]
+      summary: Trend analytics for dashboard charts
+      responses:
+        "200":
+          description: Trend analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrendAnalytics"
+  /forecasts/depletion:
+    get:
+      tags: [Analytics]
+      summary: Tank depletion forecast
+      parameters:
+        - name: horizon_hours
+          in: query
+          schema:
+            type: integer
+            default: 24
+      responses:
+        "200":
+          description: Depletion forecasts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DepletionForecast"
+  /reports:
+    post:
+      tags: [Reports]
+      summary: Request report generation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportRequest"
+      responses:
+        "202":
+          description: Report generation started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportJob"
+  /reports/{reportId}:
+    get:
+      tags: [Reports]
+      summary: Get report status and metadata
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Report job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReportJob"
+  /reports/{reportId}/download:
+    get:
+      tags: [Reports]
+      summary: Download a generated report
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to signed report file URL
+  /orders/recommendation:
+    get:
+      tags: [Orders]
+      summary: Current replacement tank order recommendation
+      responses:
+        "200":
+          description: Order recommendation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderRecommendation"
+  /orders:
+    post:
+      tags: [Orders]
+      summary: Create a purchase order from recommendation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [recommendation_id]
+              properties:
+                recommendation_id:
+                  type: string
+      responses:
+        "201":
+          description: Created purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+  /orders/{orderId}:
+    get:
+      tags: [Orders]
+      summary: Get purchase order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+  /orders/{orderId}/approve:
+    post:
+      tags: [Orders]
+      summary: Approve a purchase order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      responses:
+        "200":
+          description: Approved purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+  /orders/{orderId}/reject:
+    post:
+      tags: [Orders]
+      summary: Reject a purchase order
+      parameters:
+        - $ref: "#/components/parameters/OrderId"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Rejected purchase order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseOrder"
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: List users
+      responses:
+        "200":
+          description: Users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      tags: [Admin]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreate"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /admin/users/{userId}:
+    patch:
+      tags: [Admin]
+      summary: Update user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+  /admin/audit-logs:
+    get:
+      tags: [Admin]
+      summary: List audit logs
+      parameters:
+        - $ref: "#/components/parameters/FromDate"
+        - $ref: "#/components/parameters/ToDate"
+      responses:
+        "200":
+          description: Audit logs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    deviceKeyAuth:
+      type: apiKey
+      in: header
+      name: X-Device-Key
+  parameters:
+    WardId:
+      name: wardId
+      in: path
+      required: true
+      schema:
+        type: string
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+    TankId:
+      name: tankId
+      in: path
+      required: true
+      schema:
+        type: string
+    AlertId:
+      name: alertId
+      in: path
+      required: true
+      schema:
+        type: string
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+    FromDate:
+      name: from
+      in: query
+      schema:
+        type: string
+        format: date-time
+    ToDate:
+      name: to
+      in: query
+      schema:
+        type: string
+        format: date-time
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+  schemas:
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [ok, user, access_token, refresh_token, expires_in]
+      properties:
+        ok:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/User"
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+    TokenPair:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+    User:
+      type: object
+      required: [id, username, role, status]
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, nurse-supervisor, maintenance, viewer]
+        status:
+          type: string
+          enum: [active, disabled, pending]
+        last_login_at:
+          type: string
+          format: date-time
+    UserCreate:
+      type: object
+      required: [username, email, role]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+    UserUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+    Ward:
+      type: object
+      required: [id, name, status]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subtitle:
+          type: string
+        status:
+          type: string
+          enum: [normal, warning, critical, offline, maintenance]
+        accent:
+          type: string
+        map_position:
+          type: object
+          additionalProperties: true
+    WardCreate:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+        subtitle:
+          type: string
+    WardUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        subtitle:
+          type: string
+        status:
+          type: string
+    Device:
+      type: object
+      required: [id, serial, ward_id, status]
+      properties:
+        id:
+          type: string
+        serial:
+          type: string
+        ward_id:
+          type: string
+        tank_id:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, maintenance, retired]
+        firmware_version:
+          type: string
+        last_seen_at:
+          type: string
+          format: date-time
+    DeviceCreate:
+      type: object
+      required: [serial, ward_id]
+      properties:
+        serial:
+          type: string
+        ward_id:
+          type: string
+        tank_id:
+          type: string
+        firmware_version:
+          type: string
+    DeviceUpdate:
+      type: object
+      properties:
+        ward_id:
+          type: string
+        tank_id:
+          type: string
+        status:
+          type: string
+        firmware_version:
+          type: string
+    Tank:
+      type: object
+      required: [id, serial, ward_id, max_volume_litres, volume_remaining_litres, pressure_psi, flow_lpm, status]
+      properties:
+        id:
+          type: string
+        serial:
+          type: string
+        name:
+          type: string
+        ward_id:
+          type: string
+        station:
+          type: string
+        max_volume_litres:
+          type: number
+        volume_remaining_litres:
+          type: number
+        pressure_psi:
+          type: number
+        flow_lpm:
+          type: number
+        status:
+          type: string
+          enum: [normal, warning, critical, empty, offline, maintenance]
+        active:
+          type: boolean
+    TankUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        ward_id:
+          type: string
+        station:
+          type: string
+        active:
+          type: boolean
+        status:
+          type: string
+    TelemetryReadingCreate:
+      type: object
+      required: [device_id, observed_at]
+      properties:
+        device_id:
+          type: string
+        tank_id:
+          type: string
+        ward_id:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+        pressure_psi:
+          type: number
+          minimum: 0
+        flow_lpm:
+          type: number
+          minimum: 0
+        volume_remaining_litres:
+          type: number
+          minimum: 0
+        valve_open:
+          type: boolean
+        occupied:
+          type: boolean
+        battery_percent:
+          type: number
+          minimum: 0
+          maximum: 100
+        signal_rssi:
+          type: number
+    PatientAssignmentCreate:
+      type: object
+      required: [anonymized_patient_id, ward_id, station, prescribed_flow_lpm]
+      properties:
+        anonymized_patient_id:
+          type: string
+          example: PT-0035
+        ward_id:
+          type: string
+        bed_id:
+          type: string
+        station:
+          type: string
+        prescribed_flow_lpm:
+          type: number
+          minimum: 0
+          description: Prescribed oxygen flow SetValue.
+        set_value_lpm:
+          type: number
+          minimum: 0
+          description: Alias of prescribed_flow_lpm for UI labels that use SetValue.
+        status:
+          type: string
+          enum: [active, paused]
+          default: active
+    PatientAssignmentUpdate:
+      type: object
+      properties:
+        ward_id:
+          type: string
+        bed_id:
+          type: string
+        station:
+          type: string
+        prescribed_flow_lpm:
+          type: number
+          minimum: 0
+          description: Prescribed oxygen flow SetValue.
+        set_value_lpm:
+          type: number
+          minimum: 0
+          description: Alias of prescribed_flow_lpm for UI labels that use SetValue.
+        status:
+          type: string
+          enum: [active, paused, discharged]
+    PatientAssignment:
+      allOf:
+        - $ref: "#/components/schemas/PatientAssignmentCreate"
+        - type: object
+          required: [id, live_reading_lpm, flow_variance_percent, alert_status, created_at]
+          properties:
+            id:
+              type: string
+            actual_flow_lpm:
+              type: number
+              deprecated: true
+              description: Use live_reading_lpm.
+            live_reading_lpm:
+              type: number
+              description: Current live oxygen flow reading for the patient.
+            flow_variance_percent:
+              type: number
+              description: ((live_reading_lpm - prescribed_flow_lpm) / prescribed_flow_lpm) * 100.
+            alert_status:
+              type: string
+              enum: [normal, high_flow, low_flow]
+              description: low_flow when live reading is below SetValue; normal when equal to SetValue or 1-28% above; high_flow when 29% or more above SetValue.
+            alert_severity:
+              type: string
+              enum: [none, warning, critical]
+              description: Use critical when live reading is more than 40% above SetValue.
+            created_at:
+              type: string
+              format: date-time
+            discharged_at:
+              type: string
+              format: date-time
+    TelemetryReading:
+      allOf:
+        - $ref: "#/components/schemas/TelemetryReadingCreate"
+        - type: object
+          required: [id, received_at]
+          properties:
+            id:
+              type: string
+            received_at:
+              type: string
+              format: date-time
+    TelemetryIngestResult:
+      type: object
+      required: [accepted, rejected]
+      properties:
+        accepted:
+          type: integer
+        rejected:
+          type: integer
+        alert_ids:
+          type: array
+          items:
+            type: string
+    Alert:
+      type: object
+      required: [id, type, severity, status, created_at]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [critical_tank, low_pressure, high_flow, low_flow, ghost_flow, device_offline, leakage]
+        severity:
+          type: string
+          enum: [info, warning, critical]
+        status:
+          type: string
+          enum: [active, acknowledged, escalated, resolved, suppressed]
+        ward_id:
+          type: string
+        tank_id:
+          type: string
+        device_id:
+          type: string
+        patient_assignment_id:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        acknowledged_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+    AlertRule:
+      type: object
+      required: [id, code, enabled, threshold]
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        label:
+          type: string
+        enabled:
+          type: boolean
+        threshold:
+          type: number
+        unit:
+          type: string
+        severity:
+          type: string
+    AlertRuleUpdate:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        threshold:
+          type: number
+        severity:
+          type: string
+    DashboardSummary:
+      type: object
+      properties:
+        active_tanks:
+          type: integer
+        active_patients:
+          type: integer
+          example: 35
+        active_alerts:
+          type: integer
+        critical_tanks:
+          type: integer
+        average_flow_lpm:
+          type: number
+        estimated_wastage_percent:
+          type: number
+        system_status:
+          type: string
+        last_updated_at:
+          type: string
+          format: date-time
+    HeatmapZone:
+      type: object
+      required: [ward_id, label, state]
+      properties:
+        ward_id:
+          type: string
+        label:
+          type: string
+        state:
+          type: string
+          enum: [normal, high_usage, ghost_flow, offline, maintenance]
+        flow_lpm:
+          type: number
+        active_alerts:
+          type: integer
+    AnalyticsSeries:
+      type: object
+      properties:
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        group_by:
+          type: string
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    TrendAnalytics:
+      type: object
+      properties:
+        flow:
+          $ref: "#/components/schemas/AnalyticsSeries"
+        pressure:
+          $ref: "#/components/schemas/AnalyticsSeries"
+        alerts:
+          $ref: "#/components/schemas/AnalyticsSeries"
+    DepletionForecast:
+      type: object
+      properties:
+        tank_id:
+          type: string
+        ward_id:
+          type: string
+        current_volume_litres:
+          type: number
+        projected_empty_at:
+          type: string
+          format: date-time
+        risk:
+          type: string
+          enum: [low, medium, high, critical]
+    ReportRequest:
+      type: object
+      required: [type, from, to]
+      properties:
+        type:
+          type: string
+          enum: [operations, critical, wastage, ward, exception, audit, compliance]
+        from:
+          type: string
+          format: date-time
+        to:
+          type: string
+          format: date-time
+        ward_ids:
+          type: array
+          items:
+            type: string
+        format:
+          type: string
+          enum: [pdf, csv, xlsx, json]
+          default: pdf
+    ReportJob:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [queued, running, complete, failed]
+        type:
+          type: string
+        requested_by:
+          type: string
+        requested_at:
+          type: string
+          format: date-time
+        download_url:
+          type: string
+    OrderRecommendation:
+      type: object
+      properties:
+        id:
+          type: string
+        recommended:
+          type: boolean
+        protocol:
+          type: string
+        required_tanks:
+          type: integer
+        projected_shortage_at:
+          type: string
+          format: date-time
+        forecast_snapshot:
+          type: object
+          additionalProperties: true
+    PurchaseOrder:
+      type: object
+      properties:
+        id:
+          type: string
+        recommendation_id:
+          type: string
+        status:
+          type: string
+          enum: [draft, pending_approval, approved, rejected, submitted, acknowledged, delivered, cancelled]
+        supplier:
+          type: string
+        total_cost:
+          type: number
+        currency:
+          type: string
+          default: JMD
+        created_at:
+          type: string
+          format: date-time
+        approved_at:
+          type: string
+          format: date-time
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+        actor_user_id:
+          type: string
+        action:
+          type: string
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time

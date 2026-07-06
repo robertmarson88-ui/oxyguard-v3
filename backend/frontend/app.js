@@ -90,13 +90,27 @@ const dashboardDemoAlertsByWard = {
   recovery: { activeAlerts: 1, critical: 1, warning: 1 },
   labour: { activeAlerts: 1, critical: 1, warning: 2 }
 };
-const dashboardDemoPatientRows = [
-  ["PT-0001", "Paediatric Ward / Station 1", "2 Litre/Min", "3.4 Litre/Min", "+70%", badge("High Flow", "bad"), "Demo high-flow variance"],
-  ["PT-0002", "Recovery Bay / Bay 1", "3 Litre/Min", "1.8 Litre/Min", "-40%", badge("Low Flow", "warn"), "Demo oxygen flow drop"],
-  ["PT-0003", "Labour Ward / Station 3", "4 Litre/Min", "4.2 Litre/Min", "+5%", "", ""],
-  ["PT-0004", "A&E Ward / Station 1", "3 Litre/Min", "4.1 Litre/Min", "+37%", badge("Review", "warn"), "Demo usage spike"],
-  ["PT-0005", "Nurse Station", "2 Litre/Min", "2.0 Litre/Min", "0%", "", ""]
+const ACTIVE_PATIENT_TARGET = 35;
+const patientAlertScenarios = [
+  { ward: "Paediatric Ward / Station 1", setValue: 2, liveReading: 2.7 },
+  { ward: "Recovery Bay / Bay 1", setValue: 3, liveReading: 2.4 },
+  { ward: "Labour Ward / Station 3", setValue: 4, liveReading: 4.2 },
+  { ward: "A&E Ward / Station 1", setValue: 3, liveReading: 4.1 },
+  { ward: "Nurse Station", setValue: 2, liveReading: 2 }
 ];
+const dashboardDemoPatientRows = Array.from({ length: ACTIVE_PATIENT_TARGET }, (_, index) => {
+  const scenario = patientAlertScenarios[index % patientAlertScenarios.length];
+  const status = evaluatePatientFlowStatus(scenario.setValue, scenario.liveReading);
+  return [
+    `PT-${String(index + 1).padStart(4, "0")}`,
+    scenario.ward,
+    formatFlow(scenario.setValue),
+    formatFlow(scenario.liveReading),
+    formatVariance(status.variance),
+    status.badge,
+    status.message
+  ];
+});
 const dashboardDemoDepletionRows = {
   all: [
     ["Paediatric Ward", "Tank C1", "C1-OXY-3017", "60 L (5%)", "3h 10m", badge("Empty", "bad")],
@@ -1005,9 +1019,8 @@ function renderTankRow(t) {
 }
 
 function updateMetrics() {
-  const active = wards.flatMap(w => w.tanks).filter(t => t.active).length;
   const activePatientsEl = document.getElementById("activePatients");
-  if (activePatientsEl) activePatientsEl.textContent = `${active}/40`;
+  if (activePatientsEl) activePatientsEl.textContent = `${ACTIVE_PATIENT_TARGET}/${ACTIVE_PATIENT_TARGET}`;
   const wastageEl = document.getElementById("wastage");
   if (wastageEl) wastageEl.textContent = `${wastage}%`;
   const wastageStatusEl = document.getElementById("wastageStatus");
@@ -1468,7 +1481,7 @@ function renderReport() {
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
     reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad" }),
     reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
-    reportSummaryCard("Active Patients", "94", "On Oxygen Support", colors.purple, "people"),
+    reportSummaryCard("Active Patients", ACTIVE_PATIENT_TARGET, "On Oxygen Support", colors.purple, "people"),
     reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
     reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
   ].join("");
@@ -1616,22 +1629,29 @@ function renderPatientAlerts(activeTanks) {
   const target = document.getElementById("patientAlertsTable");
   if (!target) return;
   const hasLiveAlerts = activeTanks.some(t => t.leakageAlert || t.highFlowAlert || getReportVolumePercent(t) < 10);
-  const liveRows = activeTanks.slice(0, 5).map((tankItem, index) => {
-    const warning = tankItem.highFlowAlert ? "+92%" : tankItem.leakageAlert ? "+55%" : index % 2 ? "+10%" : "-5%";
-    const status = tankItem.highFlowAlert ? badge("Ghost Flow", "bad") : tankItem.leakageAlert ? badge("Low Flow", "warn") : getReportVolumePercent(tankItem) < 10 ? badge("Critical", "bad") : "";
-    const alert = tankItem.highFlowAlert ? "Ghost flow detected" : tankItem.leakageAlert ? "Flow below prescription" : getReportVolumePercent(tankItem) < 10 ? "Critical tank feeding station" : "";
+  const liveRows = Array.from({ length: ACTIVE_PATIENT_TARGET }, (_, index) => {
+    const tankItem = activeTanks[index % Math.max(1, activeTanks.length)];
+    const setValue = Math.max(1, tankItem.flowRate - 1);
+    const liveReading = tankItem.highFlowAlert
+      ? setValue * 1.35
+      : tankItem.leakageAlert
+        ? setValue * 0.8
+        : index % 4 === 0
+          ? setValue
+          : setValue * 1.12;
+    const status = evaluatePatientFlowStatus(setValue, liveReading);
     return [
       `PT-${String(index + 1).padStart(4, "0")}`,
       `${tankItem.wardName} / ${tankItem.station}`,
-      `${Math.max(1, tankItem.flowRate - 1)} Litre/Min`,
-      `${tankItem.flowRate + 0.2} Litre/Min`,
-      warning,
-      status,
-      alert
+      formatFlow(setValue),
+      formatFlow(liveReading),
+      formatVariance(status.variance),
+      status.badge,
+      status.message
     ];
   });
   const rows = hasLiveAlerts ? liveRows : dashboardDemoPatientRows;
-  target.innerHTML = tableHtml(["Patient ID", "Ward / Bed", "Prescribed Flow", "Live Flow", "Variance", "Status", "Alert"], rows);
+  target.innerHTML = tableHtml(["Patient ID", "Ward / Bed", "SetValue", "Live Reading", "Variance", "Status", "Alert"], rows);
 }
 
 function renderLiveTankStatus(activeTanks) {
@@ -3333,6 +3353,41 @@ function tableHtml(headers, rows) {
 
 function badge(text, tone) {
   return `<span class="badge ${tone}">${text}</span>`;
+}
+
+function formatFlow(value) {
+  const rounded = Math.round(value * 10) / 10;
+  return `${Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1)} Litre/Min`;
+}
+
+function formatVariance(value) {
+  const rounded = Math.round(value);
+  return `${rounded > 0 ? "+" : ""}${rounded}%`;
+}
+
+function evaluatePatientFlowStatus(setValue, liveReading) {
+  const variance = setValue > 0 ? ((liveReading - setValue) / setValue) * 100 : 0;
+  if (liveReading < setValue) {
+    return {
+      variance,
+      badge: badge("Low Flow", "warn"),
+      message: "Live reading is below prescribed SetValue."
+    };
+  }
+  if (variance >= 29) {
+    return {
+      variance,
+      badge: badge("High Flow", variance > 40 ? "bad" : "warn"),
+      message: variance > 40
+        ? "Critical high flow: live reading is more than 40% above SetValue."
+        : "High flow: live reading is 29% to 40% above SetValue."
+    };
+  }
+  return {
+    variance,
+    badge: badge("Normal", "good"),
+    message: "Live reading is equal to SetValue or within 1% to 28% above SetValue."
+  };
 }
 
 function estimateDepletion(t) {
