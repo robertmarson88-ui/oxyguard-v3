@@ -264,13 +264,15 @@ function start() {
   document.getElementById("confirmOrder")?.addEventListener("click", () => {
     window.alert("Order confirmed. Purchase order AUTO-PO-2026-0418-01 is pending supplier acknowledgement.");
   });
-  document.getElementById("adminAddUserButton")?.addEventListener("click", () => {
-    window.alert("Demo action: open the add user workflow.");
-  });
+  document.getElementById("adminAddUserButton")?.addEventListener("click", openUserManagement);
+  document.getElementById("manageUsersButton")?.addEventListener("click", openUserManagement);
   document.getElementById("adminAddDeviceButton")?.addEventListener("click", () => {
     window.alert("Demo action: open the device registration workflow.");
   });
   document.getElementById("closeDialog").addEventListener("click", () => document.getElementById("wardDialog").close());
+  document.getElementById("closeUserDialog")?.addEventListener("click", () => document.getElementById("userDialog")?.close());
+  document.getElementById("createUserForm")?.addEventListener("submit", createUser);
+  document.getElementById("updateUserForm")?.addEventListener("submit", updateUserPermission);
   document.getElementById("closeHeatMapDialog")?.addEventListener("click", () => document.getElementById("heatMapDialog")?.close());
   document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("keydown", event => {
@@ -558,6 +560,7 @@ function applyRoleAccess() {
   document.querySelectorAll(".side-button[data-view]").forEach(button => {
     button.hidden = !access.allowedViews.includes(button.dataset.view);
   });
+  updateUserCount();
   document.getElementById("sidebarUser").innerHTML = currentUser
     ? `
       <div class="user-avatar">${currentUser.username.slice(0, 1).toUpperCase()}</div>
@@ -1051,6 +1054,174 @@ function updateMetrics() {
     }
   }
   updateNotifications(alerts);
+}
+
+async function openUserManagement() {
+  await renderUsers();
+  document.getElementById("userMessage").textContent = "";
+  document.getElementById("userDialog").showModal();
+}
+
+async function createUser(event) {
+  event.preventDefault();
+  const message = document.getElementById("userMessage");
+  const username = document.getElementById("newUsername").value.trim();
+  const password = document.getElementById("newPassword").value;
+  const roleId = Number(document.getElementById("newUserRole").value);
+
+  try {
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ username, password, role_id: roleId })
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "Unable to create user.");
+    }
+
+    event.target.reset();
+    renderUserData(result.users);
+    message.textContent = "User created successfully.";
+  } catch (error) {
+    message.textContent = error.message;
+  }
+}
+
+async function updateUserPermission(event) {
+  event.preventDefault();
+  const message = document.getElementById("userMessage");
+  const username = document.getElementById("existingUser").value;
+  const roleId = Number(document.getElementById("existingUserRole").value);
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(username)}`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ role_id: roleId })
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "Unable to update permission.");
+    }
+
+    renderUserData(result.users);
+    syncCurrentUser(result.users);
+    message.textContent = "User permission updated.";
+  } catch (error) {
+    message.textContent = error.message;
+  }
+}
+
+async function renderUsers() {
+  try {
+    const response = await fetch("/api/users", { cache: "no-store", headers: authHeaders(false) });
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "Unable to load users.");
+    }
+
+    renderUserData(result.users);
+  } catch (error) {
+    document.getElementById("userMessage").textContent = error.message;
+  }
+}
+
+async function updateUserCount() {
+  const table = document.getElementById("adminUsersTable");
+  if (!table || currentUser?.role !== "admin") return;
+
+  try {
+    const response = await fetch("/api/users", { cache: "no-store", headers: authHeaders(false) });
+    const result = await response.json();
+    if (result.ok) renderUserData(result.users);
+  } catch {
+    // The static admin table remains visible if the live user list cannot load.
+  }
+}
+
+function renderUserData(users) {
+  const existingUser = document.getElementById("existingUser");
+  const existingUserRole = document.getElementById("existingUserRole");
+  const userList = document.getElementById("userList");
+  const adminUsersTable = document.getElementById("adminUsersTable");
+
+  if (existingUser && existingUserRole) {
+    existingUser.innerHTML = users
+      .map(user => `<option value="${escapeHtml(user.username)}">${escapeHtml(user.username)}</option>`)
+      .join("");
+
+    if (users.length) {
+      existingUserRole.value = String(users[0].role_id);
+    }
+
+    existingUser.onchange = () => {
+      const selectedUser = users.find(user => user.username === existingUser.value);
+      if (selectedUser) existingUserRole.value = String(selectedUser.role_id);
+    };
+  }
+
+  if (userList) {
+    userList.innerHTML = users.map(user => `
+      <article>
+        <strong>${escapeHtml(user.username)}</strong>
+        <span>${escapeHtml(user.label)}</span>
+      </article>
+    `).join("");
+  }
+
+  if (adminUsersTable) {
+    adminUsersTable.innerHTML = `
+      <table class="admin-table">
+        <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${users.map(user => `
+            <tr>
+              <td><strong>${escapeHtml(user.username)}</strong><br><small>${escapeHtml(user.email || "")}</small></td>
+              <td>${adminRoleBadge(user.label)}</td>
+              <td>${adminStatusBadge("Active")}</td>
+              <td><button class="admin-row-action" type="button" aria-label="Manage ${escapeHtml(user.username)}">...</button></td>
+            </tr>
+          `).join("")}
+        </tbody>
+      </table>
+    `;
+  }
+}
+
+function authHeaders(includeContentType = true) {
+  const headers = includeContentType ? { "content-type": "application/json" } : {};
+  if (currentUser?.accessToken) {
+    headers.authorization = `Bearer ${currentUser.accessToken}`;
+  }
+  return headers;
+}
+
+function syncCurrentUser(users) {
+  const updatedUser = users.find(user => user.username === currentUser?.username);
+  if (!updatedUser) return;
+
+  currentUser = {
+    ...currentUser,
+    role: updatedUser.role,
+    role_id: updatedUser.role_id,
+    label: updatedUser.label
+  };
+  sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
+  applyRoleAccess();
+  updateCurrentUserDisplay();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function renderLowVolumeList(lowVolume) {
