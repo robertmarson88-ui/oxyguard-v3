@@ -210,6 +210,12 @@
                 <strong class="status-ok">Monitoring</strong>
                 <small>Auto Refresh: 10 sec</small>
               </article>
+              <article class="metric-card admin-user-card" data-role-required="admin">
+                <span>User Management</span>
+                <strong id="userCount">--</strong>
+                <small>Create users or change permissions</small>
+                <button type="button" id="manageUsersButton">Manage Users</button>
+              </article>
             </div>
           </section>
 
@@ -414,6 +420,59 @@
         <button id="closeDialog" aria-label="Close">Close</button>
       </div>
       <div id="dialogBody" class="dialog-body"></div>
+    </dialog>
+
+    <dialog class="user-dialog" id="userDialog">
+      <div class="dialog-head">
+        <h2>User Management</h2>
+        <button id="closeUserDialog" aria-label="Close user management">Close</button>
+      </div>
+      <section class="user-manager">
+        <form class="user-form" id="createUserForm">
+          <h3>Create User</h3>
+          <label>
+            Username
+            <input id="newUsername" type="text" autocomplete="off" required />
+          </label>
+          <label>
+            Password
+            <input id="newPassword" type="password" autocomplete="new-password" required />
+          </label>
+          <label>
+            Permission
+            <select id="newUserRole">
+              <option value="5">Nurse</option>
+              <option value="4">Nurse Manager</option>
+              <option value="3">Facilities Manager</option>
+              <option value="2">Executive / CFO</option>
+              <option value="1">Administrator</option>
+            </select>
+          </label>
+          <button type="submit">Create User</button>
+        </form>
+
+        <form class="user-form" id="updateUserForm">
+          <h3>Modify Permission</h3>
+          <label>
+            User
+            <select id="existingUser"></select>
+          </label>
+          <label>
+            Permission
+            <select id="existingUserRole">
+              <option value="5">Nurse</option>
+              <option value="4">Nurse Manager</option>
+              <option value="3">Facilities Manager</option>
+              <option value="2">Executive / CFO</option>
+              <option value="1">Administrator</option>
+            </select>
+          </label>
+          <button type="submit">Update Permission</button>
+        </form>
+
+        <section class="user-list" id="userList"></section>
+      </section>
+      <p class="user-message" id="userMessage"></p>
     </dialog>
 
     <script type="module" src="./app.js?v=20260621-stable"></script>

@@ -37,6 +37,28 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "GET" && apiPath === "/users") {
+      const session = requireAdmin(req, res, auth);
+      if (!session) return true;
+      sendJson(res, 200, { ok: true, users: listUsers(db) });
+      return true;
+    }
+
+    if (req.method === "POST" && apiPath === "/users") {
+      const session = requireAdmin(req, res, auth);
+      if (!session) return true;
+      await createUser(req, res, db, session.user);
+      return true;
+    }
+
+    const userMatch = apiPath.match(/^\/users\/([^/]+)$/);
+    if (req.method === "PATCH" && userMatch) {
+      const session = requireAdmin(req, res, auth);
+      if (!session) return true;
+      await updateUserRole(req, res, db, decodeURIComponent(userMatch[1]), session.user);
+      return true;
+    }
+
     if (req.method === "POST" && apiPath === "/telemetry") {
       await createTelemetry(req, res, db);
       return true;
@@ -132,6 +154,121 @@ function requireAuthorized(req, res, auth, permissionName) {
     return null;
   }
   return result.session;
+}
+
+function requireAdmin(req, res, auth) {
+  const result = auth.authorizeRequest(req, "view_logs");
+  if (!result.ok) {
+    sendJson(res, result.status, { ok: false, message: result.message });
+    return null;
+  }
+
+  if (Number(result.session.user.role_id) !== 1) {
+    sendJson(res, 403, { ok: false, message: "Administrator permission required." });
+    return null;
+  }
+
+  return result.session;
+}
+
+async function createUser(req, res, db, actor) {
+  const { username, password, role_id } = await readJson(req);
+  const normalizedUsername = String(username || "").trim();
+  const roleId = Number(role_id);
+
+  if (!normalizedUsername || !password || !findRole(db, roleId)) {
+    sendJson(res, 400, { ok: false, message: "Enter a username, password, and valid permission." });
+    return;
+  }
+
+  if (db.users.some(user => user.username.toLowerCase() === normalizedUsername.toLowerCase())) {
+    sendJson(res, 409, { ok: false, message: "That username already exists." });
+    return;
+  }
+
+  const user = {
+    user_id: nextUserId(db),
+    username: normalizedUsername,
+    email: `${normalizedUsername.toLowerCase()}@oxyguard.local`,
+    email_verified: true,
+    password,
+    password_hash: `demo-plain:${password}`,
+    role_id: roleId,
+    created_at: new Date().toISOString()
+  };
+
+  if (db.pgPool) {
+    await db.pgPool.query(
+      `insert into public.users (user_id, username, email, email_verified, password_hash, role_id, created_at)
+       values ($1, $2, $3, true, $4, $5, $6)`,
+      [user.user_id, user.username, user.email, user.password_hash, user.role_id, user.created_at]
+    );
+  }
+
+  db.users.push(user);
+  addAuditLog(db, actor, "Create User", user.username);
+  sendJson(res, 201, { ok: true, users: listUsers(db) });
+}
+
+async function updateUserRole(req, res, db, username, actor) {
+  const { role_id } = await readJson(req);
+  const roleId = Number(role_id);
+  const user = db.users.find(item => item.username === username);
+
+  if (!user || !findRole(db, roleId)) {
+    sendJson(res, 404, { ok: false, message: "User not found or permission is invalid." });
+    return;
+  }
+
+  user.role_id = roleId;
+
+  if (db.pgPool) {
+    await db.pgPool.query(
+      "update public.users set role_id = $1 where username = $2",
+      [roleId, username]
+    );
+  }
+
+  addAuditLog(db, actor, "Update User Role", username);
+  sendJson(res, 200, { ok: true, users: listUsers(db) });
+}
+
+function listUsers(db) {
+  return db.users.map(user => {
+    const role = findRole(db, user.role_id);
+    const isAdministrator = role?.role_name === "Administrator";
+    return {
+      user_id: user.user_id,
+      username: user.username,
+      email: user.email,
+      role: isAdministrator ? "admin" : "viewer",
+      role_id: user.role_id,
+      label: role?.role_name || "Unknown"
+    };
+  });
+}
+
+function findRole(db, roleId) {
+  return db.roles.find(role => Number(role.role_id) === Number(roleId));
+}
+
+function nextUserId(db) {
+  const next = db.users.reduce((max, user) => {
+    const match = String(user.user_id || "").match(/AA(\d+)/);
+    return match ? Math.max(max, Number(match[1])) : max;
+  }, 0) + 1;
+  return `AA${String(next).padStart(3, "0")}`;
+}
+
+function addAuditLog(db, actor, action, target) {
+  db.audit_logs.push({
+    audit_id: db.nextAuditId++,
+    user_id: actor.user_id,
+    action,
+    target_resource: target,
+    target,
+    performed_at: new Date().toISOString()
+  });
 }
 
 function resolveAlert(db, res, alertId, user) {

@@ -73,7 +73,7 @@ export function createAuthService(db) {
       ...(user.password_aliases || []),
       ...(user.passwords || [])
     ].filter(Boolean));
-    return acceptedPasswords.has(password);
+    return acceptedPasswords.has(password) || user.password_hash === `demo-plain:${password}`;
   }
 
   function getPermissionNamesForRole(roleId) {

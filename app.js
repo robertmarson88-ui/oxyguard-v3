@@ -271,6 +271,10 @@ function start() {
     window.alert("Demo action: open the device registration workflow.");
   });
   document.getElementById("closeDialog").addEventListener("click", () => document.getElementById("wardDialog").close());
+  document.getElementById("manageUsersButton")?.addEventListener("click", openUserManagement);
+  document.getElementById("closeUserDialog")?.addEventListener("click", () => document.getElementById("userDialog")?.close());
+  document.getElementById("createUserForm")?.addEventListener("submit", createUser);
+  document.getElementById("updateUserForm")?.addEventListener("submit", updateUserPermission);
   document.getElementById("closeHeatMapDialog")?.addEventListener("click", () => document.getElementById("heatMapDialog")?.close());
   document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("keydown", event => {
@@ -558,6 +562,10 @@ function applyRoleAccess() {
   document.querySelectorAll(".side-button[data-view]").forEach(button => {
     button.hidden = !access.allowedViews.includes(button.dataset.view);
   });
+  document.querySelectorAll("[data-role-required='admin']").forEach(element => {
+    element.hidden = !isAdmin;
+  });
+  updateUserCount();
   document.getElementById("sidebarUser").innerHTML = currentUser
     ? `
       <div class="user-avatar">${currentUser.username.slice(0, 1).toUpperCase()}</div>
@@ -1051,6 +1059,156 @@ function updateMetrics() {
     }
   }
   updateNotifications(alerts);
+}
+
+async function openUserManagement() {
+  await renderUsers();
+  document.getElementById("userMessage").textContent = "";
+  document.getElementById("userDialog").showModal();
+}
+
+async function createUser(event) {
+  event.preventDefault();
+  const message = document.getElementById("userMessage");
+  const username = document.getElementById("newUsername").value.trim();
+  const password = document.getElementById("newPassword").value;
+  const roleId = Number(document.getElementById("newUserRole").value);
+
+  try {
+    const response = await fetch("/api/users", {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ username, password, role_id: roleId })
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "Unable to create user.");
+    }
+
+    event.target.reset();
+    renderUserData(result.users);
+    message.textContent = "User created successfully.";
+  } catch (error) {
+    message.textContent = error.message;
+  }
+}
+
+async function updateUserPermission(event) {
+  event.preventDefault();
+  const message = document.getElementById("userMessage");
+  const username = document.getElementById("existingUser").value;
+  const roleId = Number(document.getElementById("existingUserRole").value);
+
+  try {
+    const response = await fetch(`/api/users/${encodeURIComponent(username)}`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ role_id: roleId })
+    });
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "Unable to update permission.");
+    }
+
+    renderUserData(result.users);
+    syncCurrentUser(result.users);
+    message.textContent = "User permission updated.";
+  } catch (error) {
+    message.textContent = error.message;
+  }
+}
+
+async function renderUsers() {
+  try {
+    const response = await fetch("/api/users", { cache: "no-store", headers: authHeaders(false) });
+    const result = await response.json();
+
+    if (!response.ok || !result.ok) {
+      throw new Error(result.message || "Unable to load users.");
+    }
+
+    renderUserData(result.users);
+  } catch (error) {
+    document.getElementById("userMessage").textContent = error.message;
+  }
+}
+
+async function updateUserCount() {
+  const userCount = document.getElementById("userCount");
+  if (!userCount || currentUser?.role !== "admin") return;
+
+  try {
+    const response = await fetch("/api/users", { cache: "no-store", headers: authHeaders(false) });
+    const result = await response.json();
+    userCount.textContent = result.ok ? String(result.users.length) : "--";
+  } catch {
+    userCount.textContent = "--";
+  }
+}
+
+function renderUserData(users) {
+  const existingUser = document.getElementById("existingUser");
+  const existingUserRole = document.getElementById("existingUserRole");
+  const userList = document.getElementById("userList");
+  const userCount = document.getElementById("userCount");
+
+  existingUser.innerHTML = users
+    .map(user => `<option value="${escapeHtml(user.username)}">${escapeHtml(user.username)}</option>`)
+    .join("");
+
+  if (users.length) {
+    existingUserRole.value = String(users[0].role_id);
+  }
+
+  existingUser.onchange = () => {
+    const selectedUser = users.find(user => user.username === existingUser.value);
+    if (selectedUser) existingUserRole.value = String(selectedUser.role_id);
+  };
+
+  userList.innerHTML = users.map(user => `
+    <article>
+      <strong>${escapeHtml(user.username)}</strong>
+      <span>${escapeHtml(user.label)}</span>
+    </article>
+  `).join("");
+
+  if (userCount) {
+    userCount.textContent = String(users.length);
+  }
+}
+
+function authHeaders(includeContentType = true) {
+  const headers = includeContentType ? { "content-type": "application/json" } : {};
+  if (currentUser?.accessToken) {
+    headers.authorization = `Bearer ${currentUser.accessToken}`;
+  }
+  return headers;
+}
+
+function syncCurrentUser(users) {
+  const updatedUser = users.find(user => user.username === currentUser?.username);
+  if (!updatedUser) return;
+
+  currentUser = {
+    ...currentUser,
+    role: updatedUser.role,
+    role_id: updatedUser.role_id,
+    label: updatedUser.label
+  };
+  sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
+  applyRoleAccess();
+  updateCurrentUserDisplay();
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
 function renderLowVolumeList(lowVolume) {
