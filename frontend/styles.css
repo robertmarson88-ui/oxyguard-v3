@@ -6174,6 +6174,434 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   max-height: 312px;
 }
 
+/* 2026 mobile refresh: cleaner density, stronger scanning, and touch-friendly layout. */
+:root {
+  --refresh-bg: #f4f7fb;
+  --refresh-panel: #ffffff;
+  --refresh-panel-soft: #f9fbfe;
+  --refresh-ink: #102033;
+  --refresh-muted: #5f7188;
+  --refresh-line: #d8e3ef;
+  --refresh-blue: #1267b8;
+  --refresh-green: #11865b;
+  --refresh-amber: #c68411;
+  --refresh-red: #c93545;
+  --refresh-radius: 8px;
+  --refresh-shadow: 0 8px 24px rgba(12, 31, 55, 0.07);
+}
+
+body {
+  background: var(--refresh-bg);
+  color: var(--refresh-ink);
+}
+
+.login-screen {
+  background:
+    linear-gradient(135deg, rgba(8, 52, 92, 0.96), rgba(12, 32, 55, 0.98)),
+    #0c2037;
+}
+
+.login-card,
+.sidebar-user,
+.report-card,
+.alert-panel,
+.order-summary-page .order-panel,
+.order-summary-page .order-recommendation,
+.admin-panel,
+.metrics-panel,
+.ward-card,
+.pipeline-tab,
+.report-center-card,
+.v5-dashboard .report-card {
+  border-radius: var(--refresh-radius) !important;
+  border-color: var(--refresh-line) !important;
+  box-shadow: var(--refresh-shadow) !important;
+}
+
+.topbar {
+  background: linear-gradient(135deg, #1267b8, #0f365f);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+body:not(.login-active) .sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 34%),
+    #0f2238;
+}
+
+body:not(.login-active) .side-button {
+  min-height: 42px;
+  border-radius: 8px;
+}
+
+body:not(.login-active) .side-button:hover,
+body:not(.login-active) .side-button.active {
+  background: #1e6aa9;
+  box-shadow: inset 3px 0 0 #7ec7ff;
+}
+
+.v5-dashboard,
+.report-center,
+.alert-monitoring,
+.order-summary-page,
+.administration,
+.analytics {
+  background: linear-gradient(180deg, #f8fbfe 0%, #eef4fa 100%);
+}
+
+.v5-kpi-grid {
+  gap: 12px;
+}
+
+.v5-kpi-card {
+  min-height: 118px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%) !important;
+}
+
+.v5-kpi-card strong {
+  color: #0f365f !important;
+}
+
+.v5-kpi-card small,
+.report-card p,
+.alert-panel p,
+.admin-panel-title p {
+  color: var(--refresh-muted);
+}
+
+.card-toolbar,
+.alert-panel-head,
+.admin-panel-head {
+  gap: 10px;
+}
+
+.report-table,
+.admin-table-wrap,
+.order-table-wrap,
+.alert-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.report-table table,
+.admin-table,
+.order-data-table,
+.alert-table-wrap table {
+  min-width: 620px;
+}
+
+.report-table th,
+.admin-table th,
+.order-data-table th,
+.alert-table-wrap th {
+  background: #f6f9fd;
+  color: #596d84;
+}
+
+.report-table tr:hover td,
+.admin-table tr:hover td,
+.order-data-table tr:hover td,
+.alert-table-wrap tr:hover td {
+  background: #f9fcff;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.badge.good {
+  background: rgba(17, 134, 91, 0.12);
+  color: var(--refresh-green);
+}
+
+.badge.warn {
+  background: rgba(198, 132, 17, 0.14);
+  color: var(--refresh-amber);
+}
+
+.badge.bad {
+  background: rgba(201, 53, 69, 0.12);
+  color: var(--refresh-red);
+}
+
+.primary-report-button,
+.confirm-action,
+.login-card button {
+  background: linear-gradient(180deg, #1976cf, #0f5ca5) !important;
+}
+
+.ghost-report-button,
+.secondary-action,
+.admin-add-button,
+.footer button,
+.dialog-head button {
+  background: #f8fbff !important;
+}
+
+@media (max-width: 1180px) {
+  .alert-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .alert-monitor-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "incidents map"
+      "feed assignment"
+      "wards wards";
+  }
+
+  .alert-ward-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .login-screen {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .login-brand {
+    min-height: 220px;
+    padding: 28px 20px 12px;
+  }
+
+  .login-mark {
+    width: 74px;
+    height: 74px;
+    border-radius: 18px;
+    font-size: 42px;
+  }
+
+  .login-brand strong {
+    font-size: 34px;
+  }
+
+  .login-card {
+    align-self: start;
+    width: min(420px, calc(100vw - 28px));
+    padding: 22px;
+    margin-bottom: 24px;
+  }
+
+  body:not(.login-active) .app {
+    grid-template-columns: 1fr;
+  }
+
+  body:not(.login-active) .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  body:not(.login-active) .logo {
+    min-width: 0;
+    min-height: 54px;
+    padding: 6px;
+  }
+
+  body:not(.login-active) .logo-image {
+    width: 48px;
+    border-radius: 8px;
+  }
+
+  body:not(.login-active) .sidebar-user {
+    min-width: 0;
+    margin: 0;
+    padding: 8px;
+  }
+
+  body:not(.login-active) .sidebar-fill,
+  body:not(.login-active) .sidebar-version {
+    display: none;
+  }
+
+  body:not(.login-active) .sidebar > .side-button,
+  body:not(.login-active) #logoutButton {
+    grid-row: 2;
+    min-width: max-content;
+    min-height: 40px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  body:not(.login-active) .sidebar {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  body:not(.login-active) .topbar {
+    min-height: 64px;
+    align-items: start;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  body:not(.login-active) .topbar h1 {
+    flex: 1 1 100%;
+    font-size: 15px;
+  }
+
+  body:not(.login-active) .topbar-status {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .notification-panel {
+    left: 0;
+    right: auto;
+  }
+
+  .v5-dashboard,
+  .report-center,
+  .alert-monitoring,
+  .order-summary-page,
+  .administration,
+  .analytics {
+    padding: 10px !important;
+  }
+
+  .v5-dashboard-grid,
+  .report-center-grid,
+  .report-alert-tables,
+  .report-live-grid,
+  .analytics-grid,
+  .admin-grid,
+  .order-dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .alert-monitor-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "incidents"
+      "map"
+      "feed"
+      "assignment"
+      "wards";
+  }
+
+  .alert-kpi-grid,
+  .alert-ward-cards,
+  .v5-kpi-grid,
+  .report-executive-grid,
+  .analytics-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .v5-patient-card,
+  .v5-depletion-card,
+  .v5-activity-card,
+  .v5-insights-card,
+  .v5-alerts-ward-card {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .hospital-heatmap {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 560px) {
+  body:not(.login-active) .sidebar {
+    grid-template-columns: 52px minmax(210px, 1fr);
+  }
+
+  body:not(.login-active) .sidebar-user {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  body:not(.login-active) .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  body:not(.login-active) .sidebar-user strong {
+    font-size: 12px;
+  }
+
+  body:not(.login-active) .side-button {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .topbar-status {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .datetime {
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .v5-kpi-grid,
+  .report-executive-grid,
+  .analytics-summary,
+  .alert-kpi-grid,
+  .alert-ward-cards,
+  .critical-overview-grid,
+  .order-recommend-metrics,
+  .order-protocol-box,
+  .report-center-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  .v5-kpi-card {
+    min-height: 92px;
+    padding: 12px !important;
+  }
+
+  .v5-kpi-card strong {
+    font-size: 22px;
+  }
+
+  .report-card,
+  .alert-panel,
+  .admin-panel,
+  .order-summary-page .order-panel,
+  .report-center-card {
+    padding: 12px !important;
+  }
+
+  .report-table table,
+  .admin-table,
+  .order-data-table,
+  .alert-table-wrap table {
+    min-width: 560px;
+  }
+
+  .hospital-heatmap {
+    min-height: 240px;
+  }
+
+  .activity-row {
+    grid-template-columns: 48px 30px minmax(0, 1fr);
+  }
+
+  dialog {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    margin: auto;
+  }
+}
+
 .administration {
   gap: 12px;
   padding: 14px 16px 16px;
