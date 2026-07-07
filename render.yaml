@@ -11,3 +11,11 @@ services:
         sync: false
       - key: DATABASE_SSL
         value: "true"
+  - type: web
+    name: oxyguard-v3-api
+    runtime: python
+    plan: free
+    rootDir: fastapi_backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/v1/health
