@@ -82,11 +82,7 @@
         <section class="dashboard view" id="dashboardView">
           <section class="report-center">
             <div class="report-center-head">
-              <div>
-                <span>Report Generation Center</span>
-                <h2>Oxygen Report Center</h2>
-                <p>Generate operational, exception, audit, and compliance-ready oxygen reports from ward telemetry and tank activity.</p>
-              </div>
+              <div></div>
               <div class="report-center-controls">
                 <label>
                   <span>Select Report Type</span>
@@ -98,17 +94,21 @@
                   </select>
                 </label>
                 <label>
-                  <span>Start Date</span>
-                  <input id="reportStartDate" type="date" />
-                  <input id="reportStartMonth" type="month" hidden />
-                </label>
-                <label>
-                  <span>End Date</span>
-                  <input id="reportEndDate" type="date" />
+                  <span>Report Month</span>
+                  <input id="reportStartDate" type="date" hidden />
+                  <input id="reportStartMonth" type="month" />
+                  <input id="reportEndDate" type="date" hidden />
                   <input id="reportEndMonth" type="month" hidden />
                 </label>
-                <button type="button" id="printGeneratedReport" class="ghost-report-button">Preview Report</button>
-                <button type="button" id="emailGeneratedReport" class="primary-report-button">Generate Report</button>
+                <button type="button" id="printGeneratedReport" class="ghost-report-button compact-report-button">Preview</button>
+                <button type="button" id="emailGeneratedReport" class="primary-report-button compact-report-button">Generate</button>
+                <div class="report-export-control">
+                  <select id="reportExportFormat" aria-label="Export report format">
+                    <option value="pdf">PDF</option>
+                    <option value="csv">CSV</option>
+                  </select>
+                  <button type="button" id="exportGeneratedReport" class="ghost-report-button compact-report-button">Export</button>
+                </div>
               </div>
             </div>
 
@@ -124,55 +124,55 @@
 
             <section class="report-center-grid" id="generatedReport">
               <article class="report-card report-center-card fill-card">
-                <h3>Exception Report</h3>
+                <h3 id="reportExceptionTitle">Exception Report</h3>
                 <div id="reportExceptionTable" class="report-table"></div>
               </article>
               <article class="report-card report-center-card fill-card">
-                <h3>Tank Depletion Report</h3>
+                <h3 id="reportDepletionTitle">Tank Depletion Report</h3>
                 <div id="reportDepletionTable" class="report-table"></div>
               </article>
               <article class="report-card report-center-card">
-                <h3>Alert Resolution Performance</h3>
+                <h3 id="reportResolutionTitle">Alert Resolution Performance</h3>
                 <div id="reportResolutionPerformance"></div>
               </article>
               <article class="report-card report-center-card">
-                <h3>Device & System Health Report</h3>
+                <h3 id="reportSystemHealthTitle">Device & System Health Report</h3>
                 <div id="reportSystemHealth" class="report-table"></div>
               </article>
               <article class="report-card report-center-card">
-                <h3>Audit Trail Summary</h3>
+                <h3 id="reportAuditTrailTitle">Audit Trail Summary</h3>
                 <div id="reportAuditTrail" class="report-table"></div>
               </article>
               <article class="report-card report-center-card">
-                <h3>Key Recommendations</h3>
+                <h3 id="reportRecommendationsTitle">Key Recommendations</h3>
                 <div id="reportRecommendations" class="recommendation-list"></div>
               </article>
             </section>
 
             <article class="report-card oxygen-waste-card" id="operationsWasteComparisonCard" hidden>
-              <h3>Oxygen Volume Used vs Wastage</h3>
+              <h3 id="operationsWasteTitle">Oxygen Volume Used vs Wastage</h3>
               <div id="operationsWasteComparison"></div>
             </article>
 
             <section class="report-alert-tables">
               <article class="report-card" id="highAbnormalFlowCard">
-                <h3>High Abnormal Flow</h3>
+                <h3 id="highAbnormalFlowTitle">High Abnormal Flow</h3>
                 <div id="highFlowReportCard" class="report-table"></div>
               </article>
               <article class="report-card" id="highAbnormalPressureCard">
-                <h3>High Abnormal Pressure</h3>
+                <h3 id="highAbnormalPressureTitle">High Abnormal Pressure</h3>
                 <div id="highPressureReportCard" class="report-table"></div>
               </article>
             </section>
 
             <article class="report-card monthly-comparison-card">
-              <h3>Monthly Tank Usage Comparison</h3>
+              <h3 id="monthlyComparisonTitle">Monthly Tank Usage Comparison</h3>
               <div id="monthlyUsageComparison" class="report-table"></div>
             </article>
 
             <section class="report-live-grid">
               <article class="report-card wide">
-                <h3>Depletion Detail</h3>
+                <h3 id="reportDepletionDetailTitle">Depletion Detail</h3>
                 <div id="reportDepletionDetailTable" class="report-table"></div>
               </article>
             </section>
@@ -231,7 +231,7 @@
         <section class="report view active-view v5-dashboard" id="reportView">
           <section class="report-summary v5-kpi-grid" id="reportSummary"></section>
 
-          <section class="v5-dashboard-grid">
+          <section class="v5-dashboard-grid" id="operationsDashboardGrid">
             <article class="report-card v5-system-card">
               <h3>System Health</h3>
               <div id="systemHealthPanel" class="system-health-list"></div>
@@ -240,6 +240,7 @@
             <article class="report-card heatmap-card v5-map-card" id="dashboardHeatMapCard" role="button" tabindex="0" aria-label="Open Ward Oxygen Usage Heat Map">
               <div class="heatmap-head">
                 <div>
+                  <span class="heatmap-hospital-name">MONA MERCY MEDICAL</span>
                   <h3>Ward Oxygen Usage Heat Map</h3>
                   <p>Ward intensity and pipeline state from live telemetry.</p>
                 </div>
@@ -311,6 +312,97 @@
               <div id="leakageTable" class="report-table compact-table"></div>
             </article>
 
+          </section>
+          <section class="nurse-supervisor-dashboard" id="nurseSupervisorDashboard" hidden>
+            <article class="report-card nurse-assigned-ward-card">
+              <div class="card-toolbar tight">
+                <h3>Assigned Ward</h3>
+                <span id="nurseAssignedShift">Live</span>
+              </div>
+              <div id="nurseAssignedWard" class="nurse-assigned-ward"></div>
+            </article>
+
+            <article class="report-card nurse-active-alerts-card">
+              <div class="card-toolbar tight">
+                <h3>Active Alerts</h3>
+                <span id="nurseActiveAlertCount">0 active</span>
+              </div>
+              <div id="nurseActiveAlerts" class="report-table compact-table"></div>
+            </article>
+
+            <article class="report-card nurse-current-usage-card">
+              <div class="card-toolbar tight">
+                <h3>Current Usage</h3>
+                <span id="nurseUsageUpdated">Updated now</span>
+              </div>
+              <div id="nurseCurrentUsage" class="nurse-current-usage"></div>
+            </article>
+
+            <article class="report-card nurse-bed-status-card">
+              <div class="card-toolbar tight">
+                <h3>Bed Status</h3>
+                <span id="nurseBedStatusCount">0 beds</span>
+              </div>
+              <div id="nurseBedStatus" class="report-table compact-table"></div>
+            </article>
+          </section>
+
+          <section class="executive-maintenance-dashboard" id="executiveMaintenanceDashboard" hidden>
+            <article class="report-card executive-savings-card">
+              <div class="card-toolbar tight">
+                <h3>Estimated Savings</h3>
+                <span id="executiveSavingsStatus">Month to date</span>
+              </div>
+              <div id="executiveEstimatedSavings" class="executive-metric-panel"></div>
+            </article>
+
+            <article class="report-card executive-leakage-card">
+              <div class="card-toolbar tight">
+                <h3>Leakage Cost</h3>
+                <span id="executiveLeakageStatus">Live estimate</span>
+              </div>
+              <div id="executiveLeakageCost" class="executive-metric-panel"></div>
+            </article>
+
+            <article class="report-card executive-monthly-card">
+              <div class="card-toolbar tight">
+                <h3>Monthly Usage</h3>
+                <span id="executiveUsageStatus">Monthly cost</span>
+              </div>
+              <div id="executiveMonthlyUsage" class="executive-monthly-usage"></div>
+            </article>
+
+            <article class="report-card executive-trend-card">
+              <div class="card-toolbar tight">
+                <h3>Trend Analysis</h3>
+                <span id="executiveTrendStatus">Operational trend</span>
+              </div>
+              <div id="executiveTrendAnalysis" class="executive-trend-analysis"></div>
+            </article>
+
+            <article class="report-card executive-table-card executive-ward-cost-card">
+              <div class="card-toolbar tight">
+                <h3>Ward Cost Ranking</h3>
+                <span>Year to date</span>
+              </div>
+              <div id="executiveWardCostTable" class="report-table compact-table"></div>
+            </article>
+
+            <article class="report-card executive-table-card executive-roi-card">
+              <div class="card-toolbar tight">
+                <h3>Maintenance ROI Actions</h3>
+                <span>Recommended spend</span>
+              </div>
+              <div id="executiveRoiActionTable" class="report-table compact-table"></div>
+            </article>
+
+            <article class="report-card executive-table-card executive-budget-card">
+              <div class="card-toolbar tight">
+                <h3>Budget Forecast</h3>
+                <span>Next 30 days</span>
+              </div>
+              <div id="executiveBudgetForecastTable" class="report-table compact-table"></div>
+            </article>
           </section>
           <p class="v5-privacy-note">All patient information is anonymized to protect privacy. Data shown is for monitoring and operational purposes only.</p>
         </section>
@@ -492,7 +584,7 @@
 
         <footer class="footer">
           <span id="lastUpdated">Last Updated: Just now</span>
-          <button id="resetDemo">Reset Demo</button>
+          <button id="resetData">Reset Data</button>
         </footer>
       </main>
     </div>
@@ -571,6 +663,25 @@
         <section class="user-list" id="userList"></section>
       </section>
       <p class="user-message" id="userMessage"></p>
+    </dialog>
+
+    <dialog class="user-dialog device-dialog" id="deviceDialog">
+      <div class="dialog-head">
+        <h2>Add Device</h2>
+        <button id="closeDeviceDialog" aria-label="Close add device">Close</button>
+      </div>
+      <form class="user-form device-form" id="addDeviceForm">
+        <label>
+          Device ID
+          <input id="newDeviceId" type="text" placeholder="ESP32-F01" autocomplete="off" required />
+        </label>
+        <label>
+          Location
+          <input id="newDeviceLocation" type="text" placeholder="A&E Ward" autocomplete="off" required />
+        </label>
+        <button type="submit">Add Device</button>
+      </form>
+      <p class="user-message" id="deviceMessage"></p>
     </dialog>
 
     <script type="module" src="./app.js?v=20260706-mobile-refresh"></script>
