@@ -151,9 +151,6 @@ createServer(async (req, res) => {
     }
 
     let body = await readFile(target);
-    if (target.endsWith(`${sep}app.js`)) {
-      body = Buffer.from(applyPatientAlertPatch(body.toString("utf8")));
-    }
     res.writeHead(200, {
       "content-type": contentTypes[extname(target)] || "application/octet-stream",
       "cache-control": "no-store, max-age=0"
