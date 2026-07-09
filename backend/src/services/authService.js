@@ -12,7 +12,8 @@ export function createAuthService(db) {
     const role = db.roles.find(item => item.role_id === user.role_id);
     const permissions = getPermissionNamesForRole(user.role_id);
     const accessToken = randomUUID();
-    const isAdministrator = role.role_name === "Administrator";
+    const roleLabel = String(role.role_name || "").toLowerCase();
+    const isAdministrator = roleLabel === "administrator" || roleLabel === "facilities admin";
 
     sessions.set(accessToken, { user, issued_at: new Date().toISOString() });
 
