@@ -10998,3 +10998,67 @@ body:not(.login-active) .main {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Alert card clipping fix */
+.alert-kpi-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+
+.alert-kpi {
+  min-width: 0 !important;
+  min-height: 116px !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  overflow: hidden !important;
+}
+
+.alert-kpi-icon {
+  width: 38px !important;
+  height: 38px !important;
+  font-size: 12px !important;
+}
+
+.alert-kpi-copy {
+  grid-template-rows: auto auto auto !important;
+  gap: 5px !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.alert-kpi-copy span {
+  min-width: 0 !important;
+  font-size: 10px !important;
+  line-height: 1.12 !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.alert-kpi-copy strong,
+.alert-kpi-copy strong span {
+  max-width: 100% !important;
+  font-size: clamp(18px, 1.45vw, 23px) !important;
+  line-height: 1.02 !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.alert-kpi-copy small,
+.alert-kpi-copy small span {
+  max-width: 100% !important;
+  font-size: 10px !important;
+  line-height: 1.18 !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.alert-kpi button {
+  grid-column: 1 / -1 !important;
+  justify-self: center !important;
+  margin-top: 8px !important;
+  font-size: 10px !important;
+}
+
+.live-pipeline .pipe.top {
+  display: none !important;
+}
