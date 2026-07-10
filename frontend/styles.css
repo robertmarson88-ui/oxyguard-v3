@@ -10352,3 +10352,275 @@ body:not(.login-active) .side-button.active {
   padding: 6px 8px !important;
   gap: 7px !important;
 }
+
+/* Render report and dashboard fit cleanup */
+body:not(.login-active) .main {
+  overflow-y: auto !important;
+}
+
+#dashboardView {
+  height: auto !important;
+  min-height: calc(100vh - 64px) !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-center {
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  gap: 12px !important;
+  padding: 14px !important;
+}
+
+#dashboardView .report-center-head,
+#dashboardView .report-generated-top,
+#dashboardView .report-card,
+#dashboardView .report-center-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card {
+  min-height: auto !important;
+  overflow: visible !important;
+  border-radius: 10px !important;
+}
+
+#dashboardView .report-center-head {
+  display: flex !important;
+  align-items: end !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 12px 14px !important;
+}
+
+#dashboardView .report-center-head > div:first-child:empty {
+  display: none !important;
+}
+
+#dashboardView .report-center-controls {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(170px, 0.8fr) auto auto minmax(150px, auto) !important;
+  align-items: end !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+
+#dashboardView .report-center-controls label {
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+#dashboardView .report-center-controls label span {
+  color: #0f4f9a !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+}
+
+#dashboardView .report-center-controls select,
+#dashboardView .report-center-controls input,
+#dashboardView .report-center-controls button,
+#dashboardView .report-center-controls .report-export-control select {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+#dashboardView .report-generated-top {
+  padding: 12px 14px !important;
+}
+
+#dashboardView .generated-summary-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+#dashboardView .generated-summary-title h3,
+#dashboardView .report-center-card h3,
+#dashboardView .report-alert-tables h3,
+#dashboardView .report-live-grid h3,
+#dashboardView .monthly-comparison-card h3,
+#dashboardView .oxygen-waste-card h3 {
+  color: #061a34 !important;
+  font-size: 14px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  margin: 0 0 9px !important;
+}
+
+#dashboardView .generated-summary-title h3 {
+  margin: 0 !important;
+}
+
+#dashboardView #reportGeneratedPeriod {
+  color: #29527d !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+#dashboardView .report-executive-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+#dashboardView .report-exec-card {
+  min-height: 86px !important;
+  padding: 14px !important;
+}
+
+#dashboardView .report-exec-card strong {
+  font-size: 19px !important;
+  line-height: 1.1 !important;
+}
+
+#dashboardView .report-exec-card small,
+#dashboardView .report-exec-card em {
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+#dashboardView .report-center-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-center-card,
+#dashboardView .report-alert-tables .report-card,
+#dashboardView .report-live-grid .report-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card {
+  padding: 12px !important;
+}
+
+#dashboardView .report-alert-tables {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+#dashboardView .report-live-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+#dashboardView .report-table,
+#dashboardView .report-center-card .report-table,
+#dashboardView .monthly-comparison-card .report-table,
+#dashboardView .oxygen-waste-card .report-table,
+#dashboardView .report-alert-tables .report-table,
+#dashboardView .report-live-grid .report-table {
+  width: 100% !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-table table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+#dashboardView .report-table th,
+#dashboardView .report-table td,
+#dashboardView .report-center-card th,
+#dashboardView .report-center-card td {
+  padding: 8px 9px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  vertical-align: middle !important;
+}
+
+#dashboardView .report-table th,
+#dashboardView .report-center-card th {
+  color: #314a67 !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+}
+
+#dashboardView .badge {
+  min-height: 20px !important;
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+}
+
+#dashboardView .oxygen-waste-layout,
+#dashboardView .monthly-usage-card,
+#dashboardView .ward-usage-cost-chart {
+  min-height: auto !important;
+}
+
+#dashboardView .oxygen-waste-chart svg,
+#dashboardView .monthly-usage-line svg,
+#dashboardView .report-trend-lines svg {
+  height: 120px !important;
+}
+
+@media (max-width: 1200px) {
+  #dashboardView .report-executive-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  #dashboardView .report-center-grid,
+  #dashboardView .report-alert-tables {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  #dashboardView .report-center-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #dashboardView .report-center-controls button,
+  #dashboardView .report-center-controls .report-export-control {
+    width: 100% !important;
+  }
+
+  #dashboardView .report-center-controls .report-export-control {
+    display: grid !important;
+    grid-template-columns: 92px 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #dashboardView .report-center {
+    padding: 10px !important;
+  }
+
+  #dashboardView .report-center-head {
+    align-items: stretch !important;
+  }
+
+  #dashboardView .report-center-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  #dashboardView .report-executive-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #dashboardView .generated-summary-title {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  #dashboardView #reportGeneratedPeriod {
+    white-space: normal !important;
+  }
+}
