@@ -984,6 +984,22 @@ function renderRealTimeAlert() {
   const wardTarget = document.getElementById("alertWardCards");
   if (wardTarget) {
     wardTarget.innerHTML = getAlertWardCards().map(renderAlertWardCard).join("");
+    wardTarget.querySelectorAll(".alert-ward-panel").forEach(card => {
+      const toggleCard = () => {
+        const isExpanded = card.classList.contains("expanded");
+        wardTarget.querySelectorAll(".alert-ward-panel.expanded").forEach(openCard => {
+          openCard.classList.remove("expanded");
+        });
+        if (!isExpanded) card.classList.add("expanded");
+      };
+      card.addEventListener("click", toggleCard);
+      card.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleCard();
+        }
+      });
+    });
   }
 
   const assignmentTarget = document.getElementById("patientAssignmentPanel");
@@ -1071,7 +1087,7 @@ function getAlertWardCards() {
 
 function renderAlertWardCard(card) {
   return `
-    <article class="alert-panel alert-ward-panel">
+    <article class="alert-panel alert-ward-panel" tabindex="0" role="button" aria-label="Expand ${card.ward} card">
       <div class="alert-panel-head">
         <h3>${card.ward}</h3>
         <span class="live-dot">Live</span>
@@ -1103,11 +1119,9 @@ function renderAlertPipelineMap() {
       </div>
       <div class="pipe horizontal main"><b></b><b></b><b></b></div>
       <div class="pipe vertical center"><b></b><b></b></div>
-      <div class="pipe horizontal top"><b></b><b></b></div>
       <div class="pipe horizontal bottom"><b></b><b></b></div>
       <div class="pipe vertical branch-left"><b></b></div>
       <div class="pipe vertical branch-right"><b></b></div>
-      <span class="pipe-node"></span>
       <span class="flow-label main">${flowTotal} Litre/Min</span>
       <button class="map-ward ae" type="button">A&E Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "ae")))} Litre/Min</small></button>
       <button class="map-ward paed" type="button">Paediatrics Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "paediatric")))} Litre/Min</small></button>
