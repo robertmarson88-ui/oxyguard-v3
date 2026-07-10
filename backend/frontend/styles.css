@@ -1489,6 +1489,12 @@ body.login-active .app {
   border-color: #ffd166;
 }
 
+.map-ward.nurse {
+  left: calc(50% - 64px);
+  top: 206px;
+  border-color: #f6b15e;
+}
+
 .map-ward.recovery {
   left: 22px;
   top: 188px;
@@ -11066,8 +11072,8 @@ body:not(.login-active) .main {
 /* Alert page layout switch and expansion */
 .alert-monitor-grid {
   grid-template-areas:
-    "wards wards feed"
-    "incidents map assignment" !important;
+    "wards wards assignment"
+    "incidents map feed" !important;
   grid-template-columns: minmax(520px, 1.45fr) minmax(430px, 1.15fr) minmax(240px, 0.62fr) !important;
 }
 

@@ -1124,6 +1124,7 @@ function renderAlertPipelineMap() {
       <div class="pipe vertical branch-right"><b></b></div>
       <span class="flow-label main">${flowTotal} Litre/Min</span>
       <button class="map-ward ae" type="button">A&E Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "ae")))} Litre/Min</small></button>
+      <button class="map-ward nurse" type="button">Nurse Station<small>${Math.round(totalFlow(wards.find(w => w.id === "nurse")))} Litre/Min</small></button>
       <button class="map-ward paed" type="button">Paediatrics Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "paediatric")))} Litre/Min</small></button>
       <button class="map-ward recovery" type="button">Recovery Bay<small>${Math.round(totalFlow(wards.find(w => w.id === "recovery")))} Litre/Min</small></button>
       <button class="map-ward labour" type="button">Labour Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "labour")))} Litre/Min</small></button>
