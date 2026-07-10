@@ -10750,3 +10750,83 @@ body:not(.login-active) .main {
     padding: 7px 9px !important;
   }
 }
+
+/* Report KPI and detail grid cleanup */
+#dashboardView .report-executive-grid {
+  grid-template-columns: repeat(7, minmax(150px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+#dashboardView .report-exec-card {
+  grid-template-columns: 1fr !important;
+  min-height: 96px !important;
+  padding: 14px 16px !important;
+}
+
+#dashboardView .report-exec-card > div {
+  display: grid !important;
+  grid-template-rows: auto auto auto !important;
+  gap: 5px !important;
+  align-content: center !important;
+}
+
+#dashboardView .report-exec-icon {
+  display: none !important;
+}
+
+#dashboardView .report-exec-card small {
+  color: #0b2f55 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#dashboardView .report-exec-card strong {
+  font-size: 22px !important;
+  line-height: 1.05 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#dashboardView .report-exec-card em {
+  color: #52637a !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#dashboardView .report-center-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+#dashboardView .report-center-card {
+  min-height: 300px !important;
+}
+
+#dashboardView .report-center-card.fill-card {
+  min-height: 300px !important;
+}
+
+#dashboardView .report-center-card.wide {
+  grid-column: 1 / -1 !important;
+}
+
+@media (max-width: 1400px) {
+  #dashboardView .report-executive-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 980px) {
+  #dashboardView .report-executive-grid,
+  #dashboardView .report-center-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

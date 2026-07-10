@@ -2616,7 +2616,6 @@ function renderReportCenterSummary(report) {
 
   target.innerHTML = kpis.map(([label, value, note, tone, icon]) => `
     <article class="report-exec-card ${tone}">
-      <span class="report-exec-icon">${icon.toString().slice(0, 2).toUpperCase()}</span>
       <div>
         <small>${label}</small>
         <strong>${value}</strong>
