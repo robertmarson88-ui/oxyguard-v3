@@ -5429,43 +5429,91 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 }
 
 .v5-patient-card {
-  grid-column: 1 / span 2;
+  grid-column: 1 / span 3;
   grid-row: 3;
 }
 
 .v5-depletion-card {
-  grid-column: 3 / span 2;
+  grid-column: 4 / span 2;
   grid-row: 3;
   min-width: 0;
 }
 
 .v5-alerts-ward-card {
-  grid-column: 1 / span 2;
+  grid-column: 1 / span 3;
   grid-row: 4;
 }
 
 .v5-trend-card {
-  grid-column: 3 / span 2;
-  grid-row: 4;
+  grid-column: 1 / span 3;
+  grid-row: 5;
 }
 
 .v5-insights-card {
-  grid-column: 5;
-  grid-row: 3;
+  grid-column: 4 / span 2;
+  grid-row: 4;
   height: 260px;
   min-height: 260px;
   overflow: hidden;
 }
 
 .v5-activity-card {
-  grid-column: 5;
-  grid-row: 4;
+  grid-column: 4 / span 2;
+  grid-row: 5;
 }
 
 .v5-trend-card {
   height: 280px;
   min-height: 280px;
   overflow: hidden;
+}
+
+/* Facilities dashboard row layout refinement */
+.v5-patient-card,
+.v5-depletion-card {
+  height: 300px !important;
+  min-height: 300px !important;
+}
+
+.v5-alerts-ward-card,
+.v5-insights-card {
+  height: 220px !important;
+  min-height: 220px !important;
+}
+
+.v5-alerts-ward-card .report-table {
+  max-height: 150px !important;
+  overflow: hidden !important;
+}
+
+#leakageTable table {
+  font-size: 8.8px !important;
+}
+
+#leakageTable th,
+#leakageTable td {
+  padding: 5px 6px !important;
+  line-height: 1.12 !important;
+}
+
+.v5-insights-card .predictive-list {
+  gap: 6px !important;
+  margin-top: 8px !important;
+}
+
+.v5-insights-card .insight-row {
+  min-height: 30px !important;
+}
+
+.v5-insights-card .insight-row small,
+.v5-insights-card .insight-row em {
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+}
+
+.v5-insights-card .insight-row strong {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
 }
 
 .v5-dashboard h3 {
@@ -10622,5 +10670,57 @@ body:not(.login-active) .main {
 
   #dashboardView #reportGeneratedPeriod {
     white-space: normal !important;
+  }
+}
+
+/* Final facilities dashboard placement */
+@media (min-width: 1180px) {
+  .v5-dashboard-grid {
+    grid-template-columns: minmax(158px, 0.95fr) minmax(170px, 1.12fr) minmax(170px, 1.12fr) minmax(170px, 1.08fr) minmax(162px, 1fr) !important;
+    grid-auto-rows: minmax(104px, auto) !important;
+    align-items: stretch !important;
+  }
+
+  .v5-patient-card {
+    grid-column: 1 / span 3 !important;
+    grid-row: 3 !important;
+    height: 300px !important;
+    min-height: 300px !important;
+  }
+
+  .v5-depletion-card {
+    grid-column: 4 / span 2 !important;
+    grid-row: 3 !important;
+    height: 300px !important;
+    min-height: 300px !important;
+  }
+
+  .v5-alerts-ward-card {
+    grid-column: 1 / span 3 !important;
+    grid-row: 4 !important;
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+
+  .v5-insights-card {
+    grid-column: 4 / span 2 !important;
+    grid-row: 4 !important;
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+
+  .v5-trend-card {
+    grid-column: 1 / span 3 !important;
+    grid-row: 5 !important;
+  }
+
+  .v5-activity-card {
+    grid-column: 4 / span 2 !important;
+    grid-row: 5 !important;
+  }
+
+  .v5-alerts-ward-card .report-table {
+    max-height: 150px !important;
+    overflow: hidden !important;
   }
 }
