@@ -10696,13 +10696,20 @@ body:not(.login-active) .main {
   }
 
   .v5-alerts-ward-card {
-    grid-column: 1 / span 3 !important;
+    grid-column: 1 !important;
     grid-row: 4 !important;
     height: 220px !important;
     min-height: 220px !important;
   }
 
   .v5-insights-card {
+    grid-column: 2 / span 2 !important;
+    grid-row: 4 !important;
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+
+  .v5-activity-card {
     grid-column: 4 / span 2 !important;
     grid-row: 4 !important;
     height: 220px !important;
@@ -10710,17 +10717,36 @@ body:not(.login-active) .main {
   }
 
   .v5-trend-card {
-    grid-column: 1 / span 3 !important;
-    grid-row: 5 !important;
-  }
-
-  .v5-activity-card {
-    grid-column: 4 / span 2 !important;
+    grid-column: 1 / -1 !important;
     grid-row: 5 !important;
   }
 
   .v5-alerts-ward-card .report-table {
-    max-height: 150px !important;
+    max-height: 142px !important;
     overflow: hidden !important;
+  }
+
+  .v5-alerts-ward-card .card-toolbar {
+    margin-bottom: 6px !important;
+  }
+
+  #leakageTable table {
+    font-size: 8px !important;
+  }
+
+  #leakageTable th,
+  #leakageTable td {
+    padding: 4px 5px !important;
+    line-height: 1.08 !important;
+  }
+
+  .v5-activity-card .activity-list {
+    gap: 7px !important;
+    margin-top: 9px !important;
+  }
+
+  .v5-activity-card .activity-list article {
+    min-height: 32px !important;
+    padding: 7px 9px !important;
   }
 }
