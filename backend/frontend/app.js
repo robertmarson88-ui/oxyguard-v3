@@ -2331,7 +2331,7 @@ function renderRecentActivity(alertRows) {
   if (alertRows.length) {
     const activeAlert = alertRows[0];
     entries.push(
-      [formatActivityTime(minutesFromNow(4)), "danger", `${activeAlert.name} ${activeAlert.alertType || "alert"} detected in ${activeAlert.wardName || activeAlert.ward || "Ward C"}`],
+      [formatActivityTime(minutesFromNow(4)), "danger", `${activeAlert.name} ${activeAlert.alertType || "alert"} detected in ${activeAlert.wardName || activeAlert.ward || "A&E Ward"}`],
       [formatActivityTime(minutesFromNow(3)), "good", `Email notification sent to ${notificationEmail}`],
       [formatActivityTime(minutesFromNow(2)), "blue", `Alert reviewed by ${username}`],
       [formatActivityTime(minutesFromNow(1)), "good", "Maintenance ticket opened for oxygen team"]
@@ -2738,7 +2738,7 @@ function renderReportCenterRecommendations() {
     ["Refill Tank B3 within the next 2 hours.", "Current volume is 15%; estimated depletion in 2h 05m.", "High"],
     ["Investigate recurring ghost flow in Paediatrics Ward.", "3 ghost flow incidents recorded this month.", "Medium"],
     ["Schedule maintenance for ESP32-07.", "Intermittent communication issues detected.", "Medium"],
-    ["Review oxygen allocation in Ward C.", "Usage is 18% higher than monthly average.", "Low"]
+    ["Review oxygen allocation in A&E Ward.", "Usage is 18% higher than monthly average.", "Low"]
   ];
   target.innerHTML = items.map(([title, note, priority]) => `
     <article class="recommendation-item ${priority.toLowerCase()}">
@@ -4133,7 +4133,7 @@ function renderHospitalHeatMap() {
     { label: "ICU", className: "icu", state: "normal", meta: "North intake" },
     { label: "Ward A", className: "ward-a", state: zoneState(wards[0]), meta: "A&E feed" },
     { label: "Ward B", className: "ward-b", state: zoneState(wards[1]), meta: "Labour line" },
-    { label: "Ward C", className: "ward-c", state: zoneState(wards[3]), meta: "Recovery line" },
+    { label: "A&E Ward", className: "ward-c", state: zoneState(wards[3]), meta: "Recovery line" },
     { label: "Pediatrics", className: "pediatrics", state: zoneState(wards[2]), meta: "Paediatric feed" },
     { label: "Maternity", className: "maternity", state: zoneState(wards[4]), meta: "Nurse station" },
     { label: "Plant Room", className: "plant-room", state: "normal", meta: "Supply control" },
