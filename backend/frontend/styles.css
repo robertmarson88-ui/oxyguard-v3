@@ -11073,7 +11073,8 @@ body:not(.login-active) .main {
 .alert-monitor-grid {
   grid-template-areas:
     "wards wards assignment"
-    "incidents map feed" !important;
+    "map map assignment"
+    "incidents incidents feed" !important;
   grid-template-columns: minmax(520px, 1.45fr) minmax(430px, 1.15fr) minmax(240px, 0.62fr) !important;
 }
 
@@ -11094,8 +11095,8 @@ body:not(.login-active) .main {
 }
 
 .alert-ward-panel.expanded {
-  grid-column: span 2 !important;
-  min-height: 255px !important;
+  grid-column: 1 / -1 !important;
+  min-height: 320px !important;
   transform: translateY(-2px) !important;
   box-shadow: 0 22px 42px rgba(8, 35, 63, 0.16) !important;
 }

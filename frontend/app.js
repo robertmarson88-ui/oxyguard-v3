@@ -989,8 +989,14 @@ function renderRealTimeAlert() {
         const isExpanded = card.classList.contains("expanded");
         wardTarget.querySelectorAll(".alert-ward-panel.expanded").forEach(openCard => {
           openCard.classList.remove("expanded");
+          openCard.setAttribute("aria-expanded", "false");
         });
-        if (!isExpanded) card.classList.add("expanded");
+        if (!isExpanded) {
+          card.classList.add("expanded");
+          card.setAttribute("aria-expanded", "true");
+        } else {
+          card.setAttribute("aria-expanded", "false");
+        }
       };
       card.addEventListener("click", toggleCard);
       card.addEventListener("keydown", event => {
@@ -1087,7 +1093,7 @@ function getAlertWardCards() {
 
 function renderAlertWardCard(card) {
   return `
-    <article class="alert-panel alert-ward-panel" tabindex="0" role="button" aria-label="Expand ${card.ward} card">
+    <article class="alert-panel alert-ward-panel" tabindex="0" role="button" aria-expanded="false" aria-label="Expand ${card.ward} card">
       <div class="alert-panel-head">
         <h3>${card.ward}</h3>
         <span class="live-dot">Live</span>
