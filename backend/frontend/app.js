@@ -231,6 +231,10 @@ let esp32LastFluctuation = 0;
 let acknowledgedAlertSignature = "";
 let databaseAlertRows = [];
 let databaseAlertsLoaded = false;
+let databaseConnectionStatus = {
+  label: "Checking...",
+  tone: "warn"
+};
 let adminGovernanceSettings = [
   { key: "patientAnonymization", title: "Patient Anonymization", description: "Hide patient identifiers in all modules", value: "Enabled", type: "toggle", enabled: true },
   { key: "dataRetention", title: "Data Retention Period", description: "Automatic data deletion after period", value: "365 Days", options: ["180 Days", "365 Days", "730 Days"] },
@@ -680,6 +684,30 @@ async function loadDatabaseAlerts() {
   }
 }
 
+async function loadDatabaseConnectionStatus() {
+  try {
+    const response = await fetch("/api/health", { cache: "no-store" });
+    if (!response.ok) throw new Error("Health check failed");
+
+    const health = await response.json();
+    const connected = health.database === "supabase"
+      || health.database === "connected"
+      || (health.database_url_configured === true && health.database_error == null && health.status === "healthy");
+
+    databaseConnectionStatus = {
+      label: connected ? "Connected" : "Not Connected",
+      tone: connected ? "good" : "bad"
+    };
+  } catch {
+    databaseConnectionStatus = {
+      label: "Not Connected",
+      tone: "bad"
+    };
+  }
+
+  renderSystemHealth();
+}
+
 function mapDatabaseAlertRow(alert, index) {
   const ward = getWardLabelFromDevice(alert.device_id);
   const priority = mapAlertPriority(alert.severity);
@@ -831,9 +859,11 @@ function resetState() {
   renderAll();
   scheduleSimulation();
   loadNurseStationData();
+  loadDatabaseConnectionStatus();
   timers.push(setInterval(updateClock, 1000));
   timers.push(setInterval(liveTick, 2000));
   timers.push(setInterval(loadNurseStationData, 2500));
+  timers.push(setInterval(loadDatabaseConnectionStatus, 15000));
   timers.push(setInterval(() => {
     flowIndex = (flowIndex + 1) % wards.length;
     updateMetrics();
@@ -2036,7 +2066,7 @@ function renderSystemHealth(status = getEsp32DeviceStatus()) {
     ["ESP32", espStatus, "device", status.offline ? "warn" : "good"],
     ["MQTT", "Connected", "network"],
     ["API Server", "Running", "server"],
-    ["Database", "Healthy", "database"],
+    ["Database", databaseConnectionStatus.label, "database", databaseConnectionStatus.tone],
     ["Last Packet", "2 sec ago", "packet"]
   ];
   target.innerHTML = items.map(([label, value, icon, tone = "good"]) => `
