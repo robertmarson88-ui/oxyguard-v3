@@ -947,19 +947,17 @@ function renderWards() {
 function renderRealTimeAlert() {
   const activeTanks = wards.flatMap(w => w.tanks).filter(t => t.active);
   const alertRows = getAlertIncidentRows();
-  const criticalTanks = activeTanks.filter(t => getReportVolumePercent(t) < 10);
   const activeTankCount = activeTanks.length;
   const totalTankCount = 40;
 
   const kpiGrid = document.getElementById("alertKpiGrid");
   if (kpiGrid) {
     kpiGrid.innerHTML = [
-      alertKpiCard("Critical Alerts", alertRows.filter(r => r.priority === "Critical").length, "Require immediate action", "danger", "View Alerts"),
-      alertKpiCard("Active Alerts", alertRows.length, "Across all wards", "warning", "View All"),
-      alertKpiCard("Total Tanks", `<span id="activePatients">${activeTankCount} / ${totalTankCount}</span>`, "Tanks in use", "blue"),
-      alertKpiCard("System Status", `<span id="systemAlert">Monitoring</span>`, `<span id="alertText">All systems normal</span>`, "success"),
-      alertKpiCard("Wastage Today", `<span id="wastage">${wastage}%</span>`, `<span id="wastageStatus">vs yesterday</span>`, "purple", "+ 8%"),
-      alertKpiCard("Critical Tanks", criticalTanks.length, "Need attention", "danger", "View Tanks")
+      alertKpiCard("Critical Alerts", alertRows.filter(r => r.priority === "Critical").length, "Require immediate action", "danger", "View Alerts", "alert"),
+      alertKpiCard("Active Alerts", alertRows.length, "Across all wards", "warning", "View All", "blank"),
+      alertKpiCard("Total Tanks", `<span id="activePatients">${activeTankCount} / ${totalTankCount}</span>`, "Tanks in use", "blue", "", "blank"),
+      alertKpiCard("System Status", `<span id="systemAlert">Monitoring</span>`, `<span id="alertText">All systems normal</span>`, "success", "", "blank"),
+      alertKpiCard("Wastage Today", `<span id="wastage">${wastage}%</span>`, `<span id="wastageStatus">vs yesterday</span>`, "purple", "+ 8%", "blank")
     ].join("");
   }
 
@@ -1063,11 +1061,13 @@ function renderRealTimeAlert() {
   }
 }
 
-function alertKpiCard(label, value, detail, tone, action = "") {
+function alertKpiCard(label, value, detail, tone, action = "", iconMode = "text") {
   const iconLabels = { danger: "!", warning: "A", blue: "O2", success: "~", purple: "%"};
+  const iconClass = iconMode === "alert" ? " kpi-icon alert" : iconMode === "blank" ? " blank" : "";
+  const iconText = iconMode === "blank" || iconMode === "alert" ? "" : iconLabels[tone] || "O2";
   return `
     <article class="alert-kpi ${tone}">
-      <div class="alert-kpi-icon">${iconLabels[tone] || "O2"}</div>
+      <div class="alert-kpi-icon${iconClass}">${iconText}</div>
       <div class="alert-kpi-copy">
         <span>${label}</span>
         <strong>${value}</strong>

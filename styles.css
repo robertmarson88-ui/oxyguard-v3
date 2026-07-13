@@ -11009,7 +11009,7 @@ body:not(.login-active) .main {
 }
 
 .alert-kpi-grid {
-  grid-template-columns: repeat(6, minmax(170px, 1fr)) !important;
+  grid-template-columns: repeat(5, minmax(170px, 1fr)) !important;
   gap: 12px !important;
 }
 
@@ -11030,6 +11030,17 @@ body:not(.login-active) .main {
   border-radius: 12px !important;
   font-size: 13px !important;
   font-weight: 950 !important;
+}
+
+.alert-kpi-icon.blank {
+  color: transparent !important;
+}
+
+.alert-kpi-icon.kpi-icon.alert {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  color: transparent !important;
 }
 
 .alert-kpi-copy {
@@ -11114,7 +11125,7 @@ body:not(.login-active) .main {
 
 /* Alert card clipping fix */
 .alert-kpi-grid {
-  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
 }
 
 .alert-kpi {
