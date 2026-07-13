@@ -62,8 +62,47 @@ def connect_db():
 
 
 @app.get("/api/v1/health")
-def health() -> dict[str, str]:
-    return {"status": "healthy"}
+def health() -> dict[str, object]:
+    response: dict[str, object] = {
+        "status": "healthy",
+        "database": "not_configured",
+        "database_url_configured": bool(database_url()),
+        "telemetry_rows": len(telemetry_store),
+    }
+
+    if not database_url():
+        return response
+
+    if not database_ready():
+        response.update(
+            {
+                "status": "degraded",
+                "database": "driver_unavailable",
+            }
+        )
+        return response
+
+    try:
+        with connect_db() as conn:
+            with conn.cursor() as cur:
+                cur.execute("select count(*)::int as telemetry_rows from telemetry_logs")
+                row = cur.fetchone()
+        response.update(
+            {
+                "database": "connected",
+                "telemetry_rows": row["telemetry_rows"] if row else 0,
+            }
+        )
+    except Exception as error:
+        response.update(
+            {
+                "status": "degraded",
+                "database": "connection_failed",
+                "database_error": str(error),
+            }
+        )
+
+    return response
 
 
 @app.post("/api/v1/telemetry", status_code=201)
