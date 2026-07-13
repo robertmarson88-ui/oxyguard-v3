@@ -4135,7 +4135,7 @@ function renderMonthlyWastageChart(wardTotals) {
         <div class="wastage-column-chart" title="${month}: ${monthLeakage} tanks wasted">
           ${wardTotals.map(item => {
             const value = item.leakage[index];
-            const height = value === 0 ? 6 : Math.max(16, Math.round((value / maxLeakage) * 78));
+            const height = value === 0 ? 5 : Math.max(12, Math.round((value / maxLeakage) * 50));
             return `
               <div class="wastage-column" title="${item.ward}: ${value} wasted tanks (${currency(value * TANK_COST)})">
                 <strong>${value}</strong>
