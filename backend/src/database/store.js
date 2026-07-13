@@ -104,6 +104,15 @@ async function connectPostgres(Pool) {
 }
 
 async function loadSupabaseTables(pool) {
+  const auditLogColumns = await tableColumns(pool, "audit_logs");
+  const auditTargetSelect = auditLogColumns.has("target_resource")
+    ? "target_resource"
+    : auditLogColumns.has("target")
+      ? "target as target_resource"
+      : "null::text as target_resource";
+  const auditIpSelect = auditLogColumns.has("ip_address")
+    ? "ip_address::text as ip_address"
+    : "null::text as ip_address";
   const [
     roles,
     permissions,
@@ -123,7 +132,7 @@ async function loadSupabaseTables(pool) {
     queryRows(pool, "select device_id, ward_id, created_at, device_name, device_status, last_seen, bed_id from public.devices order by device_id"),
     queryRows(pool, "select log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at from public.telemetry_logs order by log_id"),
     queryRows(pool, "select alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at from public.alerts order by alert_id"),
-    queryRows(pool, "select audit_id, user_id, action, target_resource, ip_address, performed_at from public.audit_logs order by audit_id")
+    queryRows(pool, `select audit_id, user_id, action, ${auditTargetSelect}, ${auditIpSelect}, performed_at from public.audit_logs order by audit_id`)
   ]);
 
   return {
@@ -139,7 +148,8 @@ async function loadSupabaseTables(pool) {
     devices,
     telemetry_logs: telemetryLogs,
     alerts,
-    audit_logs: auditLogs
+    audit_logs: auditLogs,
+    audit_log_columns: [...auditLogColumns]
   };
 }
 
@@ -149,15 +159,20 @@ async function queryRows(pool, sql, params = []) {
 }
 
 async function loadPermissions(pool) {
+  const columnNames = await tableColumns(pool, "permissions");
+  const labelColumn = columnNames.has("permission_key") ? "permission_key" : "permission_name";
+  return queryRows(pool, `select permission_id, ${labelColumn} as permission_name from public.permissions order by permission_id`);
+}
+
+async function tableColumns(pool, tableName) {
   const columns = await queryRows(
     pool,
     `select column_name
      from information_schema.columns
-     where table_schema = 'public' and table_name = 'permissions'`
+     where table_schema = 'public' and table_name = $1`,
+    [tableName]
   );
-  const columnNames = new Set(columns.map(column => column.column_name));
-  const labelColumn = columnNames.has("permission_key") ? "permission_key" : "permission_name";
-  return queryRows(pool, `select permission_id, ${labelColumn} as permission_name from public.permissions order by permission_id`);
+  return new Set(columns.map(column => column.column_name));
 }
 
 async function seedSupabaseDemoAlerts(pool, remote) {

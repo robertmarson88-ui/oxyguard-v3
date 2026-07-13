@@ -3857,16 +3857,50 @@ function renderAdministration() {
     </table>
   `);
 
+  renderAdminAuditTable(auditRows);
+  loadAdminAuditLogs(auditRows);
+}
+
+function renderAdminAuditTable(rows) {
   setOrderHtml("adminAuditTable", `
     <table class="admin-table">
       <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
       <tbody>
-        ${auditRows.map(row => `
+        ${rows.map(row => `
           <tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>
         `).join("")}
       </tbody>
     </table>
   `);
+}
+
+async function loadAdminAuditLogs(fallbackRows) {
+  try {
+    const response = await fetch("/api/audit-logs", { cache: "no-store", headers: authHeaders(false) });
+    const result = await response.json();
+    if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) return;
+    const rows = result.audit_logs.map(log => [
+      formatAdminAuditTime(log.performed_at),
+      escapeHtml(log.username || log.user_id || "System"),
+      escapeHtml(log.action || "Activity"),
+      escapeHtml(log.target_resource || log.ip_address || "Recorded")
+    ]);
+    renderAdminAuditTable(rows.length ? rows : fallbackRows);
+  } catch {
+    renderAdminAuditTable(fallbackRows);
+  }
+}
+
+function formatAdminAuditTime(value) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) return escapeHtml(value || "");
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
 }
 
 function adminRoleBadge(role) {

@@ -85,6 +85,13 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "GET" && apiPath === "/audit-logs") {
+      const session = requireAuthorized(req, res, auth, "view_logs");
+      if (!session) return true;
+      sendJson(res, 200, { ok: true, audit_logs: listAuditLogs(db) });
+      return true;
+    }
+
     const resolveMatch = apiPath.match(/^\/alerts\/(\d+)\/resolve$/);
     if (req.method === "POST" && resolveMatch) {
       const session = requireAuthorized(req, res, auth, "resolve_alert");
@@ -293,11 +300,13 @@ async function addAuditLog(db, actor, action, target, ipAddress = null) {
   if (!db.pgPool) return auditLog;
 
   try {
+    const { columns, values } = buildAuditInsert(db, auditLog);
+    const placeholders = values.map((_, index) => `$${index + 1}`).join(", ");
     const result = await db.pgPool.query(
-      `insert into public.audit_logs (user_id, action, target_resource, ip_address, performed_at)
-       values ($1, $2, $3, $4, $5)
+      `insert into public.audit_logs (${columns.join(", ")})
+       values (${placeholders})
        returning audit_id`,
-      [auditLog.user_id, auditLog.action, auditLog.target_resource, auditLog.ip_address, auditLog.performed_at]
+      values
     );
     const remoteAuditId = result.rows?.[0]?.audit_id;
     if (remoteAuditId) auditLog.audit_id = remoteAuditId;
@@ -306,6 +315,24 @@ async function addAuditLog(db, actor, action, target, ipAddress = null) {
   }
 
   return auditLog;
+}
+
+function buildAuditInsert(db, auditLog) {
+  const availableColumns = new Set(db.audit_log_columns || []);
+  const hasKnownColumns = availableColumns.size > 0;
+  const hasColumn = column => !hasKnownColumns || availableColumns.has(column);
+  const entries = [
+    ["user_id", auditLog.user_id],
+    ["action", auditLog.action],
+    [hasColumn("target_resource") ? "target_resource" : "target", auditLog.target_resource],
+    ["ip_address", auditLog.ip_address],
+    ["performed_at", auditLog.performed_at]
+  ].filter(([column]) => hasColumn(column));
+
+  return {
+    columns: entries.map(([column]) => column),
+    values: entries.map(([, value]) => value)
+  };
 }
 
 async function resolveAlert(db, res, alertId, user) {
@@ -357,6 +384,27 @@ function queryAlerts(db, url) {
     const severityMatches = !severity || alert.severity === severity;
     return resolvedMatches && severityMatches;
   });
+}
+
+function listAuditLogs(db) {
+  const usersById = new Map(db.users.map(user => [String(user.user_id), user]));
+  return db.audit_logs
+    .slice()
+    .sort((a, b) => new Date(b.performed_at) - new Date(a.performed_at))
+    .slice(0, 75)
+    .map(log => {
+      const user = usersById.get(String(log.user_id));
+      return {
+        audit_id: log.audit_id,
+        user_id: log.user_id,
+        username: user?.username || log.user_id,
+        user_label: user?.email || user?.username || log.user_id,
+        action: log.action,
+        target_resource: log.target_resource || log.target || "",
+        ip_address: log.ip_address || null,
+        performed_at: log.performed_at
+      };
+    });
 }
 
 function parseBooleanQuery(value) {
