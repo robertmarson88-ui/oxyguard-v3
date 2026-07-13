@@ -18,6 +18,9 @@ app = FastAPI(
     title="OxyGuard FastAPI Backend",
     version="1.0.0",
     description="Priority FastAPI endpoints for OxyGuard telemetry ingestion and health checks.",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
 
