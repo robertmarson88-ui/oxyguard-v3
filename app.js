@@ -4120,31 +4120,30 @@ function renderMonthlyUsageChart(wardTotals) {
 }
 
 function renderMonthlyWastageChart(wardTotals) {
+  const maxLeakage = Math.max(1, ...wardTotals.flatMap(item => item.leakage));
+
   document.getElementById("monthlyWastageChart").innerHTML = analyticsMonths.map((month, index) => {
     const monthLeakage = sumValues(wardTotals.map(item => item.leakage[index]));
     const monthCost = monthLeakage * TANK_COST;
     return `
-      <div class="month-card wastage-month-card">
+      <div class="month-card wastage-month-card column-month-card">
         <div class="month-metric">
           <strong>${month}</strong>
           <span>${monthLeakage} wasted</span>
           <em>${currency(monthCost)}</em>
         </div>
-        <div class="month-visual">
-          <div class="stacked-bar wastage-stack" title="${month}: ${monthLeakage} tanks wasted">
+        <div class="wastage-column-chart" title="${month}: ${monthLeakage} tanks wasted">
           ${wardTotals.map(item => {
-            const width = item.leakage[index] === 0 ? 3 : Math.max(5, Math.round((item.leakage[index] / Math.max(1, monthLeakage)) * 100));
-            return `<i style="width:${width}%; background:${item.accent}" title="${item.ward}: ${item.leakage[index]} wasted tanks"></i>`;
+            const value = item.leakage[index];
+            const height = value === 0 ? 6 : Math.max(16, Math.round((value / maxLeakage) * 78));
+            return `
+              <div class="wastage-column" title="${item.ward}: ${value} wasted tanks (${currency(value * TANK_COST)})">
+                <strong>${value}</strong>
+                <span style="height:${height}px; background:${item.accent}"></span>
+                <small>${item.ward.replace(" Ward", "").replace("Nurse Station", "Nurse")}</small>
+              </div>
+            `;
           }).join("")}
-          </div>
-          <div class="month-breakdown compact">
-            ${wardTotals.map(item => `
-              <span>
-                <i style="background:${item.accent}"></i>
-                ${item.ward.replace(" Ward", "")}: <b>${item.leakage[index]}</b>
-              </span>
-            `).join("")}
-          </div>
         </div>
       </div>
     `;
