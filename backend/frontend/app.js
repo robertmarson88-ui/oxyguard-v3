@@ -4088,53 +4088,67 @@ function renderAnalytics() {
 }
 
 function renderMonthlyUsageChart(wardTotals) {
-  const maxMonthTotal = Math.max(1, ...analyticsMonths.map((_, index) => {
-    return sumValues(wardTotals.map(item => item.usage[index]));
-  }));
-
   document.getElementById("monthlyUsageChart").innerHTML = analyticsMonths.map((month, index) => {
     const monthTotal = sumValues(wardTotals.map(item => item.usage[index]));
+    const monthCost = monthTotal * TANK_COST;
     return `
-      <div class="month-group">
-        <div class="month-head">
+      <div class="month-card">
+        <div class="month-metric">
           <strong>${month}</strong>
-          <span>${monthTotal} tanks | ${currency(monthTotal * TANK_COST)}</span>
+          <span>${monthTotal} tanks</span>
+          <em>${currency(monthCost)}</em>
         </div>
-        <div class="stacked-bar" title="${month}: ${monthTotal} tanks used">
-          ${wardTotals.map(item => {
-            const width = Math.max(3, Math.round((item.usage[index] / maxMonthTotal) * 100));
-            return `<i style="width:${width}%; background:${item.accent}" title="${item.ward}: ${item.usage[index]} tanks"></i>`;
-          }).join("")}
+        <div class="month-visual">
+          <div class="stacked-bar" title="${month}: ${monthTotal} tanks used">
+            ${wardTotals.map(item => {
+              const width = Math.max(5, Math.round((item.usage[index] / Math.max(1, monthTotal)) * 100));
+              return `<i style="width:${width}%; background:${item.accent}" title="${item.ward}: ${item.usage[index]} tanks"></i>`;
+            }).join("")}
+          </div>
+          <div class="month-breakdown">
+            ${wardTotals.map(item => `
+              <span>
+                <i style="background:${item.accent}"></i>
+                ${item.ward.replace(" Ward", "")}: <b>${item.usage[index]}</b>
+              </span>
+            `).join("")}
+          </div>
         </div>
       </div>
     `;
-  }).join("") + analyticsLegend(wardTotals);
+  }).join("");
 }
 
 function renderMonthlyWastageChart(wardTotals) {
-  const maxLeakage = Math.max(1, ...wardTotals.flatMap(item => item.leakage));
-
   document.getElementById("monthlyWastageChart").innerHTML = analyticsMonths.map((month, index) => {
     const monthLeakage = sumValues(wardTotals.map(item => item.leakage[index]));
+    const monthCost = monthLeakage * TANK_COST;
     return `
-      <div class="month-group">
-        <div class="month-head">
+      <div class="month-card wastage-month-card">
+        <div class="month-metric">
           <strong>${month}</strong>
-          <span>${monthLeakage} tanks wasted | ${currency(monthLeakage * TANK_COST)}</span>
+          <span>${monthLeakage} wasted</span>
+          <em>${currency(monthCost)}</em>
         </div>
-        <div class="wastage-bars">
+        <div class="month-visual">
+          <div class="stacked-bar wastage-stack" title="${month}: ${monthLeakage} tanks wasted">
           ${wardTotals.map(item => {
-            const height = Math.max(8, Math.round((item.leakage[index] / maxLeakage) * 72));
-            return `
-              <span title="${item.ward}: ${item.leakage[index]} wasted tanks (${currency(item.leakage[index] * TANK_COST)})">
-                <i style="height:${height}px; background:${item.accent}"></i>
-              </span>
-            `;
+            const width = item.leakage[index] === 0 ? 3 : Math.max(5, Math.round((item.leakage[index] / Math.max(1, monthLeakage)) * 100));
+            return `<i style="width:${width}%; background:${item.accent}" title="${item.ward}: ${item.leakage[index]} wasted tanks"></i>`;
           }).join("")}
+          </div>
+          <div class="month-breakdown compact">
+            ${wardTotals.map(item => `
+              <span>
+                <i style="background:${item.accent}"></i>
+                ${item.ward.replace(" Ward", "")}: <b>${item.leakage[index]}</b>
+              </span>
+            `).join("")}
+          </div>
         </div>
       </div>
     `;
-  }).join("") + analyticsLegend(wardTotals);
+  }).join("");
 }
 
 function renderTopInsight(id, item, label, tanks, value) {

@@ -1489,6 +1489,12 @@ body.login-active .app {
   border-color: #ffd166;
 }
 
+.map-ward.nurse {
+  left: calc(50% - 64px);
+  top: 206px;
+  border-color: #f6b15e;
+}
+
 .map-ward.recovery {
   left: 22px;
   top: 188px;
@@ -1777,20 +1783,6 @@ body.login-active .app {
   font-weight: 760;
 }
 
-.admin-user-card button {
-  width: fit-content;
-  justify-self: center;
-  margin-top: 4px;
-  border: 0;
-  border-radius: 9px;
-  background: var(--blue);
-  color: #fff;
-  cursor: pointer;
-  padding: 7px 12px;
-  font-size: 12px;
-  font-weight: 760;
-}
-
 .status-ok {
   color: var(--green) !important;
 }
@@ -1992,8 +1984,8 @@ body.login-active .app {
 
 .report-center-controls {
   display: grid;
-  grid-template-columns: minmax(170px, 220px) minmax(132px, 160px) minmax(132px, 160px) auto auto;
-  gap: 10px;
+  grid-template-columns: minmax(170px, 220px) minmax(132px, 160px) minmax(132px, 160px) auto auto minmax(132px, auto);
+  gap: 8px;
   align-items: end;
 }
 
@@ -2021,11 +2013,36 @@ body.login-active .app {
 .ghost-report-button,
 .primary-report-button,
 .inline-action {
-  height: 36px;
-  border-radius: 8px;
-  font-size: 11px;
+  height: 32px;
+  border-radius: 7px;
+  font-size: 10px;
   font-weight: 900;
   cursor: pointer;
+}
+
+.compact-report-button {
+  min-width: 74px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.report-export-control {
+  display: grid;
+  grid-template-columns: 62px minmax(70px, auto);
+  gap: 6px;
+  align-items: end;
+}
+
+.report-export-control select {
+  height: 32px;
+  min-width: 0;
+  border: 1px solid #d7e2ee;
+  border-radius: 7px;
+  background: #fff;
+  color: var(--navy);
+  font-size: 10px;
+  font-weight: 900;
+  padding: 0 8px;
 }
 
 .ghost-report-button {
@@ -2251,6 +2268,103 @@ body.login-active .app {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 7px;
+}
+
+.report-type-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.report-type-metrics article {
+  display: grid;
+  gap: 4px;
+  min-height: 58px;
+  padding: 10px;
+  border: 1px solid #dbe7f2;
+  border-left: 5px solid #2563eb;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.report-type-metrics span {
+  color: #5f6f85;
+  font-size: 9px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.report-type-metrics strong {
+  color: var(--navy);
+  font-size: 17px;
+  font-weight: 950;
+}
+
+.report-type-metrics .metric-tone-0 {
+  border-left-color: #2563eb;
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+}
+
+.report-type-metrics .metric-tone-1 {
+  border-left-color: #16a34a;
+  background: linear-gradient(135deg, #ecfdf5, #ffffff);
+}
+
+.report-type-metrics .metric-tone-2 {
+  border-left-color: #f59e0b;
+  background: linear-gradient(135deg, #fffbeb, #ffffff);
+}
+
+.report-type-metrics .metric-tone-3 {
+  border-left-color: #dc2626;
+  background: linear-gradient(135deg, #fff1f2, #ffffff);
+}
+
+.report-type-metrics .metric-tone-0 strong { color: #1d4ed8; }
+.report-type-metrics .metric-tone-1 strong { color: #15803d; }
+.report-type-metrics .metric-tone-2 strong { color: #b45309; }
+.report-type-metrics .metric-tone-3 strong { color: #dc2626; }
+
+.ward-usage-cost-chart {
+  display: grid;
+  gap: 8px;
+}
+
+.ward-usage-cost-chart article {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.9fr) minmax(120px, 1.4fr) minmax(92px, auto);
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #dbe7f2;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.ward-usage-cost-chart span {
+  color: #0b2f55;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.ward-usage-cost-chart strong {
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.ward-cost-bar {
+  height: 10px;
+  border-radius: 999px;
+  background: #eaf1f8;
+  overflow: hidden;
+}
+
+.ward-cost-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
 }
 
 .resolution-metrics article,
@@ -3558,39 +3672,72 @@ body.login-active .app {
 
 .month-chart {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
-.month-group {
+.month-card {
   display: grid;
-  gap: 7px;
+  grid-template-columns: minmax(120px, 0.18fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid #d8e6f3;
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(243, 249, 255, 0.96)),
+    #ffffff;
+  box-shadow: 0 10px 22px rgba(15, 52, 87, 0.06);
 }
 
-.month-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
+.month-card.wastage-month-card {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 248, 241, 0.96)),
+    #ffffff;
 }
 
-.month-head strong {
-  color: #101828;
-  font-size: 13px;
-  font-weight: 800;
+.month-metric {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: #ffffff;
+  border: 1px solid #e3edf7;
 }
 
-.month-head span {
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 650;
+.month-metric strong {
+  color: #09243f;
+  font-size: 14px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.month-metric span {
+  color: #0f6ecb;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.month-metric em {
+  color: #d92d20;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.month-visual {
+  display: grid;
+  gap: 9px;
+  min-width: 0;
 }
 
 .stacked-bar {
   display: flex;
-  height: 18px;
+  height: 15px;
   overflow: hidden;
-  border-radius: 999px;
-  background: #eef3f7;
+  border: 1px solid #dce9f4;
+  border-radius: 7px;
+  background: #edf5fb;
+  box-shadow: inset 0 1px 2px rgba(15, 52, 87, 0.08);
 }
 
 .stacked-bar i {
@@ -3598,32 +3745,46 @@ body.login-active .app {
   height: 100%;
 }
 
-.wastage-bars {
-  height: 82px;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-items: end;
-  gap: 8px;
-  padding: 8px;
-  border: 1px solid #edf1f5;
-  border-radius: 12px;
-  background: #fbfdff;
+.wastage-stack {
+  background: #fff2e8;
+  border-color: #fed7aa;
 }
 
-.wastage-bars span {
+.month-breakdown {
   display: flex;
-  align-items: end;
-  justify-content: center;
-  height: 100%;
-  border-radius: 999px;
-  background: #eef3f7;
+  flex-wrap: wrap;
+  gap: 6px 8px;
 }
 
-.wastage-bars i {
-  display: block;
-  width: 100%;
-  min-height: 6px;
+.month-breakdown span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 7px;
   border-radius: 999px;
+  background: #f7fbff;
+  color: #314a62;
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1;
+  border: 1px solid #e1edf7;
+}
+
+.month-breakdown.compact span {
+  background: #fffaf5;
+  border-color: #fee3c7;
+}
+
+.month-breakdown i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.month-breakdown b {
+  color: #0b2f54;
+  font-weight: 900;
 }
 
 .analytics-legend {
@@ -5013,6 +5174,278 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   gap: 12px;
 }
 
+.nurse-supervisor-dashboard {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.9fr) minmax(320px, 1.2fr);
+  gap: 12px;
+  align-items: stretch;
+}
+
+.nurse-supervisor-dashboard[hidden] {
+  display: none;
+}
+
+.nurse-assigned-ward-card,
+.nurse-current-usage-card {
+  min-height: 220px;
+}
+
+.nurse-active-alerts-card,
+.nurse-bed-status-card {
+  min-height: 260px;
+  overflow: hidden;
+}
+
+.nurse-ward-hero {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--ward-accent, #2f80ed) 28%, #d7e2ee);
+  border-radius: 8px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--ward-accent, #2f80ed) 14%, #fff), #fff);
+}
+
+.nurse-ward-hero span,
+.nurse-ward-hero small,
+.nurse-ward-metrics span small,
+.nurse-usage-grid small {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.nurse-ward-hero strong {
+  color: #0b2f55;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.nurse-ward-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.nurse-ward-metrics span,
+.nurse-usage-grid span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2eaf3;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #475467;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.nurse-ward-metrics strong,
+.nurse-usage-grid strong {
+  color: #0b2f55;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.nurse-usage-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.nurse-usage-grid span {
+  min-height: 88px;
+}
+
+.nurse-usage-grid strong {
+  font-size: 28px;
+}
+
+.nurse-empty-state {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  border: 1px dashed #d7e2ee;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.executive-maintenance-dashboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.executive-maintenance-dashboard[hidden] {
+  display: none;
+}
+
+.executive-savings-card,
+.executive-leakage-card,
+.executive-monthly-card,
+.executive-trend-card,
+.executive-table-card {
+  min-height: 270px;
+  overflow: hidden;
+}
+
+.executive-ward-cost-card,
+.executive-roi-card {
+  min-height: 300px;
+}
+
+.executive-budget-card {
+  grid-column: 1 / -1;
+  min-height: 240px;
+}
+
+.executive-table-card .report-table {
+  max-height: 220px;
+  overflow: auto;
+}
+
+.executive-budget-card .report-table {
+  max-height: 185px;
+}
+
+.executive-table-card table {
+  min-width: 620px;
+}
+
+.executive-metric-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.executive-metric-hero {
+  display: grid;
+  gap: 8px;
+  padding: 18px;
+  border: 1px solid #dbe8f3;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f7fbff, #ffffff);
+}
+
+.executive-metric-hero.good {
+  border-color: #bfe8d2;
+  background: linear-gradient(135deg, #f1fbf5, #ffffff);
+}
+
+.executive-metric-hero.warn {
+  border-color: #ffe0a6;
+  background: linear-gradient(135deg, #fff9ec, #ffffff);
+}
+
+.executive-metric-hero span,
+.executive-metric-hero small,
+.executive-metric-list small,
+.executive-usage-summary small {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.executive-metric-hero strong {
+  color: #0b2f55;
+  font-size: 34px;
+  line-height: 1;
+}
+
+.executive-metric-list,
+.executive-usage-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.executive-metric-list span,
+.executive-usage-summary span {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid #e2eaf3;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.executive-metric-list strong,
+.executive-usage-summary strong {
+  color: #0b2f55;
+  font-size: 14px;
+}
+
+.executive-maintenance-dashboard .executive-money {
+  color: #dc2626 !important;
+  font-weight: 900;
+}
+
+.executive-usage-bars {
+  display: grid;
+  gap: 10px;
+}
+
+.executive-usage-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 8px;
+  color: #475467;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.executive-usage-row strong {
+  text-align: right;
+}
+
+.executive-usage-row div {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8eef6;
+}
+
+.executive-usage-row i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2f80ed, #27ae60);
+}
+
+.executive-usage-summary {
+  margin-top: 14px;
+}
+
+.executive-total-tank-card {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #dbe8f3;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.executive-total-tank-card span,
+.executive-total-tank-card small {
+  color: #667085;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.executive-total-tank-card strong {
+  color: #0b2f55;
+  font-size: 30px;
+  line-height: 1;
+}
+
 .v5-system-card {
   grid-column: 1;
   grid-row: span 2;
@@ -5049,43 +5482,91 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 }
 
 .v5-patient-card {
-  grid-column: 1 / span 2;
+  grid-column: 1 / span 3;
   grid-row: 3;
 }
 
 .v5-depletion-card {
-  grid-column: 3 / span 2;
+  grid-column: 4 / span 2;
   grid-row: 3;
   min-width: 0;
 }
 
 .v5-alerts-ward-card {
-  grid-column: 1 / span 2;
+  grid-column: 1 / span 3;
   grid-row: 4;
 }
 
 .v5-trend-card {
-  grid-column: 3 / span 2;
-  grid-row: 4;
+  grid-column: 1 / span 3;
+  grid-row: 5;
 }
 
 .v5-insights-card {
-  grid-column: 5;
-  grid-row: 3;
+  grid-column: 4 / span 2;
+  grid-row: 4;
   height: 260px;
   min-height: 260px;
   overflow: hidden;
 }
 
 .v5-activity-card {
-  grid-column: 5;
-  grid-row: 4;
+  grid-column: 4 / span 2;
+  grid-row: 5;
 }
 
 .v5-trend-card {
   height: 280px;
   min-height: 280px;
   overflow: hidden;
+}
+
+/* Facilities dashboard row layout refinement */
+.v5-patient-card,
+.v5-depletion-card {
+  height: 300px !important;
+  min-height: 300px !important;
+}
+
+.v5-alerts-ward-card,
+.v5-insights-card {
+  height: 220px !important;
+  min-height: 220px !important;
+}
+
+.v5-alerts-ward-card .report-table {
+  max-height: 150px !important;
+  overflow: hidden !important;
+}
+
+#leakageTable table {
+  font-size: 8.8px !important;
+}
+
+#leakageTable th,
+#leakageTable td {
+  padding: 5px 6px !important;
+  line-height: 1.12 !important;
+}
+
+.v5-insights-card .predictive-list {
+  gap: 6px !important;
+  margin-top: 8px !important;
+}
+
+.v5-insights-card .insight-row {
+  min-height: 30px !important;
+}
+
+.v5-insights-card .insight-row small,
+.v5-insights-card .insight-row em {
+  font-size: 9px !important;
+  line-height: 1.2 !important;
+}
+
+.v5-insights-card .insight-row strong {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
 }
 
 .v5-dashboard h3 {
@@ -5279,6 +5760,10 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   color: #d97706;
 }
 
+.health-row.bad small {
+  color: #dc2626;
+}
+
 .health-row i {
   width: 10px;
   height: 10px;
@@ -5298,6 +5783,11 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 .health-row.warn i {
   background: #f59e0b;
   box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55);
+}
+
+.health-row.bad i {
+  background: #dc2626;
+  box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.55), 0 0 12px rgba(220, 38, 38, 0.48);
 }
 
 @keyframes healthPulse {
@@ -5399,6 +5889,7 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 
 .oxygen-room {
   position: relative;
+  z-index: 3;
   display: grid;
   place-items: center;
   align-content: center;
@@ -5571,8 +6062,8 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   border-left: 0;
   border-right: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  z-index: 2;
+  background: rgba(215, 226, 238, 0.18);
+  z-index: 1;
 }
 
 .floorplan-pipeline.main {
@@ -5583,6 +6074,9 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   top: 142px;
   left: 118px;
   right: 116px;
+  height: 5px;
+  border: 0;
+  background: rgba(116, 139, 165, 0.2);
 }
 
 .floorplan-wall {
@@ -6188,6 +6682,645 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   max-height: 312px;
 }
 
+/* Final Facilities Admin desktop sizing override */
+@media (min-width: 1181px) {
+  body {
+    font-family: Aptos, Inter, "Segoe UI Variable", "Segoe UI", Roboto, Arial, sans-serif;
+    background: #eef4fa;
+  }
+
+  .v5-dashboard {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .v5-dashboard-grid {
+    grid-template-columns: minmax(150px, 0.85fr) minmax(170px, 1.05fr) minmax(170px, 1.05fr) minmax(170px, 1fr) minmax(170px, 1fr);
+    grid-auto-rows: minmax(96px, auto);
+    gap: 10px;
+  }
+
+  .v5-critical-overview {
+    grid-column: 4 / span 2;
+    grid-row: span 1;
+    min-height: 238px;
+    max-height: 238px;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .critical-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .critical-mini-card {
+    min-height: 48px;
+    padding: 8px 9px;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  .critical-mini-card strong {
+    color: #dc2626;
+    font-size: 16px;
+  }
+
+  .v5-insights-card {
+    padding: 12px !important;
+  }
+
+  .v5-insights-card .predictive-list {
+    gap: 9px;
+    margin-top: 10px;
+  }
+
+  .v5-insights-card .insight-row {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 9px;
+    min-height: 45px;
+    padding: 8px;
+    border: 1px solid #dce8f4;
+    border-radius: 8px;
+    background: #f8fbff;
+  }
+
+  .v5-insights-card .insight-row > span {
+    width: 24px;
+    height: 24px;
+  }
+
+  .v5-insights-card .insight-row small {
+    color: #526173;
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+
+  .v5-insights-card .insight-row strong {
+    color: #092c4c;
+    font-size: 12px;
+    line-height: 1.18;
+    margin-top: 2px;
+    overflow-wrap: anywhere;
+  }
+
+  .v5-insights-card .insight-row em {
+    color: #5f6f83;
+    font-size: 9px;
+    line-height: 1.15;
+    margin-top: 2px;
+  }
+}
+
+/* Facilities Admin dashboard polish */
+:root {
+  --font-ui: Aptos, Inter, "Segoe UI Variable", "Segoe UI", Roboto, Arial, sans-serif;
+  --surface: #ffffff;
+  --surface-soft: #f7faff;
+  --ink: #102033;
+  --ink-soft: #526173;
+  --brand-blue: #075fb8;
+  --brand-cyan: #0ea5e9;
+  --danger-red: #dc2626;
+  --modern-shadow: 0 10px 26px rgba(16, 32, 51, 0.08);
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+  background: #eef4fa;
+}
+
+body:not(.login-active) .topbar {
+  border-bottom: 1px solid #d9e5f0;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+body:not(.login-active) .topbar h1,
+.v5-dashboard .report-card h3,
+.report-card h3 {
+  color: #082844;
+  font-family: var(--font-ui);
+  letter-spacing: 0.02em;
+}
+
+.v5-dashboard {
+  padding: 12px;
+  gap: 10px;
+}
+
+.v5-dashboard .report-card,
+.v5-dashboard .summary-card {
+  border: 1px solid #dbe7f2;
+  background: var(--surface);
+  box-shadow: var(--modern-shadow);
+}
+
+.v5-dashboard-grid {
+  grid-template-columns: minmax(150px, 0.85fr) minmax(170px, 1.05fr) minmax(170px, 1.05fr) minmax(170px, 1fr) minmax(170px, 1fr);
+  grid-auto-rows: minmax(96px, auto);
+  gap: 10px;
+}
+
+.v5-critical-overview {
+  grid-column: 4 / span 2;
+  grid-row: span 1;
+  min-height: 238px;
+  max-height: 238px;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.critical-overview-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 7px;
+}
+
+.critical-mini-card {
+  min-height: 48px;
+  padding: 8px 9px;
+  border-color: #fecaca;
+  border-radius: 8px;
+  background: linear-gradient(145deg, #fff, #fff5f5);
+  box-shadow: none;
+}
+
+.critical-mini-card strong {
+  color: var(--danger-red);
+  font-size: 16px;
+}
+
+.critical-mini-card b {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
+  color: var(--danger-red);
+  background: #fff1f2;
+}
+
+.critical-tank-list {
+  max-height: 84px;
+  overflow: auto;
+}
+
+.critical-tank-list article,
+.activity-list article,
+.predictive-list article {
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.v5-dashboard .report-table th {
+  color: #30465e;
+  background: #f1f6fb;
+}
+
+.v5-dashboard .report-table td {
+  color: #1c3045;
+}
+
+.v5-map-card,
+.v5-system-card,
+.v5-critical-overview {
+  background: linear-gradient(180deg, #ffffff, #f9fcff) !important;
+}
+
+@media (max-width: 1180px) {
+  .v5-critical-overview {
+    max-height: none;
+  }
+}
+
+/* 2026 mobile refresh: cleaner density, stronger scanning, and touch-friendly layout. */
+:root {
+  --refresh-bg: #f4f7fb;
+  --refresh-panel: #ffffff;
+  --refresh-panel-soft: #f9fbfe;
+  --refresh-ink: #102033;
+  --refresh-muted: #5f7188;
+  --refresh-line: #d8e3ef;
+  --refresh-blue: #1267b8;
+  --refresh-green: #11865b;
+  --refresh-amber: #c68411;
+  --refresh-red: #c93545;
+  --refresh-radius: 8px;
+  --refresh-shadow: 0 8px 24px rgba(12, 31, 55, 0.07);
+}
+
+body {
+  background: var(--refresh-bg);
+  color: var(--refresh-ink);
+}
+
+.login-screen {
+  background:
+    linear-gradient(135deg, rgba(8, 52, 92, 0.96), rgba(12, 32, 55, 0.98)),
+    #0c2037;
+}
+
+.login-card,
+.sidebar-user,
+.report-card,
+.alert-panel,
+.order-summary-page .order-panel,
+.order-summary-page .order-recommendation,
+.admin-panel,
+.metrics-panel,
+.ward-card,
+.pipeline-tab,
+.report-center-card,
+.v5-dashboard .report-card {
+  border-radius: var(--refresh-radius) !important;
+  border-color: var(--refresh-line) !important;
+  box-shadow: var(--refresh-shadow) !important;
+}
+
+.topbar {
+  background: linear-gradient(135deg, #1267b8, #0f365f);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+body:not(.login-active) .sidebar {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent 34%),
+    #0f2238;
+}
+
+body:not(.login-active) .side-button {
+  min-height: 42px;
+  border-radius: 8px;
+}
+
+body:not(.login-active) .side-button:hover,
+body:not(.login-active) .side-button.active {
+  background: #1e6aa9;
+  box-shadow: inset 3px 0 0 #7ec7ff;
+}
+
+.v5-dashboard,
+.report-center,
+.alert-monitoring,
+.order-summary-page,
+.administration,
+.analytics {
+  background: linear-gradient(180deg, #f8fbfe 0%, #eef4fa 100%);
+}
+
+.v5-kpi-grid {
+  gap: 12px;
+}
+
+.v5-kpi-card {
+  min-height: 118px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%) !important;
+}
+
+.v5-kpi-card strong {
+  color: #0f365f !important;
+}
+
+.v5-kpi-card small,
+.report-card p,
+.alert-panel p,
+.admin-panel-title p {
+  color: var(--refresh-muted);
+}
+
+.card-toolbar,
+.alert-panel-head,
+.admin-panel-head {
+  gap: 10px;
+}
+
+.report-table,
+.admin-table-wrap,
+.order-table-wrap,
+.alert-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.report-table table,
+.admin-table,
+.order-data-table,
+.alert-table-wrap table {
+  min-width: 620px;
+}
+
+.report-table th,
+.admin-table th,
+.order-data-table th,
+.alert-table-wrap th {
+  background: #f6f9fd;
+  color: #596d84;
+}
+
+.report-table tr:hover td,
+.admin-table tr:hover td,
+.order-data-table tr:hover td,
+.alert-table-wrap tr:hover td {
+  background: #f9fcff;
+}
+
+.badge {
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.badge.good {
+  background: rgba(17, 134, 91, 0.12);
+  color: var(--refresh-green);
+}
+
+.badge.warn {
+  background: rgba(198, 132, 17, 0.14);
+  color: var(--refresh-amber);
+}
+
+.badge.bad {
+  background: rgba(201, 53, 69, 0.12);
+  color: var(--refresh-red);
+}
+
+.primary-report-button,
+.confirm-action,
+.login-card button {
+  background: linear-gradient(180deg, #1976cf, #0f5ca5) !important;
+}
+
+.ghost-report-button,
+.secondary-action,
+.admin-add-button,
+.footer button,
+.dialog-head button {
+  background: #f8fbff !important;
+}
+
+@media (max-width: 1180px) {
+  .alert-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .alert-monitor-grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "incidents map"
+      "feed assignment"
+      "wards wards";
+  }
+
+  .alert-ward-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 860px) {
+  .login-screen {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .login-brand {
+    min-height: 220px;
+    padding: 28px 20px 12px;
+  }
+
+  .login-mark {
+    width: 74px;
+    height: 74px;
+    border-radius: 18px;
+    font-size: 42px;
+  }
+
+  .login-brand strong {
+    font-size: 34px;
+  }
+
+  .login-card {
+    align-self: start;
+    width: min(420px, calc(100vw - 28px));
+    padding: 22px;
+    margin-bottom: 24px;
+  }
+
+  body:not(.login-active) .app {
+    grid-template-columns: 1fr;
+  }
+
+  body:not(.login-active) .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  body:not(.login-active) .logo {
+    min-width: 0;
+    min-height: 54px;
+    padding: 6px;
+  }
+
+  body:not(.login-active) .logo-image {
+    width: 48px;
+    border-radius: 8px;
+  }
+
+  body:not(.login-active) .sidebar-user {
+    min-width: 0;
+    margin: 0;
+    padding: 8px;
+  }
+
+  body:not(.login-active) .sidebar-fill,
+  body:not(.login-active) .sidebar-version {
+    display: none;
+  }
+
+  body:not(.login-active) .sidebar > .side-button,
+  body:not(.login-active) #logoutButton {
+    grid-row: 2;
+    min-width: max-content;
+    min-height: 40px;
+    padding: 0 12px;
+    white-space: nowrap;
+  }
+
+  body:not(.login-active) .sidebar {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
+
+  body:not(.login-active) .topbar {
+    min-height: 64px;
+    align-items: start;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+
+  body:not(.login-active) .topbar h1 {
+    flex: 1 1 100%;
+    font-size: 15px;
+  }
+
+  body:not(.login-active) .topbar-status {
+    width: 100%;
+    margin-left: 0;
+    justify-content: space-between;
+  }
+
+  .notification-panel {
+    left: 0;
+    right: auto;
+  }
+
+  .v5-dashboard,
+  .report-center,
+  .alert-monitoring,
+  .order-summary-page,
+  .administration,
+  .analytics {
+    padding: 10px !important;
+  }
+
+  .v5-dashboard-grid,
+  .report-center-grid,
+  .report-alert-tables,
+  .report-live-grid,
+  .analytics-grid,
+  .admin-grid,
+  .order-dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .alert-monitor-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "incidents"
+      "map"
+      "feed"
+      "assignment"
+      "wards";
+  }
+
+  .alert-kpi-grid,
+  .alert-ward-cards,
+  .v5-kpi-grid,
+  .report-executive-grid,
+  .analytics-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .v5-patient-card,
+  .v5-depletion-card,
+  .v5-activity-card,
+  .v5-insights-card,
+  .v5-alerts-ward-card {
+    height: auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .hospital-heatmap {
+    min-height: 280px;
+  }
+}
+
+@media (max-width: 560px) {
+  body:not(.login-active) .sidebar {
+    grid-template-columns: 52px minmax(210px, 1fr);
+  }
+
+  body:not(.login-active) .sidebar-user {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  body:not(.login-active) .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  body:not(.login-active) .sidebar-user strong {
+    font-size: 12px;
+  }
+
+  body:not(.login-active) .side-button {
+    min-height: 38px;
+    padding: 0 10px;
+    font-size: 11px;
+  }
+
+  .topbar-status {
+    display: grid;
+    grid-template-columns: 42px minmax(0, 1fr);
+  }
+
+  .datetime {
+    width: 100%;
+    min-width: 0;
+    text-align: left;
+  }
+
+  .v5-kpi-grid,
+  .report-executive-grid,
+  .analytics-summary,
+  .alert-kpi-grid,
+  .alert-ward-cards,
+  .critical-overview-grid,
+  .order-recommend-metrics,
+  .order-protocol-box,
+  .report-center-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  .v5-kpi-card {
+    min-height: 92px;
+    padding: 12px !important;
+  }
+
+  .v5-kpi-card strong {
+    font-size: 22px;
+  }
+
+  .report-card,
+  .alert-panel,
+  .admin-panel,
+  .order-summary-page .order-panel,
+  .report-center-card {
+    padding: 12px !important;
+  }
+
+  .report-table table,
+  .admin-table,
+  .order-data-table,
+  .alert-table-wrap table {
+    min-width: 560px;
+  }
+
+  .hospital-heatmap {
+    min-height: 240px;
+  }
+
+  .activity-row {
+    grid-template-columns: 48px 30px minmax(0, 1fr);
+  }
+
+  dialog {
+    width: calc(100vw - 20px);
+    max-width: calc(100vw - 20px);
+    margin: auto;
+  }
+}
+
 .administration {
   gap: 12px;
   padding: 14px 16px 16px;
@@ -6216,6 +7349,13 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
+}
+
+.admin-user-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 .admin-panel-title {
@@ -7546,6 +8686,19 @@ body:not(.login-active) .sidebar-user .permission-preview-menu {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .report-center-controls .report-export-control {
+    grid-column: span 2;
+    grid-template-columns: minmax(0, 1fr) minmax(96px, auto);
+  }
+
+  .nurse-supervisor-dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .executive-maintenance-dashboard {
+    grid-template-columns: 1fr;
+  }
+
   .report-executive-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
@@ -8210,6 +9363,57 @@ body:not(.login-active) .side-button.active {
   background: #eef6ff !important;
 }
 
+.report-center-controls .compact-report-button,
+.report-center-controls .report-export-control select {
+  height: 32px !important;
+  border-radius: 7px !important;
+  font-size: 0.64rem !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}
+
+.report-center-controls .compact-report-button {
+  min-width: 74px;
+  padding: 0 12px;
+}
+
+.report-center-controls .report-export-control {
+  display: grid;
+  grid-template-columns: 62px minmax(70px, auto);
+  gap: 6px;
+  align-items: end;
+}
+
+@media (max-width: 640px) {
+  .report-center-controls .report-export-control {
+    grid-column: auto;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .report-center-controls .compact-report-button {
+    width: 100%;
+  }
+
+  .nurse-ward-metrics,
+  .nurse-usage-grid,
+  .executive-metric-list,
+  .executive-usage-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .nurse-ward-hero strong {
+    font-size: 20px;
+  }
+
+  .executive-metric-hero strong {
+    font-size: 26px;
+  }
+
+  .executive-usage-row {
+    grid-template-columns: 34px minmax(0, 1fr) 84px;
+  }
+}
+
 .danger-action {
   border: 1px solid #fb7185 !important;
   background: #fff7f8 !important;
@@ -8361,4 +9565,1643 @@ input {
   height: 312px;
   min-height: 312px;
   max-height: 312px;
+}
+
+@media (min-width: 1181px) {
+  body {
+    font-family: Aptos, Inter, "Segoe UI Variable", "Segoe UI", Roboto, Arial, sans-serif;
+    background: #eef4fa;
+  }
+
+  .v5-dashboard {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .v5-dashboard-grid {
+    grid-template-columns: minmax(150px, 0.85fr) minmax(170px, 1.05fr) minmax(170px, 1.05fr) minmax(170px, 1fr) minmax(170px, 1fr);
+    grid-auto-rows: minmax(96px, auto);
+    gap: 10px;
+  }
+
+  .v5-critical-overview {
+    grid-column: 4 / span 2;
+    grid-row: span 1;
+    min-height: 238px;
+    max-height: 238px;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .critical-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+
+  .critical-mini-card {
+    min-height: 48px;
+    padding: 8px 9px;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  .critical-mini-card strong {
+    color: #dc2626;
+    font-size: 16px;
+  }
+}
+
+body:not(.login-active) .topbar {
+  border-bottom: 0;
+  background: linear-gradient(135deg, #062b54, #074f91) !important;
+  color: #ffffff;
+}
+
+body:not(.login-active) .topbar h1 {
+  color: #ffffff !important;
+}
+
+body:not(.login-active) .topbar .datetime,
+body:not(.login-active) .topbar .current-user,
+body:not(.login-active) .topbar .notification-button {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+#dashboardView .report-center,
+#dashboardView .report-center-grid,
+#dashboardView .report-alert-tables,
+#dashboardView .report-live-grid {
+  overflow: visible !important;
+}
+
+#dashboardView .report-card,
+#dashboardView .report-center-card {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-center-card.fill-card {
+  display: block !important;
+}
+
+#dashboardView .report-center-card .report-table,
+#dashboardView .report-center-card.fill-card .report-table,
+#dashboardView .report-alert-tables .report-table,
+#dashboardView .report-live-grid .report-table,
+#dashboardView .monthly-comparison-card .report-table,
+#dashboardView .oxygen-waste-card .report-table,
+#dashboardView .report-table {
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-table table,
+#dashboardView .report-center-card.fill-card table {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: auto !important;
+  table-layout: auto !important;
+}
+
+#dashboardView .report-center-card.fill-card tbody tr {
+  height: auto !important;
+}
+
+#dashboardView .report-table th,
+#dashboardView .report-table td,
+#dashboardView .report-center-card th,
+#dashboardView .report-center-card td {
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+  padding: 7px 8px;
+  font-size: 9px;
+  line-height: 1.25;
+}
+
+#dashboardView #reportExceptionTable th:first-child,
+#dashboardView #reportExceptionTable td:first-child,
+#dashboardView #reportAuditTrail th:first-child,
+#dashboardView #reportAuditTrail td:first-child,
+#dashboardView #highFlowReportCard th:first-child,
+#dashboardView #highFlowReportCard td:first-child,
+#dashboardView #highPressureReportCard th:first-child,
+#dashboardView #highPressureReportCard td:first-child {
+  width: 72px !important;
+  max-width: 72px !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+
+#dashboardView #reportAuditTrail th:nth-child(3),
+#dashboardView #reportAuditTrail td:nth-child(3) {
+  min-width: 180px;
+}
+
+#dashboardView .report-center-card h3 {
+  margin-bottom: 8px;
+}
+
+#dashboardView .report-center-card {
+  min-height: 0 !important;
+  padding: 12px !important;
+}
+
+#reportGeneratedPeriod {
+  color: #102033 !important;
+}
+
+@media (min-width: 1181px) {
+  .v5-critical-overview {
+    min-height: 206px !important;
+    max-height: 206px !important;
+    padding: 10px !important;
+    gap: 6px !important;
+  }
+
+  .critical-overview-grid {
+    gap: 5px !important;
+  }
+
+  .critical-mini-card {
+    min-height: 34px !important;
+    padding: 5px 7px !important;
+    border-radius: 7px !important;
+  }
+
+  .critical-mini-card span,
+  .critical-mini-card small {
+    font-size: 7px !important;
+    line-height: 1 !important;
+  }
+
+  .critical-mini-card strong {
+    margin-top: 2px !important;
+    font-size: 13px !important;
+  }
+
+  .critical-mini-card b {
+    width: 18px !important;
+    height: 18px !important;
+    flex-basis: 18px !important;
+    font-size: 7px !important;
+  }
+
+  .v5-critical-overview .card-toolbar.tight {
+    margin-bottom: 5px !important;
+  }
+
+  .critical-tank-list {
+    min-height: 0 !important;
+    max-height: 60px !important;
+    overflow: auto !important;
+  }
+
+  .critical-tank-board {
+    max-height: 60px !important;
+    gap: 4px !important;
+  }
+
+  .critical-tank-item {
+    min-height: 32px !important;
+    padding: 5px 7px !important;
+    border-radius: 7px !important;
+  }
+
+  .critical-tank-item strong {
+    font-size: 9px !important;
+  }
+
+  .critical-tank-item span {
+    font-size: 7px !important;
+  }
+}
+
+.admin-setting-select {
+  min-width: 118px;
+  height: 30px;
+  border: 1px solid #d5e2ef;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0b2f55;
+  font: inherit;
+  font-size: 0.68rem;
+  font-weight: 850;
+  padding: 0 8px;
+}
+
+.admin-setting-arrow {
+  width: auto !important;
+  min-width: 46px;
+  padding: 0 9px;
+  border: 1px solid #d5e2ef !important;
+  background: #f6faff !important;
+  color: #075fb8 !important;
+  font-size: 0.62rem;
+  font-weight: 900;
+}
+
+.admin-setting-arrow:hover,
+.admin-row-action:hover {
+  border-color: #9dc6f2 !important;
+  background: #eef6ff !important;
+}
+
+.admin-toggle {
+  border: 0;
+  cursor: pointer;
+}
+
+.admin-device-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admin-device-actions .admin-row-action {
+  width: auto;
+  min-width: 58px;
+  padding: 0 8px;
+}
+
+.device-dialog {
+  max-width: 420px;
+}
+
+.device-form {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+}
+
+.device-form label {
+  display: grid;
+  gap: 6px;
+  color: #344054;
+  font-size: 0.72rem;
+  font-weight: 850;
+}
+
+.device-form input {
+  height: 38px;
+  border: 1px solid #d5e2ef;
+  border-radius: 8px;
+  padding: 0 10px;
+}
+
+.device-form button {
+  height: 38px;
+  border: 0;
+  border-radius: 8px;
+  background: #075fb8;
+  color: #ffffff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+/* Final dashboard polish for the facility admin alert summary. */
+.v5-critical-overview {
+  min-height: 268px !important;
+  max-height: none !important;
+  gap: 10px !important;
+}
+
+.critical-overview-grid {
+  grid-template-columns: repeat(4, minmax(118px, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.critical-mini-card {
+  min-height: 54px !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+}
+
+.critical-mini-card span {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+.critical-mini-card small {
+  font-size: 9px !important;
+  line-height: 1.1 !important;
+}
+
+.critical-mini-card strong {
+  margin-top: 3px !important;
+  font-size: 20px !important;
+}
+
+.critical-mini-card b {
+  width: 26px !important;
+  height: 26px !important;
+  flex-basis: 26px !important;
+  font-size: 9px !important;
+}
+
+.v5-critical-overview .card-toolbar.tight {
+  margin-top: 2px !important;
+  margin-bottom: 4px !important;
+}
+
+.critical-tank-list {
+  max-height: 118px !important;
+  overflow: auto !important;
+}
+
+.critical-tank-board {
+  max-height: none !important;
+  gap: 6px !important;
+}
+
+.critical-tank-item {
+  min-height: 38px !important;
+  padding: 7px 9px !important;
+  border-radius: 8px !important;
+}
+
+.critical-tank-item strong {
+  font-size: 10px !important;
+}
+
+.critical-tank-item span {
+  font-size: 8px !important;
+}
+
+@media (max-width: 900px) {
+  .critical-overview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Modern application finish */
+:root {
+  --app-font: Aptos, Inter, "Segoe UI Variable", "Segoe UI", Roboto, Arial, sans-serif;
+  --app-bg: #eef4f8;
+  --panel-bg: rgba(255, 255, 255, 0.94);
+  --panel-border: #d8e5ef;
+  --panel-shadow: 0 12px 30px rgba(15, 35, 58, 0.08);
+  --panel-shadow-hover: 0 16px 38px rgba(15, 35, 58, 0.13);
+  --title-ink: #08243f;
+  --body-ink: #183247;
+  --muted-ink: #627489;
+  --accent-blue: #075fb8;
+  --accent-teal: #0f9f9a;
+  --accent-green: #16a34a;
+  --accent-amber: #d97706;
+  --accent-red: #dc2626;
+}
+
+body {
+  color: var(--body-ink) !important;
+  background:
+    linear-gradient(180deg, #f5f9fc 0%, var(--app-bg) 52%, #e8f1f7 100%) !important;
+  font-family: var(--app-font) !important;
+}
+
+body:not(.login-active) .main {
+  background: transparent !important;
+}
+
+body:not(.login-active) .topbar {
+  min-height: 62px;
+  border-bottom: 1px solid rgba(209, 224, 237, 0.55) !important;
+  background: linear-gradient(135deg, #062b54, #075fb8) !important;
+  box-shadow: 0 10px 26px rgba(7, 42, 82, 0.16);
+}
+
+body:not(.login-active) .topbar h1 {
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0 !important;
+}
+
+body:not(.login-active) .topbar .datetime,
+body:not(.login-active) .topbar .current-user,
+body:not(.login-active) .topbar .notification-button {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(12px);
+}
+
+body:not(.login-active) .sidebar {
+  background: linear-gradient(180deg, #071f3b 0%, #0a315d 58%, #082946 100%) !important;
+  box-shadow: 14px 0 30px rgba(8, 30, 55, 0.16);
+}
+
+body:not(.login-active) .side-button {
+  border-radius: 10px !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+}
+
+body:not(.login-active) .side-button:hover,
+body:not(.login-active) .side-button.active {
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #ffffff !important;
+  box-shadow: inset 3px 0 0 #38bdf8;
+}
+
+.dashboard,
+.v5-dashboard,
+.report-center,
+.administration {
+  background: transparent !important;
+  font-family: var(--app-font) !important;
+}
+
+.report-card,
+.summary-card,
+.report-center-card,
+.v5-dashboard .report-card,
+.v5-dashboard .summary-card,
+.admin-panel {
+  border: 1px solid var(--panel-border) !important;
+  border-radius: 12px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 254, 0.96)) !important;
+  box-shadow: var(--panel-shadow) !important;
+}
+
+.report-card:hover,
+.summary-card:hover,
+.v5-dashboard .report-card:hover,
+.admin-panel:hover {
+  border-color: #c6d8e7 !important;
+  box-shadow: var(--panel-shadow-hover) !important;
+}
+
+.report-card h3,
+.report-center-card h3,
+.v5-dashboard .report-card h3,
+.admin-panel-title h3 {
+  color: var(--title-ink) !important;
+  font-family: var(--app-font) !important;
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.01em !important;
+  text-transform: uppercase;
+}
+
+.report-card p,
+.report-center-head p,
+.admin-panel-title p,
+.v5-dashboard .report-card p {
+  color: var(--muted-ink) !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+}
+
+.summary-card strong,
+.v5-kpi-card strong,
+.report-exec-card strong,
+.report-type-metrics strong {
+  letter-spacing: 0 !important;
+}
+
+.report-center {
+  padding: 14px !important;
+  gap: 12px !important;
+}
+
+.report-center-head,
+.report-generated-top {
+  border-radius: 12px !important;
+  border: 1px solid var(--panel-border) !important;
+  background: linear-gradient(135deg, #ffffff, #f5faff) !important;
+}
+
+.report-center-controls {
+  align-items: end !important;
+  gap: 8px !important;
+}
+
+.report-center-controls label {
+  gap: 5px !important;
+  color: #1d4f7a !important;
+  font-size: 9px !important;
+  font-weight: 950 !important;
+  text-transform: uppercase;
+}
+
+.report-center-controls select,
+.report-center-controls input,
+.report-center-controls .report-export-control select {
+  height: 36px !important;
+  border: 1px solid #cfe0ee !important;
+  border-radius: 9px !important;
+  background: #ffffff !important;
+  color: #092a46 !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+}
+
+.report-center-controls select:focus,
+.report-center-controls input:focus {
+  outline: 2px solid rgba(14, 165, 233, 0.22) !important;
+  border-color: #38bdf8 !important;
+}
+
+.primary-report-button,
+.ghost-report-button,
+.admin-add-button,
+.admin-link-button {
+  min-height: 36px !important;
+  border-radius: 9px !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+
+.primary-report-button,
+.admin-add-button {
+  border: 0 !important;
+  background: linear-gradient(135deg, var(--accent-blue), #0ea5e9) !important;
+  color: #ffffff !important;
+  box-shadow: 0 8px 18px rgba(7, 95, 184, 0.24);
+}
+
+.ghost-report-button,
+.admin-link-button {
+  border: 1px solid #cfe0ee !important;
+  background: #ffffff !important;
+  color: #075087 !important;
+}
+
+.primary-report-button:hover,
+.admin-add-button:hover {
+  filter: brightness(1.03);
+  transform: translateY(-1px);
+}
+
+.ghost-report-button:hover,
+.admin-link-button:hover {
+  border-color: #8bc7f0 !important;
+  background: #eef8ff !important;
+  transform: translateY(-1px);
+}
+
+.report-table table {
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+  border-radius: 10px !important;
+  overflow: hidden !important;
+}
+
+.report-table th,
+.report-table td,
+.admin-table th,
+.admin-table td,
+.tank-table th,
+.tank-table td {
+  border-bottom: 1px solid #e5edf5 !important;
+  font-family: var(--app-font) !important;
+}
+
+.report-table th,
+.admin-table th,
+.tank-table th {
+  background: linear-gradient(180deg, #f4f8fc, #eef5fb) !important;
+  color: #38516a !important;
+  font-size: 9px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.01em !important;
+  text-transform: uppercase;
+}
+
+.report-table td,
+.admin-table td,
+.tank-table td {
+  color: #132f49 !important;
+  font-size: 10px !important;
+  font-weight: 760 !important;
+}
+
+.report-table tbody tr:nth-child(even) td {
+  background: #f8fbfe !important;
+}
+
+.report-table tbody tr:hover td {
+  background: #eef7ff !important;
+}
+
+.badge,
+.admin-role-badge,
+.admin-status-badge {
+  border-radius: 999px !important;
+  font-size: 9px !important;
+  font-weight: 950 !important;
+}
+
+.report-type-metrics article,
+.ward-usage-cost-chart article,
+.resolution-metrics article,
+.resolution-times span {
+  border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.ward-usage-cost-chart article {
+  background: linear-gradient(135deg, #ffffff, #f5faff) !important;
+}
+
+.critical-mini-card,
+.critical-tank-item,
+.insight-row,
+.activity-list article {
+  border-radius: 10px !important;
+}
+
+.critical-mini-card {
+  background: linear-gradient(135deg, #fff7f7, #ffffff) !important;
+}
+
+.critical-mini-card.clear-alert {
+  border-color: #bbf7d0 !important;
+  background: linear-gradient(135deg, #f0fdf4, #ffffff) !important;
+}
+
+.critical-mini-card.clear-alert span,
+.critical-mini-card.clear-alert small {
+  color: #166534 !important;
+}
+
+.critical-mini-card.clear-alert strong,
+.critical-mini-card.clear-alert b {
+  color: #15803d !important;
+}
+
+.critical-mini-card.clear-alert b {
+  background: #dcfce7 !important;
+}
+
+.critical-mini-card.active-alert {
+  border-color: #fecaca !important;
+  background: linear-gradient(135deg, #fff1f2, #ffffff) !important;
+}
+
+.heatmap-hospital-name {
+  display: block;
+  margin-bottom: 3px;
+  color: #075fb8;
+  font-size: 11px;
+  font-weight: 1000;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.oxygen-floorplan-shell,
+.hospital-heatmap {
+  border-radius: 12px !important;
+}
+
+@media (max-width: 900px) {
+  .report-center-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  .report-center-controls label,
+  .report-center-controls .report-export-control,
+  .report-center-controls button {
+    width: 100% !important;
+  }
+}
+
+/* Report page no-scroll fit */
+#dashboardView {
+  height: calc(100vh - 62px) !important;
+  overflow: hidden !important;
+}
+
+#dashboardView .report-center {
+  height: 100% !important;
+  overflow: hidden !important;
+  display: grid !important;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto !important;
+  gap: 7px !important;
+  padding: 8px !important;
+}
+
+#dashboardView .report-center-head,
+#dashboardView .report-generated-top,
+#dashboardView .report-card,
+#dashboardView .report-center-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card {
+  overflow: hidden !important;
+}
+
+#dashboardView .report-center-head {
+  padding: 8px 10px !important;
+}
+
+#dashboardView .report-center-controls {
+  gap: 6px !important;
+}
+
+#dashboardView .report-center-controls select,
+#dashboardView .report-center-controls input,
+#dashboardView .report-center-controls button,
+#dashboardView .report-center-controls .report-export-control select {
+  height: 30px !important;
+  min-height: 30px !important;
+  font-size: 10px !important;
+}
+
+#dashboardView .report-generated-top {
+  padding: 7px 10px !important;
+}
+
+#dashboardView .generated-report-head.compact h3,
+#dashboardView .generated-report-head.compact p {
+  margin: 0 !important;
+}
+
+#dashboardView .generated-report-head.compact p {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+
+#dashboardView .report-executive-grid {
+  gap: 6px !important;
+}
+
+#dashboardView .report-exec-card {
+  min-height: 52px !important;
+  padding: 7px !important;
+}
+
+#dashboardView .report-exec-card strong {
+  font-size: 14px !important;
+}
+
+#dashboardView .report-exec-card small,
+#dashboardView .report-exec-card em {
+  font-size: 8px !important;
+}
+
+#dashboardView .report-center-grid {
+  min-height: 0 !important;
+  overflow: hidden !important;
+  gap: 7px !important;
+}
+
+#dashboardView .report-center-card,
+#dashboardView .report-alert-tables .report-card,
+#dashboardView .report-live-grid .report-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card {
+  min-height: 0 !important;
+  padding: 8px !important;
+}
+
+#dashboardView .report-center-card h3,
+#dashboardView .report-alert-tables h3,
+#dashboardView .report-live-grid h3,
+#dashboardView .monthly-comparison-card h3,
+#dashboardView .oxygen-waste-card h3 {
+  margin: 0 0 5px !important;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+#dashboardView .report-table,
+#dashboardView .report-center-card .report-table,
+#dashboardView .monthly-comparison-card .report-table,
+#dashboardView .oxygen-waste-card .report-table,
+#dashboardView .report-alert-tables .report-table,
+#dashboardView .report-live-grid .report-table {
+  height: auto !important;
+  max-height: none !important;
+  overflow: hidden !important;
+}
+
+#dashboardView .report-table table {
+  table-layout: fixed !important;
+}
+
+#dashboardView .report-table th,
+#dashboardView .report-table td,
+#dashboardView .report-center-card th,
+#dashboardView .report-center-card td {
+  padding: 4px 5px !important;
+  font-size: 8px !important;
+  line-height: 1.12 !important;
+}
+
+#dashboardView .badge {
+  min-height: 16px !important;
+  padding: 2px 5px !important;
+  font-size: 7px !important;
+}
+
+#dashboardView .report-type-metrics {
+  gap: 6px !important;
+}
+
+#dashboardView .report-type-metrics article {
+  min-height: 42px !important;
+  padding: 7px !important;
+}
+
+#dashboardView .report-type-metrics strong {
+  font-size: 14px !important;
+}
+
+#dashboardView .resolution-metrics,
+#dashboardView .resolution-times {
+  gap: 5px !important;
+}
+
+#dashboardView .resolution-metrics article,
+#dashboardView .resolution-times span {
+  padding: 6px !important;
+}
+
+#dashboardView .report-trend-lines svg {
+  height: 54px !important;
+}
+
+#dashboardView .recommendation-list {
+  gap: 6px !important;
+}
+
+#dashboardView .recommendation-item {
+  padding: 6px !important;
+}
+
+#dashboardView .recommendation-item strong,
+#dashboardView .recommendation-item span {
+  font-size: 8px !important;
+  line-height: 1.15 !important;
+}
+
+#dashboardView .oxygen-waste-layout,
+#dashboardView .monthly-usage-card {
+  gap: 7px !important;
+}
+
+#dashboardView .oxygen-waste-chart svg,
+#dashboardView .monthly-usage-line svg {
+  height: 78px !important;
+}
+
+#dashboardView .ward-usage-cost-chart {
+  gap: 5px !important;
+}
+
+#dashboardView .ward-usage-cost-chart article {
+  padding: 6px 8px !important;
+  gap: 7px !important;
+}
+
+/* Render report and dashboard fit cleanup */
+body:not(.login-active) .main {
+  overflow-y: auto !important;
+}
+
+#dashboardView {
+  height: auto !important;
+  min-height: calc(100vh - 64px) !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-center {
+  display: flex !important;
+  flex-direction: column !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  gap: 12px !important;
+  padding: 14px !important;
+}
+
+#dashboardView .report-center-head,
+#dashboardView .report-generated-top,
+#dashboardView .report-card,
+#dashboardView .report-center-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card {
+  min-height: auto !important;
+  overflow: visible !important;
+  border-radius: 10px !important;
+}
+
+#dashboardView .report-center-head {
+  display: flex !important;
+  align-items: end !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  padding: 12px 14px !important;
+}
+
+#dashboardView .report-center-head > div:first-child:empty {
+  display: none !important;
+}
+
+#dashboardView .report-center-controls {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1.2fr) minmax(170px, 0.8fr) auto auto minmax(150px, auto) !important;
+  align-items: end !important;
+  gap: 10px !important;
+  width: 100% !important;
+}
+
+#dashboardView .report-center-controls label {
+  gap: 5px !important;
+  min-width: 0 !important;
+}
+
+#dashboardView .report-center-controls label span {
+  color: #0f4f9a !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+}
+
+#dashboardView .report-center-controls select,
+#dashboardView .report-center-controls input,
+#dashboardView .report-center-controls button,
+#dashboardView .report-center-controls .report-export-control select {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+#dashboardView .report-generated-top {
+  padding: 12px 14px !important;
+}
+
+#dashboardView .generated-summary-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+}
+
+#dashboardView .generated-summary-title h3,
+#dashboardView .report-center-card h3,
+#dashboardView .report-alert-tables h3,
+#dashboardView .report-live-grid h3,
+#dashboardView .monthly-comparison-card h3,
+#dashboardView .oxygen-waste-card h3 {
+  color: #061a34 !important;
+  font-size: 14px !important;
+  font-weight: 950 !important;
+  line-height: 1.2 !important;
+  margin: 0 0 9px !important;
+}
+
+#dashboardView .generated-summary-title h3 {
+  margin: 0 !important;
+}
+
+#dashboardView #reportGeneratedPeriod {
+  color: #29527d !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+#dashboardView .report-executive-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+#dashboardView .report-exec-card {
+  min-height: 86px !important;
+  padding: 14px !important;
+}
+
+#dashboardView .report-exec-card strong {
+  font-size: 19px !important;
+  line-height: 1.1 !important;
+}
+
+#dashboardView .report-exec-card small,
+#dashboardView .report-exec-card em {
+  font-size: 10px !important;
+  line-height: 1.25 !important;
+}
+
+#dashboardView .report-center-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-center-card,
+#dashboardView .report-alert-tables .report-card,
+#dashboardView .report-live-grid .report-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card {
+  padding: 12px !important;
+}
+
+#dashboardView .report-alert-tables {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 12px !important;
+}
+
+#dashboardView .report-live-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+#dashboardView .report-table,
+#dashboardView .report-center-card .report-table,
+#dashboardView .monthly-comparison-card .report-table,
+#dashboardView .oxygen-waste-card .report-table,
+#dashboardView .report-alert-tables .report-table,
+#dashboardView .report-live-grid .report-table {
+  width: 100% !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+#dashboardView .report-table table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 !important;
+}
+
+#dashboardView .report-table th,
+#dashboardView .report-table td,
+#dashboardView .report-center-card th,
+#dashboardView .report-center-card td {
+  padding: 8px 9px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  vertical-align: middle !important;
+}
+
+#dashboardView .report-table th,
+#dashboardView .report-center-card th {
+  color: #314a67 !important;
+  font-size: 10px !important;
+  font-weight: 950 !important;
+}
+
+#dashboardView .badge {
+  min-height: 20px !important;
+  padding: 4px 8px !important;
+  font-size: 10px !important;
+  white-space: nowrap !important;
+}
+
+#dashboardView .oxygen-waste-layout,
+#dashboardView .monthly-usage-card,
+#dashboardView .ward-usage-cost-chart {
+  min-height: auto !important;
+}
+
+#dashboardView .oxygen-waste-chart svg,
+#dashboardView .monthly-usage-line svg,
+#dashboardView .report-trend-lines svg {
+  height: 120px !important;
+}
+
+@media (max-width: 1200px) {
+  #dashboardView .report-executive-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  #dashboardView .report-center-grid,
+  #dashboardView .report-alert-tables {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  #dashboardView .report-center-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  #dashboardView .report-center-controls button,
+  #dashboardView .report-center-controls .report-export-control {
+    width: 100% !important;
+  }
+
+  #dashboardView .report-center-controls .report-export-control {
+    display: grid !important;
+    grid-template-columns: 92px 1fr !important;
+    gap: 8px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #dashboardView .report-center {
+    padding: 10px !important;
+  }
+
+  #dashboardView .report-center-head {
+    align-items: stretch !important;
+  }
+
+  #dashboardView .report-center-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  #dashboardView .report-executive-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #dashboardView .generated-summary-title {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  #dashboardView #reportGeneratedPeriod {
+    white-space: normal !important;
+  }
+}
+
+/* Final facilities dashboard placement */
+@media (min-width: 1180px) {
+  .v5-dashboard-grid {
+    grid-template-columns: minmax(158px, 0.95fr) minmax(170px, 1.12fr) minmax(170px, 1.12fr) minmax(170px, 1.08fr) minmax(162px, 1fr) !important;
+    grid-auto-rows: minmax(104px, auto) !important;
+    align-items: stretch !important;
+  }
+
+  .v5-patient-card {
+    grid-column: 1 / span 3 !important;
+    grid-row: 3 !important;
+    height: 300px !important;
+    min-height: 300px !important;
+  }
+
+  .v5-depletion-card {
+    grid-column: 4 / span 2 !important;
+    grid-row: 3 !important;
+    height: 300px !important;
+    min-height: 300px !important;
+  }
+
+  .v5-alerts-ward-card {
+    grid-column: 1 !important;
+    grid-row: 4 !important;
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+
+  .v5-insights-card {
+    grid-column: 2 / span 2 !important;
+    grid-row: 4 !important;
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+
+  .v5-activity-card {
+    grid-column: 4 / span 2 !important;
+    grid-row: 4 !important;
+    height: 220px !important;
+    min-height: 220px !important;
+  }
+
+  .v5-trend-card {
+    grid-column: 1 / -1 !important;
+    grid-row: 5 !important;
+  }
+
+  .v5-alerts-ward-card .report-table {
+    max-height: 142px !important;
+    overflow: hidden !important;
+  }
+
+  .v5-alerts-ward-card .card-toolbar {
+    margin-bottom: 6px !important;
+  }
+
+  #leakageTable table {
+    font-size: 8px !important;
+  }
+
+  #leakageTable th,
+  #leakageTable td {
+    padding: 4px 5px !important;
+    line-height: 1.08 !important;
+  }
+
+  .v5-activity-card .activity-list {
+    gap: 7px !important;
+    margin-top: 9px !important;
+  }
+
+  .v5-activity-card .activity-list article {
+    min-height: 32px !important;
+    padding: 7px 9px !important;
+  }
+}
+
+/* Report KPI and detail grid cleanup */
+#dashboardView .report-executive-grid {
+  grid-template-columns: repeat(7, minmax(150px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+#dashboardView .report-exec-card {
+  grid-template-columns: 1fr !important;
+  min-height: 96px !important;
+  padding: 14px 16px !important;
+}
+
+#dashboardView .report-exec-card > div {
+  display: grid !important;
+  grid-template-rows: auto auto auto !important;
+  gap: 5px !important;
+  align-content: center !important;
+}
+
+#dashboardView .report-exec-icon {
+  display: none !important;
+}
+
+#dashboardView .report-exec-card small {
+  color: #0b2f55 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#dashboardView .report-exec-card strong {
+  font-size: 22px !important;
+  line-height: 1.05 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#dashboardView .report-exec-card em {
+  color: #52637a !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+#dashboardView .report-center-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+#dashboardView .report-center-card {
+  min-height: 300px !important;
+}
+
+#dashboardView .report-center-card.fill-card {
+  min-height: 300px !important;
+}
+
+#dashboardView .report-center-card.wide {
+  grid-column: 1 / -1 !important;
+}
+
+@media (max-width: 1400px) {
+  #dashboardView .report-executive-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 980px) {
+  #dashboardView .report-executive-grid,
+  #dashboardView .report-center-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Dynamic report sizing pass */
+#dashboardView .report-generated-top {
+  min-height: 90px !important;
+  padding: 10px 12px !important;
+}
+
+#dashboardView .report-generated-top .generated-report-head,
+#dashboardView .report-generated-top .generated-report-head.compact {
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+#dashboardView .report-generated-top h3 {
+  font-size: 17px !important;
+  line-height: 1.15 !important;
+  margin: 0 0 4px !important;
+}
+
+#dashboardView .report-generated-top p {
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+  margin: 0 !important;
+}
+
+#dashboardView .report-center-grid {
+  align-items: start !important;
+  grid-auto-rows: auto !important;
+}
+
+#dashboardView .report-center-card,
+#dashboardView .report-center-card.fill-card,
+#dashboardView .report-alert-tables .report-card,
+#dashboardView .report-live-grid .report-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card {
+  height: auto !important;
+  min-height: fit-content !important;
+}
+
+#dashboardView .report-center-card {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#dashboardView .report-center-card .report-table {
+  flex: 0 1 auto !important;
+}
+
+#dashboardView .report-center-card.fill-card tbody tr {
+  height: auto !important;
+}
+
+#dashboardView .report-center-card th,
+#dashboardView .report-center-card td,
+#dashboardView .report-table th,
+#dashboardView .report-table td {
+  padding: 7px 8px !important;
+}
+
+/* Alert dashboard and pipeline polish */
+.report-generated-top .generated-summary-title h3 {
+  display: none !important;
+}
+
+.alert-kpi-grid {
+  grid-template-columns: repeat(6, minmax(170px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.alert-kpi {
+  min-height: 124px !important;
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  grid-template-rows: 1fr auto !important;
+  align-items: start !important;
+  gap: 12px !important;
+  padding: 14px 16px !important;
+  border-radius: 12px !important;
+}
+
+.alert-kpi-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 950 !important;
+}
+
+.alert-kpi-copy {
+  display: grid !important;
+  grid-template-rows: 30px 30px minmax(32px, auto) !important;
+  align-content: start !important;
+  min-width: 0 !important;
+}
+
+.alert-kpi-copy span {
+  color: #2b4663 !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1.15 !important;
+}
+
+.alert-kpi-copy strong {
+  margin: 0 !important;
+  color: #072744 !important;
+  font-size: 25px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.alert-kpi-copy strong span {
+  display: inline !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+  text-transform: none !important;
+}
+
+.alert-kpi-copy small {
+  margin: 0 !important;
+  color: #506780 !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  line-height: 1.22 !important;
+  text-transform: none !important;
+}
+
+.alert-kpi-copy small span {
+  display: inline !important;
+  color: inherit !important;
+  font-size: inherit !important;
+  font-weight: inherit !important;
+  line-height: inherit !important;
+  text-transform: none !important;
+}
+
+.alert-kpi button {
+  grid-column: 2 !important;
+  margin-top: 4px !important;
+  color: currentColor !important;
+  font-size: 11px !important;
+  font-weight: 950 !important;
+  line-height: 1 !important;
+}
+
+.live-pipeline .pipe.top,
+.map-ward.ae {
+  border-color: #60d394 !important;
+}
+
+.live-pipeline .pipe.top {
+  background: linear-gradient(90deg, #1fa463, #68dea0, #1fa463) !important;
+  box-shadow: 0 0 0 4px rgba(39, 174, 96, 0.13), 0 0 18px rgba(39, 174, 96, 0.22) !important;
+}
+
+@media (max-width: 1180px) {
+  .alert-kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .alert-kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Alert card clipping fix */
+.alert-kpi-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+
+.alert-kpi {
+  min-width: 0 !important;
+  min-height: 116px !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  overflow: hidden !important;
+}
+
+.alert-kpi-icon {
+  width: 38px !important;
+  height: 38px !important;
+  font-size: 12px !important;
+}
+
+.alert-kpi-copy {
+  grid-template-rows: auto auto auto !important;
+  gap: 5px !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.alert-kpi-copy span {
+  min-width: 0 !important;
+  font-size: 10px !important;
+  line-height: 1.12 !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.alert-kpi-copy strong,
+.alert-kpi-copy strong span {
+  max-width: 100% !important;
+  font-size: clamp(18px, 1.45vw, 23px) !important;
+  line-height: 1.02 !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.alert-kpi-copy small,
+.alert-kpi-copy small span {
+  max-width: 100% !important;
+  font-size: 10px !important;
+  line-height: 1.18 !important;
+  overflow-wrap: anywhere !important;
+  white-space: normal !important;
+}
+
+.alert-kpi button {
+  grid-column: 1 / -1 !important;
+  justify-self: center !important;
+  margin-top: 8px !important;
+  font-size: 10px !important;
+}
+
+.live-pipeline .pipe.top {
+  display: none !important;
+}
+
+/* Alert page layout switch and expansion */
+.alert-monitor-grid {
+  grid-template-areas:
+    "wards wards assignment"
+    "map map assignment"
+    "incidents incidents feed" !important;
+  grid-template-columns: minmax(520px, 1.45fr) minmax(430px, 1.15fr) minmax(240px, 0.62fr) !important;
+}
+
+.alert-ward-cards {
+  align-items: stretch !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.alert-ward-panel {
+  cursor: pointer !important;
+  min-height: 190px !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, grid-column 0.16s ease !important;
+}
+
+.alert-ward-panel:focus-visible {
+  outline: 3px solid rgba(11, 114, 231, 0.24) !important;
+  outline-offset: 2px !important;
+}
+
+.alert-ward-panel.expanded {
+  grid-column: 1 / -1 !important;
+  min-height: 320px !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 22px 42px rgba(8, 35, 63, 0.16) !important;
+}
+
+.alert-ward-panel.expanded .alert-data-table th,
+.alert-ward-panel.expanded .alert-data-table td {
+  padding: 11px 8px !important;
+  font-size: 11px !important;
+}
+
+.alert-kpi-copy strong,
+.alert-kpi-copy strong span {
+  font-size: clamp(16px, 1.18vw, 20px) !important;
+  letter-spacing: 0 !important;
+}
+
+.alert-kpi-copy span {
+  font-size: 9.5px !important;
+}
+
+.alert-kpi-copy small,
+.alert-kpi-copy small span {
+  font-size: 9.5px !important;
+}
+
+.pipe-node {
+  display: none !important;
+}
+
+@media (max-width: 1180px) {
+  .alert-monitor-grid {
+    grid-template-areas:
+      "wards"
+      "incidents"
+      "map"
+      "feed"
+      "assignment" !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .alert-ward-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .alert-ward-cards,
+  .alert-ward-panel.expanded {
+    grid-template-columns: 1fr !important;
+    grid-column: auto !important;
+  }
 }
