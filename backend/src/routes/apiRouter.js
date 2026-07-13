@@ -33,7 +33,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     }
 
     if (req.method === "POST" && apiPath === "/login") {
-      await login(req, res, auth, path.startsWith("/api/v1"));
+      await login(req, res, db, auth, path.startsWith("/api/v1"));
       return true;
     }
 
@@ -89,7 +89,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     if (req.method === "POST" && resolveMatch) {
       const session = requireAuthorized(req, res, auth, "resolve_alert");
       if (!session) return true;
-      resolveAlert(db, res, Number(resolveMatch[1]), session.user);
+      await resolveAlert(db, res, Number(resolveMatch[1]), session.user);
       return true;
     }
 
@@ -109,7 +109,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
   };
 }
 
-async function login(req, res, auth, apiV1) {
+async function login(req, res, db, auth, apiV1) {
   const { username, password } = await readJson(req);
   const result = auth.authenticate(username, password);
 
@@ -117,6 +117,8 @@ async function login(req, res, auth, apiV1) {
     sendJson(res, 401, { ok: false, message: "Invalid username or password." });
     return;
   }
+
+  await addAuditLog(db, result.user, "User Login", result.user.username, getClientIp(req));
 
   const response = {
     access_token: result.access_token,
@@ -217,7 +219,7 @@ async function createUser(req, res, db, actor) {
   }
 
   db.users.push(user);
-  addAuditLog(db, actor, "Create User", user.username);
+  await addAuditLog(db, actor, "Create User", user.username);
   sendJson(res, 201, { ok: true, users: listUsers(db) });
 }
 
@@ -240,7 +242,7 @@ async function updateUserRole(req, res, db, username, actor) {
     );
   }
 
-  addAuditLog(db, actor, "Update User Role", username);
+  await addAuditLog(db, actor, "Update User Role", username);
   sendJson(res, 200, { ok: true, users: listUsers(db) });
 }
 
@@ -275,18 +277,38 @@ function nextUserId(db) {
   return `AA${String(next).padStart(3, "0")}`;
 }
 
-function addAuditLog(db, actor, action, target) {
-  db.audit_logs.push({
+async function addAuditLog(db, actor, action, target, ipAddress = null) {
+  const auditLog = {
     audit_id: db.nextAuditId++,
     user_id: actor.user_id,
     action,
     target_resource: target,
     target,
+    ip_address: ipAddress,
     performed_at: new Date().toISOString()
-  });
+  };
+
+  db.audit_logs.push(auditLog);
+
+  if (!db.pgPool) return auditLog;
+
+  try {
+    const result = await db.pgPool.query(
+      `insert into public.audit_logs (user_id, action, target_resource, ip_address, performed_at)
+       values ($1, $2, $3, $4, $5)
+       returning audit_id`,
+      [auditLog.user_id, auditLog.action, auditLog.target_resource, auditLog.ip_address, auditLog.performed_at]
+    );
+    const remoteAuditId = result.rows?.[0]?.audit_id;
+    if (remoteAuditId) auditLog.audit_id = remoteAuditId;
+  } catch (error) {
+    console.warn(`OxyGuard audit log insert failed: ${String(error?.message || error)}`);
+  }
+
+  return auditLog;
 }
 
-function resolveAlert(db, res, alertId, user) {
+async function resolveAlert(db, res, alertId, user) {
   const alert = db.alerts.find(item => item.alert_id === alertId);
   if (!alert) {
     sendJson(res, 404, { ok: false, message: "Alert not found." });
@@ -296,13 +318,7 @@ function resolveAlert(db, res, alertId, user) {
   alert.is_resolved = true;
   alert.resolved_by = user.user_id;
   alert.resolved_at = new Date().toISOString();
-  db.audit_logs.push({
-    audit_id: db.nextAuditId++,
-    user_id: user.user_id,
-    action: "Resolve Alert",
-    target: `Alert #${alert.alert_id}`,
-    performed_at: new Date().toISOString()
-  });
+  await addAuditLog(db, user, "Resolve Alert", `Alert #${alert.alert_id}`);
 
   sendJson(res, 200, {
     ok: true,
@@ -310,6 +326,12 @@ function resolveAlert(db, res, alertId, user) {
     message: "Alert resolved successfully.",
     alert
   });
+}
+
+function getClientIp(req) {
+  const forwardedFor = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  const remoteAddress = forwardedFor || req.socket?.remoteAddress || null;
+  return remoteAddress ? String(remoteAddress).replace(/^::ffff:/, "") : null;
 }
 
 function getDeviceInventory(db) {
