@@ -12026,7 +12026,8 @@ body:not(.login-active) .main {
 }
 
 #analyticsView #monthlyUsageChart .stacked-bar {
-  height: 8px !important;
+  height: 13px !important;
+  border-radius: 8px !important;
 }
 
 #analyticsView #monthlyUsageChart .month-breakdown {
