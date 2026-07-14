@@ -4073,6 +4073,10 @@ function renderAnalytics() {
   renderMonthlyWastageChart(wardTotals);
   renderTopInsight("topConsumption", topConsumption, "consumption", topConsumption.totalTanks, topConsumption.usageCost);
   renderTopInsight("topWastage", topWastage, "leakage wastage", topWastage.leakageTanks, topWastage.leakageCost);
+  renderLeakageRateChart(wardTotals);
+  renderCostExposureChart(wardTotals);
+  renderUsageTrendChart(wardTotals);
+  renderSavingsOpportunityChart(wardTotals);
 
   document.getElementById("analyticsTable").innerHTML = tableHtml(
     ["Ward", "Jan", "Feb", "Mar", "Apr", "May", "Total Tanks", "Usage Value", "Leakage Tanks", "Wastage Value"],
@@ -4120,34 +4124,115 @@ function renderMonthlyUsageChart(wardTotals) {
 }
 
 function renderMonthlyWastageChart(wardTotals) {
-  const maxLeakage = Math.max(1, ...wardTotals.flatMap(item => item.leakage));
-
+  const monthlyTotals = analyticsMonths.map((month, index) => {
+    const usage = sumValues(wardTotals.map(item => item.usage[index]));
+    const leakage = sumValues(wardTotals.map(item => item.leakage[index]));
+    const leakageRate = Math.round((leakage / Math.max(1, usage)) * 100);
+    return { month, usage, leakage, leakageRate, leakageCost: leakage * TANK_COST };
+  });
+  const maxUsage = Math.max(1, ...monthlyTotals.map(item => item.usage));
+  const maxLeakage = Math.max(1, ...monthlyTotals.map(item => item.leakage));
   document.getElementById("monthlyWastageChart").innerHTML = analyticsMonths.map((month, index) => {
-    const monthLeakage = sumValues(wardTotals.map(item => item.leakage[index]));
-    const monthCost = monthLeakage * TANK_COST;
+    const item = monthlyTotals[index];
     return `
-      <div class="month-card wastage-month-card column-month-card">
-        <div class="month-metric">
+      <div class="leakage-compare-row">
+        <div class="leakage-compare-month">
           <strong>${month}</strong>
-          <span>${monthLeakage} wasted</span>
-          <em>${currency(monthCost)}</em>
+          <span>${item.leakageRate}% leakage rate</span>
         </div>
-        <div class="wastage-column-chart" title="${month}: ${monthLeakage} tanks wasted">
-          ${wardTotals.map(item => {
-            const value = item.leakage[index];
-            const height = value === 0 ? 5 : Math.max(12, Math.round((value / maxLeakage) * 50));
-            return `
-              <div class="wastage-column" title="${item.ward}: ${value} wasted tanks (${currency(value * TANK_COST)})">
-                <strong>${value}</strong>
-                <span style="height:${height}px; background:${item.accent}"></span>
-                <small>${item.ward.replace(" Ward", "").replace("Nurse Station", "Nurse")}</small>
-              </div>
-            `;
-          }).join("")}
+        <div class="leakage-compare-bars">
+          <div class="compare-track usage" title="${month}: ${item.usage} tanks used">
+            <span style="width:${Math.max(8, Math.round((item.usage / maxUsage) * 100))}%"></span>
+            <b>${item.usage} used</b>
+          </div>
+          <div class="compare-track leakage" title="${month}: ${item.leakage} tanks wasted">
+            <span style="width:${Math.max(8, Math.round((item.leakage / maxLeakage) * 100))}%"></span>
+            <b>${item.leakage} wasted | ${currency(item.leakageCost)}</b>
+          </div>
         </div>
       </div>
     `;
   }).join("");
+}
+
+function renderLeakageRateChart(wardTotals) {
+  const maxRate = Math.max(1, ...wardTotals.map(item => (item.leakageTanks / Math.max(1, item.totalTanks)) * 100));
+  document.getElementById("leakageRateChart").innerHTML = wardTotals
+    .slice()
+    .sort((a, b) => (b.leakageTanks / b.totalTanks) - (a.leakageTanks / a.totalTanks))
+    .map(item => {
+      const rate = (item.leakageTanks / Math.max(1, item.totalTanks)) * 100;
+      return `
+        <div class="analytics-rate-row">
+          <span><i style="background:${item.accent}"></i>${item.ward}</span>
+          <div><b style="width:${Math.max(8, Math.round((rate / maxRate) * 100))}%; background:${item.accent}"></b></div>
+          <strong>${rate.toFixed(1)}%</strong>
+        </div>
+      `;
+    }).join("");
+}
+
+function renderCostExposureChart(wardTotals) {
+  const maxCost = Math.max(1, ...wardTotals.map(item => item.usageCost + item.leakageCost));
+  document.getElementById("costExposureChart").innerHTML = wardTotals
+    .slice()
+    .sort((a, b) => (b.usageCost + b.leakageCost) - (a.usageCost + a.leakageCost))
+    .map(item => {
+      const totalCost = item.usageCost + item.leakageCost;
+      const leakageShare = Math.round((item.leakageCost / Math.max(1, totalCost)) * 100);
+      return `
+        <div class="cost-exposure-row">
+          <div>
+            <strong>${item.ward}</strong>
+            <span>${currency(totalCost)}</span>
+          </div>
+          <div class="cost-exposure-bar">
+            <i style="width:${Math.max(8, Math.round((totalCost / maxCost) * 100))}%; background:${item.accent}"></i>
+          </div>
+          <small>${leakageShare}% wastage</small>
+        </div>
+      `;
+    }).join("");
+}
+
+function renderUsageTrendChart(wardTotals) {
+  const monthlyTotals = analyticsMonths.map((month, index) => sumValues(wardTotals.map(item => item.usage[index])));
+  const maxTotal = Math.max(1, ...monthlyTotals);
+  document.getElementById("usageTrendChart").innerHTML = `
+    <div class="trend-bars">
+      ${monthlyTotals.map((value, index) => {
+        const previous = index === 0 ? value : monthlyTotals[index - 1];
+        const delta = index === 0 ? 0 : value - previous;
+        return `
+          <div class="trend-bar">
+            <strong>${value}</strong>
+            <span style="height:${Math.max(18, Math.round((value / maxTotal) * 118))}px"></span>
+            <small>${analyticsMonths[index]}</small>
+            <em class="${delta >= 0 ? "up" : "down"}">${index === 0 ? "base" : `${delta >= 0 ? "+" : ""}${delta}`}</em>
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderSavingsOpportunityChart(wardTotals) {
+  const maxLeakageCost = Math.max(1, ...wardTotals.map(item => item.leakageCost));
+  document.getElementById("savingsOpportunityChart").innerHTML = wardTotals
+    .slice()
+    .sort((a, b) => b.leakageCost - a.leakageCost)
+    .map(item => {
+      const recoverable = Math.round(item.leakageCost * 0.7);
+      return `
+        <div class="savings-row">
+          <strong>${item.ward}</strong>
+          <div class="savings-meter">
+            <span style="width:${Math.max(8, Math.round((item.leakageCost / maxLeakageCost) * 100))}%; background:${item.accent}"></span>
+          </div>
+          <small>${currency(recoverable)} recoverable</small>
+        </div>
+      `;
+    }).join("");
 }
 
 function renderTopInsight(id, item, label, tanks, value) {

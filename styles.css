@@ -3801,6 +3801,231 @@ body.login-active .app {
   white-space: normal;
 }
 
+.leakage-compare-row {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 9px 10px;
+  border: 1px solid #fee3c7;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #fff7ed 100%);
+}
+
+.leakage-compare-month {
+  display: grid;
+  gap: 2px;
+}
+
+.leakage-compare-month strong {
+  color: #09243f;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.leakage-compare-month span {
+  color: #d92d20;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.leakage-compare-bars {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.compare-track {
+  position: relative;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #edf3f8;
+}
+
+.compare-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+}
+
+.compare-track.usage span {
+  background: linear-gradient(90deg, #0b72e7, #50b4ff);
+}
+
+.compare-track.leakage {
+  background: #fff1f2;
+}
+
+.compare-track.leakage span {
+  background: linear-gradient(90deg, #fb7185, #dc2626);
+}
+
+.compare-track b {
+  position: relative;
+  z-index: 1;
+  display: block;
+  padding: 3px 7px;
+  color: #0b2f54;
+  font-size: 9px;
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.analytics-compare-chart,
+.analytics-cost-chart,
+.analytics-savings-chart {
+  display: grid;
+  gap: 9px;
+}
+
+.analytics-rate-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.34fr) minmax(0, 1fr) 52px;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 9px;
+  border: 1px solid #e1edf7;
+  border-radius: 8px;
+  background: #fbfdff;
+}
+
+.analytics-rate-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #20384f;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.analytics-rate-row span i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.analytics-rate-row div,
+.cost-exposure-bar,
+.savings-meter {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #edf3f8;
+}
+
+.analytics-rate-row div b,
+.cost-exposure-bar i,
+.savings-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.analytics-rate-row strong {
+  color: #d92d20;
+  font-size: 11px;
+  font-weight: 950;
+  text-align: right;
+}
+
+.cost-exposure-row,
+.savings-row {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #e1edf7;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.cost-exposure-row div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cost-exposure-row strong,
+.savings-row strong {
+  color: #09243f;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.cost-exposure-row span,
+.savings-row small {
+  color: #d92d20;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.cost-exposure-row small {
+  color: #5f7288;
+  font-size: 9px;
+  font-weight: 780;
+}
+
+.analytics-trend-chart {
+  min-height: 190px;
+}
+
+.trend-bars {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(70px, 1fr));
+  align-items: end;
+  gap: 12px;
+  min-height: 178px;
+  padding: 12px 10px 8px;
+  border: 1px solid #e1edf7;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(237, 243, 248, 0.7) 1px, transparent 1px) 0 0 / 100% 34px,
+    #ffffff;
+}
+
+.trend-bar {
+  display: grid;
+  grid-template-rows: 18px 122px 16px 16px;
+  align-items: end;
+  justify-items: center;
+  gap: 4px;
+}
+
+.trend-bar strong {
+  color: #09243f;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.trend-bar span {
+  width: 34px;
+  border-radius: 8px 8px 3px 3px;
+  background: linear-gradient(180deg, #50b4ff, #0b72e7);
+  box-shadow: inset 0 -12px 16px rgba(0, 0, 0, 0.08);
+}
+
+.trend-bar small {
+  color: #405a73;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+.trend-bar em {
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 850;
+}
+
+.trend-bar em.up {
+  color: #16a34a;
+}
+
+.trend-bar em.down {
+  color: #d92d20;
+}
+
 .month-breakdown {
   display: flex;
   flex-wrap: wrap;
