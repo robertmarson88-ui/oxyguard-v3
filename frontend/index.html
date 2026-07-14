@@ -46,6 +46,7 @@
         <button class="side-button" data-view="dashboard" data-role-required="admin">Report</button>
         <button class="side-button" data-view="alert" data-role-required="admin">Real Time Alert</button>
         <button class="side-button" data-view="analytics" data-role-required="admin">Analytics</button>
+        <button class="side-button" data-view="simulator" data-role-required="admin">Simulator</button>
         <button class="side-button" data-view="order" data-role-required="admin">Order Summary</button>
         <button class="side-button" data-view="administration" data-role-required="admin">Administration</button>
         <button class="side-button" id="logoutButton">Logout</button>
@@ -599,6 +600,116 @@
                 <div id="savingsOpportunityChart" class="analytics-savings-chart"></div>
               </article>
             </aside>
+          </section>
+        </section>
+
+        <section class="simulator view" id="simulatorView">
+          <section class="simulator-hero">
+            <div>
+              <span>OxyGuard Alert Simulator</span>
+              <h2>Trigger controlled oxygen alert events</h2>
+              <p>Push test readings into the live dashboard to validate residual gas, unauthorized usage, ghost flow, leakage, and flow variance behavior.</p>
+            </div>
+            <div class="simulator-status-card">
+              <small>Simulation Mode</small>
+              <strong>Controlled Test</strong>
+              <span id="simulatorApiStatus">Ready to send telemetry</span>
+            </div>
+          </section>
+
+          <section class="simulator-grid">
+            <article class="simulator-panel simulator-form-panel">
+              <div class="simulator-panel-head">
+                <h3>Send Test Reading</h3>
+                <span>Administrator / Facilities Manager</span>
+              </div>
+              <form id="simulatorForm" class="simulator-form">
+                <label>
+                  Alert Type
+                  <select id="simulatorAlertType">
+                    <option value="Ghost Flow">Ghost Flow</option>
+                    <option value="Unauthorized Usage">Unauthorized Usage</option>
+                    <option value="Residual Gas">Residual Gas</option>
+                    <option value="Leak">Leak</option>
+                    <option value="High Flow">High Flow</option>
+                    <option value="Low Flow">Low Flow</option>
+                    <option value="Device Offline">Device Offline</option>
+                    <option value="Sensor Fault">Sensor Fault</option>
+                    <option value="Normal">Normal</option>
+                  </select>
+                </label>
+
+                <label>
+                  Ward
+                  <select id="simulatorWard"></select>
+                </label>
+
+                <label>
+                  Device / Tank
+                  <select id="simulatorTank"></select>
+                </label>
+
+                <label>
+                  Bed / Location
+                  <input id="simulatorLocation" type="text" placeholder="Bed 07 / Station 1" />
+                </label>
+
+                <label>
+                  Patient Status
+                  <select id="simulatorPatientStatus">
+                    <option value="ON">ON</option>
+                    <option value="OFF">OFF</option>
+                  </select>
+                </label>
+
+                <label>
+                  Prescribed Flow
+                  <input id="simulatorPrescribedFlow" type="number" min="0" max="100" step="0.1" value="3" />
+                </label>
+
+                <label>
+                  Live Reading
+                  <input id="simulatorLiveReading" type="number" min="0" max="100" step="0.1" value="5" />
+                </label>
+
+                <label>
+                  Severity
+                  <select id="simulatorSeverity">
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </label>
+
+                <div class="simulator-actions">
+                  <button type="button" id="simulatorApplyPreset" class="ghost-report-button">Apply Rule</button>
+                  <button type="submit" class="primary-report-button">Send Test Reading</button>
+                </div>
+              </form>
+            </article>
+
+            <article class="simulator-panel simulator-rule-panel">
+              <div class="simulator-panel-head">
+                <h3>Alert Rule Preview</h3>
+                <span id="simulatorRuleStatus">Ghost flow rule selected</span>
+              </div>
+              <div id="simulatorRulePreview" class="simulator-rule-preview"></div>
+              <div class="simulator-quick-actions">
+                <button type="button" data-simulator-preset="Ghost Flow">Ghost Flow</button>
+                <button type="button" data-simulator-preset="Unauthorized Usage">Unauthorized Usage</button>
+                <button type="button" data-simulator-preset="Residual Gas">Residual Gas</button>
+                <button type="button" data-simulator-preset="Leak">Leak</button>
+              </div>
+            </article>
+
+            <article class="simulator-panel simulator-log-panel">
+              <div class="simulator-panel-head">
+                <h3>Recent Simulation Log</h3>
+                <span id="simulatorLogCount">0 events</span>
+              </div>
+              <div id="simulatorLog" class="simulator-log"></div>
+            </article>
           </section>
         </section>
 

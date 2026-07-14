@@ -255,11 +255,16 @@ let adminDeviceRows = [
   { device: "ESP32-D01", location: "Labour Ward", status: "Online", seen: "19 Jun 2026 02:15 PM" },
   { device: "ESP32-E01", location: "Maternity Ward", status: "Offline", seen: "19 Jun 2026 01:40 PM" }
 ];
+let simulatorEvents = [];
 
 const permissionViews = {
   admin: {
     label: "Administrator",
-    allowedViews: ["report", "dashboard", "alert", "analytics", "order", "administration"]
+    allowedViews: ["report", "dashboard", "alert", "analytics", "simulator", "order", "administration"]
+  },
+  "facilities-manager": {
+    label: "Facilities Manager",
+    allowedViews: ["report", "alert", "simulator"]
   },
   "nurse-supervisor": {
     label: "Nurse Manager",
@@ -326,6 +331,21 @@ function start() {
   document.getElementById("createUserForm")?.addEventListener("submit", createUser);
   document.getElementById("updateUserForm")?.addEventListener("submit", updateUserPermission);
   document.getElementById("addDeviceForm")?.addEventListener("submit", addAdminDevice);
+  document.getElementById("simulatorForm")?.addEventListener("submit", submitSimulatorEvent);
+  document.getElementById("simulatorAlertType")?.addEventListener("change", applySimulatorPreset);
+  document.getElementById("simulatorWard")?.addEventListener("change", populateSimulatorTanks);
+  document.getElementById("simulatorTank")?.addEventListener("change", syncSimulatorTankLocation);
+  ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading"].forEach(id => {
+    document.getElementById(id)?.addEventListener("input", renderSimulatorRulePreview);
+    document.getElementById(id)?.addEventListener("change", renderSimulatorRulePreview);
+  });
+  document.getElementById("simulatorApplyPreset")?.addEventListener("click", applySimulatorPreset);
+  document.querySelectorAll("[data-simulator-preset]").forEach(button => {
+    button.addEventListener("click", () => {
+      document.getElementById("simulatorAlertType").value = button.dataset.simulatorPreset;
+      applySimulatorPreset();
+    });
+  });
   document.getElementById("closeHeatMapDialog")?.addEventListener("click", () => document.getElementById("heatMapDialog")?.close());
   document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("keydown", event => {
@@ -803,6 +823,7 @@ function applyRoleAccess() {
             </button>
             <div class="permission-preview-menu" id="permissionPreviewMenu" hidden>
               <button type="button" data-permission-view="admin">Administrator</button>
+              <button type="button" data-permission-view="facilities-manager">Facilities Manager</button>
               <button type="button" data-permission-view="nurse-supervisor">Nurse Manager</button>
               <button type="button" data-permission-view="maintenance">Executive</button>
             </div>
@@ -860,6 +881,8 @@ function getActivePermissionKey() {
 function normalizePermissionRole(role = "") {
   const value = String(role).trim().toLowerCase().replace(/[_\s]+/g, "-");
   if (value.includes("nurse") && value.includes("supervisor")) return "nurse-supervisor";
+  if (value.includes("nurse") && value.includes("manager")) return "nurse-supervisor";
+  if (value.includes("facilities") && value.includes("manager")) return "facilities-manager";
   if (value.includes("executive")) return "maintenance";
   if (value.includes("maintenance")) return "maintenance";
   if (value === "admin" || value.includes("administrator") || value.includes("facilities-admin")) return "admin";
@@ -916,6 +939,7 @@ function renderAll() {
   renderOrderSummary();
   renderAdministration();
   renderAnalytics();
+  if (activeView === "simulator") renderSimulator();
   updateNotifications();
   updateFooter();
 }
@@ -942,6 +966,7 @@ function setView(view) {
   if (view === "order") renderOrderSummary();
   if (view === "administration") renderAdministration();
   if (view === "analytics") renderAnalytics();
+  if (view === "simulator") renderSimulator();
   updatePageTitle();
 }
 
@@ -1088,6 +1113,288 @@ function renderRealTimeAlert() {
       </table>
     `;
   }
+}
+
+function renderSimulator() {
+  populateSimulatorWards();
+  populateSimulatorTanks();
+  applySimulatorPreset(false);
+  renderSimulatorLog();
+}
+
+function populateSimulatorWards() {
+  const wardSelect = document.getElementById("simulatorWard");
+  if (!wardSelect || wardSelect.options.length) return;
+  wardSelect.innerHTML = wards.map(ward => `<option value="${ward.id}">${ward.name}</option>`).join("");
+}
+
+function populateSimulatorTanks() {
+  const wardSelect = document.getElementById("simulatorWard");
+  const tankSelect = document.getElementById("simulatorTank");
+  if (!wardSelect || !tankSelect) return;
+  const selectedWard = wards.find(ward => ward.id === wardSelect.value) || wards[0];
+  const currentTankName = tankSelect.value;
+  tankSelect.innerHTML = selectedWard.tanks.map(tankItem => `
+    <option value="${tankItem.name}">${tankItem.name} - ${tankItem.station}</option>
+  `).join("");
+  if (selectedWard.tanks.some(tankItem => tankItem.name === currentTankName)) {
+    tankSelect.value = currentTankName;
+  }
+  syncSimulatorTankLocation();
+}
+
+function syncSimulatorTankLocation() {
+  const tankItem = getSimulatorSelectedTank();
+  const location = document.getElementById("simulatorLocation");
+  if (tankItem && location) location.value = tankItem.station;
+}
+
+function applySimulatorPreset(updateMessage = true) {
+  const alertType = document.getElementById("simulatorAlertType")?.value || "Ghost Flow";
+  const prescribed = document.getElementById("simulatorPrescribedFlow");
+  const live = document.getElementById("simulatorLiveReading");
+  const patientStatus = document.getElementById("simulatorPatientStatus");
+  const severity = document.getElementById("simulatorSeverity");
+  const presets = {
+    "Ghost Flow": { prescribed: 0, live: 3.2, patient: "OFF", severity: "Critical" },
+    "Unauthorized Usage": { prescribed: 0, live: 4.1, patient: "OFF", severity: "High" },
+    "Residual Gas": { prescribed: 0, live: 1.1, patient: "OFF", severity: "Medium" },
+    "Leak": { prescribed: 3, live: 4.4, patient: "ON", severity: "High" },
+    "High Flow": { prescribed: 3, live: 4, patient: "ON", severity: "High" },
+    "Low Flow": { prescribed: 4, live: 2.8, patient: "ON", severity: "Medium" },
+    "Device Offline": { prescribed: 0, live: 0, patient: "OFF", severity: "High" },
+    "Sensor Fault": { prescribed: 0, live: 0, patient: "OFF", severity: "High" },
+    "Normal": { prescribed: 3, live: 3.4, patient: "ON", severity: "Low" }
+  };
+  const preset = presets[alertType] || presets["Ghost Flow"];
+  if (prescribed) prescribed.value = preset.prescribed;
+  if (live) live.value = preset.live;
+  if (patientStatus) patientStatus.value = preset.patient;
+  if (severity) severity.value = preset.severity;
+  renderSimulatorRulePreview();
+  if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
+}
+
+function renderSimulatorRulePreview() {
+  const target = document.getElementById("simulatorRulePreview");
+  const status = document.getElementById("simulatorRuleStatus");
+  if (!target) return;
+  const alertType = document.getElementById("simulatorAlertType")?.value || "Ghost Flow";
+  const prescribed = Number(document.getElementById("simulatorPrescribedFlow")?.value || 0);
+  const live = Number(document.getElementById("simulatorLiveReading")?.value || 0);
+  const patientStatus = document.getElementById("simulatorPatientStatus")?.value || "OFF";
+  const flowStatus = evaluatePatientFlowStatus(Math.max(0.1, prescribed), live);
+  const variance = prescribed > 0 ? flowStatus.variance : 0;
+  const ruleText = getSimulatorRuleText(alertType, patientStatus, prescribed, live, variance);
+  if (status) status.textContent = `${alertType} selected`;
+  target.innerHTML = `
+    <div class="simulator-rule-card ${alertType === "Normal" ? "normal" : "alert"}">
+      <span>${alertType}</span>
+      <strong>${ruleText.headline}</strong>
+      <p>${ruleText.detail}</p>
+    </div>
+    <div class="simulator-reading-grid">
+      <span><small>Patient</small><strong>${patientStatus}</strong></span>
+      <span><small>Set Value</small><strong>${formatFlow(prescribed)}</strong></span>
+      <span><small>Live Reading</small><strong>${formatFlow(live)}</strong></span>
+      <span><small>Variance</small><strong>${prescribed > 0 ? formatVariance(variance) : "N/A"}</strong></span>
+    </div>
+  `;
+}
+
+function getSimulatorRuleText(alertType, patientStatus, prescribed, live, variance) {
+  const rules = {
+    "Ghost Flow": {
+      headline: "Flow detected while patient status is OFF",
+      detail: "This creates a critical ghost flow event and routes it to Facilities."
+    },
+    "Unauthorized Usage": {
+      headline: "Unassigned bed/tank is showing oxygen flow",
+      detail: "This flags usage outside an approved patient assignment."
+    },
+    "Residual Gas": {
+      headline: "Residual flow remains after closure",
+      detail: "This highlights oxygen remaining in the line or tank after it should be inactive."
+    },
+    "Leak": {
+      headline: "Live reading indicates possible leakage",
+      detail: "This marks the selected tank as a leakage event and increases wastage signals."
+    },
+    "High Flow": {
+      headline: "Live reading is 29% to 40% above SetValue",
+      detail: `Current calculated variance is ${formatVariance(variance)}.`
+    },
+    "Low Flow": {
+      headline: "Live reading is below prescribed SetValue",
+      detail: "This marks the patient flow status as low flow."
+    },
+    "Device Offline": {
+      headline: "Device stopped transmitting telemetry",
+      detail: "This sends a hardware fault telemetry event and isolates the selected point."
+    },
+    "Sensor Fault": {
+      headline: "Sensor reading is invalid or missing",
+      detail: "This sends a hardware fault telemetry event for the selected device."
+    },
+    "Normal": {
+      headline: "Reading is equal to SetValue or 1% to 28% above it",
+      detail: `Patient ${patientStatus}; prescribed ${formatFlow(prescribed)}; live ${formatFlow(live)}.`
+    }
+  };
+  return rules[alertType] || rules["Ghost Flow"];
+}
+
+async function submitSimulatorEvent(event) {
+  event.preventDefault();
+  const tankItem = getSimulatorSelectedTank();
+  const ward = getSimulatorSelectedWard();
+  if (!tankItem || !ward) return;
+
+  const alertType = document.getElementById("simulatorAlertType").value;
+  const prescribed = Number(document.getElementById("simulatorPrescribedFlow").value || 0);
+  const live = Number(document.getElementById("simulatorLiveReading").value || 0);
+  const patientStatus = document.getElementById("simulatorPatientStatus").value;
+  const severity = document.getElementById("simulatorSeverity").value;
+  const location = document.getElementById("simulatorLocation").value.trim() || tankItem.station;
+  const createdAt = new Date().toISOString();
+
+  applySimulatorEventToTank(tankItem, { alertType, prescribed, live, patientStatus, severity, location });
+  const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt);
+  simulatorEvents.unshift({
+    time: formatActivityTime(createdAt),
+    ward: ward.name,
+    tank: tankItem.name,
+    location,
+    alertType,
+    severity,
+    live,
+    prescribed,
+    apiStatus: telemetryResult.ok ? "API logged" : "Screen only"
+  });
+  simulatorEvents = simulatorEvents.slice(0, 8);
+
+  updateSimulatorApiStatus(
+    telemetryResult.ok
+      ? `${alertType} sent to dashboard and telemetry API.`
+      : `${alertType} shown on dashboard. API did not accept telemetry yet.`,
+    telemetryResult.ok ? "success" : "warn"
+  );
+  renderAll();
+  renderSimulator();
+}
+
+function applySimulatorEventToTank(tankItem, simulation) {
+  tankItem.active = simulation.alertType !== "Device Offline";
+  tankItem.occupied = simulation.patientStatus === "ON";
+  tankItem.flowRate = simulation.live;
+  tankItem.stationFlowRate = simulation.live;
+  tankItem.pressure = simulation.alertType === "Sensor Fault" ? 0 : clamp(tankItem.pressure || 48, 35, 60);
+  tankItem.alertType = simulation.alertType === "Unauthorized Usage" ? "Unauthorized Bed Usage" : simulation.alertType;
+  tankItem.alertMessage = simulation.alertType === "Normal" ? "" : simulation.alertType;
+  tankItem.highFlowAlert = simulation.alertType === "Ghost Flow" || simulation.alertType === "High Flow";
+  tankItem.leakageAlert = !["Normal", "High Flow"].includes(simulation.alertType) && simulation.alertType !== "Device Offline";
+  tankItem.fixedFlow = simulation.alertType !== "Normal";
+  if (simulation.alertType === "Device Offline") {
+    tankItem.active = false;
+    tankItem.flowRate = 0;
+    tankItem.stationFlowRate = 0;
+    tankItem.alertMessage = "Device Offline";
+  }
+  if (simulation.alertType === "Normal") {
+    tankItem.active = true;
+    tankItem.leakageAlert = false;
+    tankItem.highFlowAlert = false;
+    tankItem.fixedFlow = false;
+  } else {
+    wastage = Math.max(wastage, simulation.severity === "Critical" ? 18 : simulation.severity === "High" ? 14 : 9);
+  }
+}
+
+async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt) {
+  try {
+    const response = await fetch("/api/v1/telemetry", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        device_id: getSimulatorDeviceId(ward, tankItem),
+        ward_id: getSimulatorWardId(ward),
+        flow_rate: Number(live),
+        operational_status: getSimulatorOperationalStatus(alertType, live),
+        timestamp: createdAt
+      })
+    });
+    return { ok: response.ok };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function getSimulatorSelectedWard() {
+  const wardId = document.getElementById("simulatorWard")?.value;
+  return wards.find(ward => ward.id === wardId) || wards[0];
+}
+
+function getSimulatorSelectedTank() {
+  const ward = getSimulatorSelectedWard();
+  const tankName = document.getElementById("simulatorTank")?.value;
+  return ward?.tanks.find(tankItem => tankItem.name === tankName) || ward?.tanks[0];
+}
+
+function getSimulatorWardId(ward) {
+  const ids = { labour: "X001", ae: "X002", paediatric: "X005", recovery: "X003", nurse: "X004" };
+  return ids[ward.id] || ward.id.toUpperCase().slice(0, 4);
+}
+
+function getSimulatorDeviceId(ward, tankItem) {
+  const ids = {
+    "Tank A1": "TK007",
+    "Tank A2": "TK008",
+    "Tank A3": "AE003",
+    "Tank B1": "TK001",
+    "Tank B2": "TK002",
+    "Tank B3": "TK003",
+    "Tank C1": "TK004",
+    "Tank C2": "TK005",
+    "Tank C3": "TK006",
+    "Tank R1": "RC001",
+    "Tank R2": "RC002",
+    "Nurse Station": "NS001"
+  };
+  return ids[tankItem.name] || `${ward.id.slice(0, 2).toUpperCase().padEnd(2, "X")}001`;
+}
+
+function getSimulatorOperationalStatus(alertType, live) {
+  if (["Device Offline", "Sensor Fault"].includes(alertType)) return "hardware_fault";
+  if (["Ghost Flow", "High Flow"].includes(alertType) || live >= 30) return "critical";
+  if (["Unauthorized Usage", "Residual Gas", "Leak", "Low Flow"].includes(alertType)) return "warning";
+  return "normal";
+}
+
+function updateSimulatorApiStatus(message, tone = "ready") {
+  const status = document.getElementById("simulatorApiStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
+}
+
+function renderSimulatorLog() {
+  const target = document.getElementById("simulatorLog");
+  const count = document.getElementById("simulatorLogCount");
+  if (!target) return;
+  if (count) count.textContent = `${simulatorEvents.length} event${simulatorEvents.length === 1 ? "" : "s"}`;
+  target.innerHTML = simulatorEvents.length
+    ? simulatorEvents.map(item => `
+      <div class="simulator-log-row">
+        <time>${item.time}</time>
+        <div>
+          <strong>${item.alertType}</strong>
+          <span>${item.ward} | ${item.tank} | ${item.location}</span>
+        </div>
+        <b class="${item.severity.toLowerCase()}">${item.severity}</b>
+        <small>${item.apiStatus}</small>
+      </div>
+    `).join("")
+    : `<div class="simulator-empty">No simulator events yet. Select a rule and send a test reading.</div>`;
 }
 
 function alertKpiCard(label, value, detail, tone, action = "", iconMode = "text") {
@@ -1672,6 +1979,7 @@ function updatePageTitle() {
     alert: "ALERT MONITORING",
     order: "ORDER SUMMARY",
     analytics: "CALL ANALYTICS",
+    simulator: "ALERT SIMULATOR",
     administration: "ADMINISTRATION"
   };
   document.querySelector(".topbar h1").textContent = titles[activeView] || titles.report;
