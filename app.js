@@ -239,7 +239,7 @@ let adminGovernanceSettings = [
   { key: "patientAnonymization", title: "Patient Anonymization", description: "Hide patient identifiers in all modules", value: "Enabled", type: "toggle", enabled: true },
   { key: "dataRetention", title: "Data Retention Period", description: "Automatic data deletion after period", value: "365 Days", options: ["180 Days", "365 Days", "730 Days"] },
   { key: "auditLogging", title: "Audit Logging", description: "Record all system and data access", value: "Enabled", type: "toggle", enabled: true },
-  { key: "dataExport", title: "Data Export Restrictions", description: "Restrict data export to authorized roles", value: "Facilities Admin Only", options: ["Facilities Admin Only", "Executive User", "Disabled"] }
+  { key: "dataExport", title: "Data Export Restrictions", description: "Restrict data export to authorized roles", value: "Administrator Only", options: ["Administrator Only", "Executive", "Disabled"] }
 ];
 let adminAlertRules = [
   { key: "ghostFlow", title: "Ghost Flow Threshold", description: "Minimum flow when flag is OFF", value: "0.5 Litre/Min", options: ["0.3 Litre/Min", "0.5 Litre/Min", "0.8 Litre/Min"] },
@@ -258,15 +258,15 @@ let adminDeviceRows = [
 
 const permissionViews = {
   admin: {
-    label: "Facilities Admin",
+    label: "Administrator",
     allowedViews: ["report", "dashboard", "alert", "analytics", "order", "administration"]
   },
   "nurse-supervisor": {
-    label: "Nurse Supervisor",
+    label: "Nurse Manager",
     allowedViews: ["report"]
   },
   maintenance: {
-    label: "Executive User",
+    label: "Executive",
     allowedViews: ["report", "analytics"]
   },
   viewer: {
@@ -595,7 +595,7 @@ function getLocalLoginUser(username, password) {
       username: "robertm",
       role: "admin",
       role_id: 1,
-      label: "Facilities Admin",
+      label: "Administrator",
       email: "marsonrobert88@gmail.com",
       permissions: ["resolve_alert", "view_logs"]
     },
@@ -605,7 +605,7 @@ function getLocalLoginUser(username, password) {
       username: "admin",
       role: "admin",
       role_id: 1,
-      label: "Facilities Admin",
+      label: "Administrator",
       email: "facilities.admin@monamercy.local",
       permissions: ["resolve_alert", "view_logs"]
     },
@@ -615,7 +615,7 @@ function getLocalLoginUser(username, password) {
       username: "user1",
       role: "admin",
       role_id: 1,
-      label: "Facilities Admin",
+      label: "Administrator",
       email: "robertmarson88@gmail.com",
       permissions: ["resolve_alert", "view_logs"]
     },
@@ -625,7 +625,7 @@ function getLocalLoginUser(username, password) {
       username: "supervisor",
       role: "nurse-supervisor",
       role_id: 4,
-      label: "Nurse Supervisor",
+      label: "Nurse Manager",
       email: "nurse.supervisor@monamercy.local",
       permissions: ["resolve_alert", "view_logs"]
     },
@@ -635,8 +635,18 @@ function getLocalLoginUser(username, password) {
       username: "executive",
       role: "executive",
       role_id: 2,
-      label: "Executive User",
+      label: "Executive",
       email: "executive@monamercy.local",
+      permissions: ["view_logs"]
+    },
+    vernon: {
+      password: "vernon1",
+      user_id: "AA003",
+      username: "vernon",
+      role: "executive",
+      role_id: 2,
+      label: "Executive",
+      email: "vernon.dacosta@gmail.com",
       permissions: ["view_logs"]
     }
   };
@@ -792,9 +802,9 @@ function applyRoleAccess() {
               <strong id="permissionPreviewLabel">${access.label}</strong>
             </button>
             <div class="permission-preview-menu" id="permissionPreviewMenu" hidden>
-              <button type="button" data-permission-view="admin">Facilities Admin</button>
-              <button type="button" data-permission-view="nurse-supervisor">Nurse Supervisor</button>
-              <button type="button" data-permission-view="maintenance">Executive User</button>
+              <button type="button" data-permission-view="admin">Administrator</button>
+              <button type="button" data-permission-view="nurse-supervisor">Nurse Manager</button>
+              <button type="button" data-permission-view="maintenance">Executive</button>
             </div>
           </div>
         ` : `<span class="user-role">${currentUser.label}</span>`}

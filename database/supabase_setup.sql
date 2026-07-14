@@ -161,7 +161,7 @@ create index if not exists patient_assignments_active_idx on public.patient_assi
 
 insert into public.roles (role_id, role_name) values
   (1, 'Administrator'),
-  (2, 'Executive / CFO'),
+  (2, 'Executive'),
   (3, 'Facilities Manager'),
   (4, 'Nurse Manager'),
   (5, 'Nurse')
@@ -179,7 +179,7 @@ set permission_key = coalesce(permission_key, permission_name)
 where permission_key is null;
 
 insert into public.role_permissions (role_id, permission_id) values
-  (1, 1), (1, 2), (2, 2), (3, 2), (4, 1), (4, 2), (5, 2)
+  (1, 1), (1, 2), (2, 2), (3, 2), (4, 2), (5, 2)
 on conflict do nothing;
 
 do $$
@@ -196,7 +196,7 @@ begin
       insert into public.users (user_id, username, email, email_verified, password_hash, role_id, created_at) values
         ('AA001', 'martin', 'robinsonmartin187@gmail.com', true, 'demo-hash:martin-2026', 1, '2026-06-09 08:00:00+00'),
         ('AA002', 'robertm', 'marsonrobert88@gmail.com', true, 'demo-hash:robertm-2026', 1, '2026-06-09 08:00:00+00'),
-        ('AA003', 'vernon', 'vernon.dacosta@gmail.com', true, 'demo-hash:vernon-2026', 1, '2026-06-09 08:00:00+00'),
+        ('AA003', 'vernon', 'vernon.dacosta@gmail.com', true, 'demo-hash:vernon-2026', 2, '2026-06-09 08:00:00+00'),
         ('AA004', 'user1', 'robertmarson88@gmail.com', true, 'demo-hash:user1-2026', 1, '2026-06-09 08:00:00+00'),
         ('AA005', 'user2', 'robertmarson88@gmail.com', true, 'demo-hash:user2-2026', 1, '2026-06-09 08:00:00+00'),
         ('AA006', 'martinm', 'robinsonmartin187@gmail.com', true, 'demo-hash:martinm-2026', 1, '2026-06-09 08:00:00+00'),

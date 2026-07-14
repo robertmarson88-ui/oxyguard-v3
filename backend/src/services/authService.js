@@ -13,7 +13,7 @@ export function createAuthService(db) {
     const permissions = getPermissionNamesForRole(user.role_id);
     const accessToken = randomUUID();
     const roleLabel = String(role.role_name || "").toLowerCase();
-    const isAdministrator = roleLabel === "administrator" || roleLabel === "facilities admin";
+    const isAdministrator = roleLabel === "administrator";
 
     sessions.set(accessToken, { user, issued_at: new Date().toISOString() });
 

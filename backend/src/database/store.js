@@ -4,10 +4,10 @@ export async function createRelationalStore() {
   const store = {
     source: "demo",
     roles: [
-      { role_id: 1, role_name: "Facilities Admin" },
-      { role_id: 2, role_name: "Executive User" },
+      { role_id: 1, role_name: "Administrator" },
+      { role_id: 2, role_name: "Executive" },
       { role_id: 3, role_name: "Facilities Manager" },
-      { role_id: 4, role_name: "Nurse Supervisor" },
+      { role_id: 4, role_name: "Nurse Manager" },
       { role_id: 5, role_name: "Nurse" }
     ],
     permissions: [
@@ -19,14 +19,13 @@ export async function createRelationalStore() {
       { role_id: 1, permission_id: 2 },
       { role_id: 2, permission_id: 2 },
       { role_id: 3, permission_id: 2 },
-      { role_id: 4, permission_id: 1 },
       { role_id: 4, permission_id: 2 },
       { role_id: 5, permission_id: 2 }
     ],
     users: [
       createUser("AA001", "martin", "martin1", "robinsonmartin187@gmail.com", 1, "demo-hash:martin-2026"),
       createUser("AA002", "robertm", "password2", "marsonrobert88@gmail.com", 1, "demo-hash:robertm-2026"),
-      createUser("AA003", "vernon", "vernon1", "vernon.dacosta@gmail.com", 1, "demo-hash:vernon-2026"),
+      createUser("AA003", "vernon", "vernon1", "vernon.dacosta@gmail.com", 2, "demo-hash:vernon-2026"),
       createUser("AA004", "user1", "password1", "robertmarson88@gmail.com", 1, "demo-hash:user1-2026"),
       createUser("AA005", "user2", "password2", "robertmarson88@gmail.com", 1, "demo-hash:user2-2026"),
       createUser("AA006", "martinm", "martin1", "robinsonmartin187@gmail.com", 1, "demo-hash:martinm-2026"),

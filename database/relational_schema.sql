@@ -85,7 +85,7 @@ CREATE INDEX audit_logs_user_performed_idx ON audit_logs(user_id, performed_at D
 
 INSERT INTO roles (role_id, role_name) VALUES
   (1, 'Administrator'),
-  (2, 'Executive / CFO'),
+  (2, 'Executive'),
   (3, 'Facilities Manager'),
   (4, 'Nurse Manager'),
   (5, 'Nurse')
@@ -97,7 +97,7 @@ SELECT setval('roles_role_id_seq', GREATEST((SELECT MAX(role_id) FROM roles), 1)
 INSERT INTO users (user_id, username, email, email_verified, password_hash, role_id, created_at) VALUES
   ('AA001', 'martinm', 'robinsonmartin187@gmail.com', TRUE, 'demo-hash:martinm-2026', 3, '2026-06-09 08:00:00'),
   ('AA002', 'robertm', 'marsonrobert88@gmail.com', TRUE, 'demo-hash:robertm-2026', 1, '2026-06-09 08:00:00'),
-  ('AA003', 'vernond', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernond-2026', 4, '2026-06-09 08:00:00')
+  ('AA003', 'vernon', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernon-2026', 2, '2026-06-09 08:00:00')
 ON CONFLICT (user_id) DO UPDATE
   SET username = EXCLUDED.username,
       email = EXCLUDED.email,
