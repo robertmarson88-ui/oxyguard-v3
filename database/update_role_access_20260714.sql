@@ -40,6 +40,10 @@ update public.users
 set role_id = 2
 where username in ('vernon', 'vernond');
 
+update public.users
+set role_id = 4
+where username = 'martin';
+
 commit;
 
 select
@@ -50,4 +54,5 @@ select
 from public.users u
 join public.roles r on r.role_id = u.role_id
 where u.username in ('robertm', 'vernon', 'vernond')
+   or u.username = 'martin'
 order by u.username;

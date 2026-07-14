@@ -194,7 +194,7 @@ begin
   ) then
     execute $users$
       insert into public.users (user_id, username, email, email_verified, password_hash, role_id, created_at) values
-        ('AA001', 'martin', 'robinsonmartin187@gmail.com', true, 'demo-hash:martin-2026', 1, '2026-06-09 08:00:00+00'),
+        ('AA001', 'martin', 'robinsonmartin187@gmail.com', true, 'demo-hash:martin-2026', 4, '2026-06-09 08:00:00+00'),
         ('AA002', 'robertm', 'marsonrobert88@gmail.com', true, 'demo-hash:robertm-2026', 1, '2026-06-09 08:00:00+00'),
         ('AA003', 'vernon', 'vernon.dacosta@gmail.com', true, 'demo-hash:vernon-2026', 2, '2026-06-09 08:00:00+00'),
         ('AA004', 'user1', 'robertmarson88@gmail.com', true, 'demo-hash:user1-2026', 1, '2026-06-09 08:00:00+00'),
