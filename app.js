@@ -546,11 +546,12 @@ function setupLogin() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ username: username.value.trim(), password: password.value })
       });
-      const result = await response.json();
+      const responseText = await response.text();
+      const result = parseJsonResponse(responseText);
 
       if (!response.ok || !result.ok) {
         const fallbackUser = getLocalLoginUser(username.value, password.value);
-        if (!fallbackUser) throw new Error(result.message || "Invalid username or password.");
+        if (!fallbackUser) throw new Error(result?.message || "Invalid username or password.");
         currentUser = fallbackUser;
         sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
         password.value = "";
@@ -577,9 +578,27 @@ function setupLogin() {
   });
 }
 
+function parseJsonResponse(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {};
+  }
+}
+
 function getLocalLoginUser(username, password) {
   const normalizedUsername = String(username || "").trim().toLowerCase();
   const users = {
+    robertm: {
+      password: "robert1",
+      user_id: "AA002",
+      username: "robertm",
+      role: "admin",
+      role_id: 1,
+      label: "Facilities Admin",
+      email: "marsonrobert88@gmail.com",
+      permissions: ["resolve_alert", "view_logs"]
+    },
     admin: {
       password: "admin1",
       user_id: "AA008",
