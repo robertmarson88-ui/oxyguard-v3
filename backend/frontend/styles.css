@@ -11901,6 +11901,46 @@ body:not(.login-active) .main {
   line-height: 1.22 !important;
 }
 
+/* Analytics KPI readability */
+#analyticsView .analytics-summary {
+  grid-template-columns: repeat(6, minmax(178px, 1fr)) !important;
+}
+
+#analyticsView .analytics-summary .summary-card {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy {
+  min-width: 0 !important;
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy span,
+#analyticsView .analytics-summary .kpi-copy small {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy strong {
+  display: block !important;
+  max-width: 100% !important;
+  color: #073763 !important;
+  font-size: clamp(20px, 1.42vw, 27px) !important;
+  line-height: 1.04 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  word-break: normal !important;
+}
+
+#analyticsView .analytics-summary .ward-kpi .kpi-copy strong {
+  font-size: clamp(20px, 1.25vw, 24px) !important;
+}
+
 #analyticsView .analytics-grid {
   gap: 10px !important;
 }

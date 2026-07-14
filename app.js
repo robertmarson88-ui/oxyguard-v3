@@ -4080,12 +4080,22 @@ function renderAnalytics() {
   const topWastage = [...wardTotals].sort((a, b) => b.leakageCost - a.leakageCost)[0];
 
   summary.innerHTML = [
-    reportSummaryCard("Total Tanks Used", totalTanks, "Jan-May ward consumption", colors.ae),
-    reportSummaryCard("Usage Dollar Value", currency(totalUsageCost), "Tank cost applied monthly", colors.green),
-    reportSummaryCard("Leakage Tanks", totalLeakageTanks, "Estimated wasted tanks", colors.red),
-    reportSummaryCard("Leakage Dollar Value", currency(totalLeakageCost), "Estimated wastage cost", colors.red),
-    reportSummaryCard("Top Consumption", topConsumption.ward, currency(topConsumption.usageCost), topConsumption.accent),
-    reportSummaryCard("Top Wastage", topWastage.ward, currency(topWastage.leakageCost), colors.red)
+    reportSummaryCard("Tank Usage", totalTanks, "Jan-May total tanks", colors.ae),
+    reportSummaryCard("Usage Cost", currencyCompact(totalUsageCost), "Jan-May oxygen spend", colors.green, "dot", {
+      hover: `Usage Cost: ${currency(totalUsageCost)}. Tank cost applied monthly.`
+    }),
+    reportSummaryCard("Wasted Tanks", totalLeakageTanks, "Estimated leakage tanks", colors.red),
+    reportSummaryCard("Wastage Cost", currencyCompact(totalLeakageCost), "Estimated loss value", colors.red, "dot", {
+      hover: `Wastage Cost: ${currency(totalLeakageCost)}. Estimated leakage and wastage cost.`
+    }),
+    reportSummaryCard("Highest Usage Ward", topConsumption.ward, currency(topConsumption.usageCost), topConsumption.accent, "dot", {
+      className: "ward-kpi",
+      hover: `Highest Usage Ward: ${topConsumption.ward}. Usage cost ${currency(topConsumption.usageCost)}.`
+    }),
+    reportSummaryCard("Highest Wastage Ward", topWastage.ward, currency(topWastage.leakageCost), colors.red, "dot", {
+      className: "ward-kpi",
+      hover: `Highest Wastage Ward: ${topWastage.ward}. Wastage cost ${currency(topWastage.leakageCost)}.`
+    })
   ].join("");
 
   renderMonthlyUsageChart(wardTotals);
@@ -4302,6 +4312,16 @@ function currency(value) {
   return `JMD ${value.toLocaleString()}`;
 }
 
+function currencyCompact(value) {
+  if (value >= 1000000) {
+    return `JMD ${(value / 1000000).toFixed(value >= 10000000 ? 1 : 2)}M`;
+  }
+  if (value >= 1000) {
+    return `JMD ${(value / 1000).toFixed(0)}K`;
+  }
+  return currency(value);
+}
+
 function renderAlertDistributionChart() {
   const target = document.getElementById("alertChart");
   if (!target) return;
@@ -4404,8 +4424,9 @@ function reportSummaryCard(title, value, status, color, icon = "dot", options = 
     ? `<em class="kpi-delta ${options.deltaTone || ""}">${options.delta}</em>`
     : "";
   const hoverDetail = escapeHtml(options.hover || `${title}: ${String(value).replace(/<[^>]*>/g, " ")}. ${String(status).replace(/<[^>]*>/g, " ")}`);
+  const extraClass = options.className ? ` ${options.className}` : "";
   return `
-    <article class="summary-card v5-kpi-card ${icon}" title="${hoverDetail}">
+    <article class="summary-card v5-kpi-card ${icon}${extraClass}" title="${hoverDetail}">
       <div class="kpi-copy">
         <span>${title}</span>
         <strong style="color:${color}">${value}</strong>
