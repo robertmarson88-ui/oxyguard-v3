@@ -12357,3 +12357,133 @@ body:not(.login-active) .main {
     min-height: 292px !important;
   }
 }
+
+/* Sleek sidebar refresh */
+body:not(.login-active) .sidebar {
+  gap: 10px !important;
+  padding: 14px 10px !important;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(44, 152, 232, 0.22), transparent 30%),
+    linear-gradient(180deg, #062b4e 0%, #08243d 48%, #061c31 100%) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(255, 255, 255, 0.08),
+    14px 0 34px rgba(7, 25, 44, 0.16) !important;
+}
+
+body:not(.login-active) .logo,
+body:not(.login-active) .sidebar-user {
+  border-radius: 12px !important;
+  border: 1px solid rgba(219, 234, 254, 0.78) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 248, 255, 0.94)) !important;
+  box-shadow:
+    0 14px 28px rgba(0, 12, 28, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+body:not(.login-active) .logo {
+  min-height: 112px !important;
+  margin-bottom: 10px !important;
+  padding: 14px !important;
+}
+
+body:not(.login-active) .logo-image {
+  width: 122px !important;
+  max-width: 100% !important;
+}
+
+body:not(.login-active) .sidebar-user {
+  gap: 9px !important;
+  padding: 14px 10px 13px !important;
+  margin-bottom: 12px !important;
+}
+
+body:not(.login-active) .user-avatar {
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 13px !important;
+  background: linear-gradient(135deg, #268df0, #0f68c7) !important;
+  font-size: 17px !important;
+  box-shadow:
+    0 10px 20px rgba(10, 94, 180, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25) !important;
+}
+
+body:not(.login-active) .sidebar-user strong {
+  color: #082744 !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+body:not(.login-active) .sidebar-user .permission-preview-button {
+  padding: 5px 10px !important;
+  background: linear-gradient(135deg, #d9fbe8, #bff3d4) !important;
+  color: #087339 !important;
+  font-size: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65) !important;
+}
+
+body:not(.login-active) .side-button,
+body:not(.login-active) #logoutButton {
+  position: relative !important;
+  min-height: 48px !important;
+  padding: 0 18px !important;
+  border: 1px solid rgba(176, 205, 232, 0.2) !important;
+  border-radius: 11px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.055)) !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0 !important;
+  text-align: left !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 8px 18px rgba(0, 0, 0, 0.08) !important;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease !important;
+}
+
+body:not(.login-active) .side-button::before,
+body:not(.login-active) #logoutButton::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 3px;
+  height: 0;
+  border-radius: 999px;
+  background: #38bdf8;
+  transform: translateY(-50%);
+  transition: height 160ms ease;
+}
+
+body:not(.login-active) .side-button:hover,
+body:not(.login-active) #logoutButton:hover {
+  transform: translateX(2px) !important;
+  border-color: rgba(125, 211, 252, 0.46) !important;
+  background:
+    linear-gradient(180deg, rgba(56, 189, 248, 0.22), rgba(29, 91, 145, 0.2)) !important;
+  box-shadow:
+    0 12px 24px rgba(0, 0, 0, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.13) !important;
+}
+
+body:not(.login-active) .side-button.active {
+  border-color: rgba(125, 211, 252, 0.82) !important;
+  background:
+    linear-gradient(135deg, rgba(30, 144, 219, 0.95), rgba(15, 89, 157, 0.76)) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 14px 28px rgba(14, 116, 190, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+body:not(.login-active) .side-button.active::before,
+body:not(.login-active) .side-button:hover::before,
+body:not(.login-active) #logoutButton:hover::before {
+  height: 22px;
+}
