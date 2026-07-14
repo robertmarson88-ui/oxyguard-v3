@@ -1325,6 +1325,7 @@ body.login-active .app {
   left: 120px;
   right: 115px;
   top: 132px;
+  height: 8px;
 }
 
 .pipe.center {
@@ -1377,6 +1378,17 @@ body.login-active .app {
   box-shadow: 0 0 0 4px rgba(39, 174, 96, 0.13), 0 0 18px rgba(39, 174, 96, 0.22);
 }
 
+.live-pipeline .pipe.main {
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0) 0 8%, rgba(255, 255, 255, 0.82) 12%, rgba(255, 255, 255, 0) 18%),
+    linear-gradient(90deg, #159a57, #7ee7ae, #159a57);
+  background-size: 120px 100%, 56px 100%;
+  animation: mainOxygenStream calc(var(--flow-speed, 4.5s) * 0.58) linear infinite;
+  box-shadow:
+    0 0 0 5px rgba(39, 174, 96, 0.14),
+    0 0 22px rgba(39, 174, 96, 0.34);
+}
+
 .live-pipeline .pipe.vertical {
   background: linear-gradient(180deg, #1fa463, #68dea0, #1fa463);
   background-size: 100% 56px;
@@ -1404,6 +1416,20 @@ body.login-active .app {
 
 .live-pipeline .pipe b:nth-child(3) {
   animation-delay: calc(var(--flow-speed, 4.5s) * -0.7);
+}
+
+.live-pipeline .pipe.main b {
+  width: 42px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 1), rgba(187, 247, 208, 0.9), transparent);
+  animation-duration: calc(var(--flow-speed, 4.5s) * 0.68);
+}
+
+.live-pipeline .pipe.main b:nth-child(4) {
+  animation-delay: calc(var(--flow-speed, 4.5s) * -0.18);
+}
+
+.live-pipeline .pipe.main b:nth-child(5) {
+  animation-delay: calc(var(--flow-speed, 4.5s) * -0.52);
 }
 
 .flow-label {
@@ -1436,6 +1462,11 @@ body.login-active .app {
 @keyframes pipeCurrent {
   from { background-position: 0 0; }
   to { background-position: 56px 0; }
+}
+
+@keyframes mainOxygenStream {
+  from { background-position: -120px 0, 0 0; }
+  to { background-position: 120px 0, 56px 0; }
 }
 
 .tank-farm {

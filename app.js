@@ -1176,7 +1176,7 @@ function renderAlertPipelineMap() {
         </div>
         <div><i></i><i></i><i></i><i></i></div>
       </div>
-      <div class="pipe horizontal main"><b></b><b></b><b></b></div>
+      <div class="pipe horizontal main"><b></b><b></b><b></b><b></b><b></b></div>
       <div class="pipe vertical center"><b></b><b></b></div>
       <div class="pipe horizontal bottom"><b></b><b></b></div>
       <div class="pipe vertical branch-left"><b></b></div>
