@@ -11920,25 +11920,66 @@ body:not(.login-active) .main {
 #analyticsView .analytics-summary .kpi-copy span,
 #analyticsView .analytics-summary .kpi-copy small {
   max-width: 100% !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
 }
 
 #analyticsView .analytics-summary .kpi-copy strong {
   display: block !important;
   max-width: 100% !important;
   color: #073763 !important;
-  font-size: clamp(20px, 1.42vw, 27px) !important;
-  line-height: 1.04 !important;
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
+  font-size: clamp(16px, 1.15vw, 23px) !important;
+  line-height: 1.08 !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  white-space: normal !important;
   word-break: normal !important;
 }
 
 #analyticsView .analytics-summary .ward-kpi .kpi-copy strong {
-  font-size: clamp(20px, 1.25vw, 24px) !important;
+  font-size: clamp(17px, 1.08vw, 21px) !important;
+}
+
+#analyticsView .analytics-summary .summary-card {
+  height: 142px !important;
+  min-height: 142px !important;
+  padding: 13px 16px !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy {
+  gap: 7px !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy span {
+  min-height: 26px !important;
+  font-size: 11px !important;
+  line-height: 1.18 !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy small {
+  font-size: 9.5px !important;
+  line-height: 1.18 !important;
+}
+
+/* Uniform dashboard card spacing */
+.v5-dashboard,
+#dashboardView .report-center {
+  gap: 12px !important;
+  padding: 14px !important;
+}
+
+.v5-dashboard .report-card,
+.v5-dashboard .summary-card,
+#dashboardView .report-card,
+#dashboardView .report-center-card,
+#dashboardView .monthly-comparison-card,
+#dashboardView .oxygen-waste-card,
+#dashboardView .report-generated-top,
+#dashboardView .report-center-head {
+  padding: 12px !important;
+  border-radius: 10px !important;
 }
 
 #analyticsView .analytics-grid {

@@ -4081,11 +4081,11 @@ function renderAnalytics() {
 
   summary.innerHTML = [
     reportSummaryCard("Tank Usage", totalTanks, "Jan-May total tanks", colors.ae),
-    reportSummaryCard("Usage Cost", currencyCompact(totalUsageCost), "Jan-May oxygen spend", colors.green, "dot", {
+    reportSummaryCard("Usage Cost", currency(totalUsageCost), "Jan-May oxygen spend", colors.green, "dot", {
       hover: `Usage Cost: ${currency(totalUsageCost)}. Tank cost applied monthly.`
     }),
     reportSummaryCard("Wasted Tanks", totalLeakageTanks, "Estimated leakage tanks", colors.red),
-    reportSummaryCard("Wastage Cost", currencyCompact(totalLeakageCost), "Estimated loss value", colors.red, "dot", {
+    reportSummaryCard("Wastage Cost", currency(totalLeakageCost), "Estimated loss value", colors.red, "dot", {
       hover: `Wastage Cost: ${currency(totalLeakageCost)}. Estimated leakage and wastage cost.`
     }),
     reportSummaryCard("Highest Usage Ward", topConsumption.ward, currency(topConsumption.usageCost), topConsumption.accent, "dot", {
