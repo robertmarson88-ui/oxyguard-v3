@@ -1165,11 +1165,15 @@ function renderAlertWardCard(card) {
 
 function renderAlertPipelineMap() {
   const flowTotal = Math.round(wards.reduce((sum, ward) => sum + totalFlow(ward), 0));
+  const tankPercent = Math.max(42, 88 - Math.floor((Date.now() / 60000) % 28));
   return `
-    <div class="pipeline-canvas live-pipeline" style="--flow-speed:${Math.max(2.6, 7 - flowTotal / 10)}s">
+    <div class="pipeline-canvas live-pipeline" style="--flow-speed:${Math.max(2.6, 7 - flowTotal / 10)}s; --tank-level:${tankPercent}%">
       <div class="tank-farm">
         <strong>Main Tank Farm</strong>
-        <span>4 Tanks</span>
+        <span class="tank-percent">${tankPercent}%</span>
+        <div class="tank-gauge" aria-label="Main tank farm remaining oxygen ${tankPercent}%">
+          <i style="width:${tankPercent}%"></i>
+        </div>
         <div><i></i><i></i><i></i><i></i></div>
       </div>
       <div class="pipe horizontal main"><b></b><b></b><b></b></div>

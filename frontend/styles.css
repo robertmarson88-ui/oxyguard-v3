@@ -1372,7 +1372,14 @@ body.login-active .app {
 
 .live-pipeline .pipe {
   background: linear-gradient(90deg, #1fa463, #68dea0, #1fa463);
+  background-size: 56px 100%;
+  animation: pipeCurrent var(--flow-speed, 4.5s) linear infinite;
   box-shadow: 0 0 0 4px rgba(39, 174, 96, 0.13), 0 0 18px rgba(39, 174, 96, 0.22);
+}
+
+.live-pipeline .pipe.vertical {
+  background: linear-gradient(180deg, #1fa463, #68dea0, #1fa463);
+  background-size: 100% 56px;
 }
 
 .live-pipeline .pipe b {
@@ -1426,6 +1433,11 @@ body.login-active .app {
   to { top: calc(100% + 34px); opacity: 0; }
 }
 
+@keyframes pipeCurrent {
+  from { background-position: 0 0; }
+  to { background-position: 56px 0; }
+}
+
 .tank-farm {
   position: absolute;
   left: 20px;
@@ -1443,18 +1455,46 @@ body.login-active .app {
   font-size: 9px;
 }
 
-.tank-farm div {
+.tank-farm .tank-percent {
+  margin-top: 2px;
+  color: #0f7a43;
+  font-size: 13px;
+  font-weight: 950;
+  line-height: 1;
+}
+
+.tank-gauge {
+  width: 74px;
+  height: 7px;
+  margin: 6px auto 0;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e5f3eb;
+  box-shadow: inset 0 1px 2px rgba(15, 52, 87, 0.12);
+}
+
+.tank-gauge i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #16a34a, #86efac);
+  transition: width 1.2s ease;
+}
+
+.tank-farm > div:not(.tank-gauge) {
   display: flex;
   justify-content: center;
   gap: 6px;
   margin-top: 6px;
 }
 
-.tank-farm i {
+.tank-farm > div:not(.tank-gauge) i {
   width: 13px;
   height: 54px;
   border-radius: 8px 8px 4px 4px;
-  background: linear-gradient(#7ee7ae, #16a34a);
+  background:
+    linear-gradient(to top, #16a34a 0 var(--tank-level, 82%), #dff5e8 var(--tank-level, 82%) 100%);
+  transition: background 1.2s ease;
 }
 
 .map-ward {
@@ -1496,8 +1536,8 @@ body.login-active .app {
 }
 
 .map-ward.recovery {
-  left: 22px;
-  top: 188px;
+  left: calc(34% - 62px);
+  top: 206px;
 }
 
 .map-ward.labour {
