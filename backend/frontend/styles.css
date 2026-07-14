@@ -11771,6 +11771,83 @@ body:not(.login-active) .main {
   }
 }
 
+/* Analytics card readability and content-driven sizing */
+#analyticsView .analytics-grid {
+  align-items: start !important;
+}
+
+#analyticsView .analytics-grid > .report-card {
+  min-height: 0 !important;
+  height: auto !important;
+  align-self: start !important;
+}
+
+#analyticsView .analytics-grid > .report-card h3 {
+  font-size: 15px !important;
+  line-height: 1.15 !important;
+  margin-bottom: 14px !important;
+}
+
+#analyticsView .analytics-leakage-card {
+  padding: 18px 20px !important;
+}
+
+#analyticsView .analytics-leakage-card .month-chart {
+  grid-template-columns: repeat(auto-fit, minmax(430px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+#analyticsView .leakage-compare-row {
+  grid-template-columns: 118px minmax(0, 1fr) !important;
+  gap: 16px !important;
+  padding: 14px 16px !important;
+  border-radius: 10px !important;
+}
+
+#analyticsView .leakage-compare-month strong {
+  font-size: 16px !important;
+  line-height: 1 !important;
+}
+
+#analyticsView .leakage-compare-month span {
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+#analyticsView .leakage-compare-bars {
+  gap: 8px !important;
+}
+
+#analyticsView .compare-track {
+  height: 24px !important;
+  border-radius: 8px !important;
+}
+
+#analyticsView .compare-track b {
+  padding: 5px 10px !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+#analyticsView .top-insight,
+#analyticsView .analytics-trend-chart {
+  min-height: 220px !important;
+}
+
+#analyticsView .analytics-totals-card {
+  min-height: 0 !important;
+}
+
+@media (max-width: 760px) {
+  #analyticsView .analytics-leakage-card .month-chart {
+    grid-template-columns: 1fr !important;
+  }
+
+  #analyticsView .leakage-compare-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 @media (max-width: 1180px) {
   .alert-monitor-grid {
     grid-template-columns: 1fr !important;
