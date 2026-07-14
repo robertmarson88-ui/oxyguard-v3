@@ -4097,17 +4097,7 @@ function renderAnalytics() {
   renderUsageTrendChart(wardTotals);
   renderSavingsOpportunityChart(wardTotals);
 
-  document.getElementById("analyticsTable").innerHTML = tableHtml(
-    ["Ward", "Jan", "Feb", "Mar", "Apr", "May", "Total Tanks", "Usage Value", "Leakage Tanks", "Wastage Value"],
-    wardTotals.map(item => [
-      item.ward,
-      ...item.usage,
-      item.totalTanks,
-      currency(item.usageCost),
-      item.leakageTanks,
-      currency(item.leakageCost)
-    ])
-  );
+  renderWardMonthlyTotals(wardTotals);
 }
 
 function renderMonthlyUsageChart(wardTotals) {
@@ -4154,7 +4144,7 @@ function renderMonthlyWastageChart(wardTotals) {
   document.getElementById("monthlyWastageChart").innerHTML = analyticsMonths.map((month, index) => {
     const item = monthlyTotals[index];
     return `
-      <div class="leakage-compare-row">
+      <div class="leakage-compare-row" style="--month-accent:${monthAccent(index)}">
         <div class="leakage-compare-month">
           <strong>${month}</strong>
           <span>${item.leakageRate}% leakage rate</span>
@@ -4172,6 +4162,34 @@ function renderMonthlyWastageChart(wardTotals) {
       </div>
     `;
   }).join("");
+}
+
+function renderWardMonthlyTotals(wardTotals) {
+  const maxTotal = Math.max(1, ...wardTotals.map(item => item.totalTanks));
+  document.getElementById("analyticsTable").innerHTML = wardTotals
+    .slice()
+    .sort((a, b) => b.totalTanks - a.totalTanks)
+    .map(item => `
+      <article class="ward-total-row" style="--ward-accent:${item.accent}; --ward-fill:${Math.max(10, Math.round((item.totalTanks / maxTotal) * 100))}%">
+        <div class="ward-total-main">
+          <span><i></i>${item.ward}</span>
+          <strong>${item.totalTanks} tanks</strong>
+        </div>
+        <div class="ward-month-chip-row">
+          ${analyticsMonths.map((month, index) => `
+            <b style="--chip-accent:${monthAccent(index)}">${month}<em>${item.usage[index]}</em></b>
+          `).join("")}
+        </div>
+        <div class="ward-total-costs">
+          <span>Usage <strong>${currency(item.usageCost)}</strong></span>
+          <span>Wastage <strong>${currency(item.leakageCost)}</strong></span>
+        </div>
+      </article>
+    `).join("");
+}
+
+function monthAccent(index) {
+  return ["#0b72e7", "#7c3aed", "#06a6d8", "#10a37f", "#f97316"][index % 5];
 }
 
 function renderLeakageRateChart(wardTotals) {

@@ -3664,10 +3664,39 @@ body.login-active .app {
   display: grid;
   grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.7fr);
   gap: 14px;
+  align-items: stretch;
 }
 
 .analytics-wide {
   grid-column: 1;
+}
+
+.analytics-grid > .report-card {
+  display: flex;
+  flex-direction: column;
+  min-height: 260px;
+  padding: 16px;
+  border-color: #d8e6f3;
+}
+
+.analytics-grid > .report-card h3 {
+  margin-bottom: 12px;
+  color: #082744;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.analytics-leakage-card {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 247, 237, 0.96)),
+    #ffffff;
+}
+
+.analytics-totals-card {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 255, 0.96)),
+    #ffffff;
 }
 
 .month-chart {
@@ -3807,9 +3836,11 @@ body.login-active .app {
   gap: 10px;
   align-items: center;
   padding: 9px 10px;
-  border: 1px solid #fee3c7;
+  border: 1px solid color-mix(in srgb, var(--month-accent) 34%, #ffffff);
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffffff 0%, #fff7ed 100%);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--month-accent) 9%, #ffffff) 0%, #ffffff 48%, #fff7ed 100%);
+  box-shadow: inset 4px 0 0 var(--month-accent);
 }
 
 .leakage-compare-month {
@@ -3825,7 +3856,7 @@ body.login-active .app {
 }
 
 .leakage-compare-month span {
-  color: #d92d20;
+  color: var(--month-accent);
   font-size: 10px;
   font-weight: 850;
 }
@@ -3851,7 +3882,7 @@ body.login-active .app {
 }
 
 .compare-track.usage span {
-  background: linear-gradient(90deg, #0b72e7, #50b4ff);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--month-accent) 82%, #0b72e7), #50b4ff);
 }
 
 .compare-track.leakage {
@@ -3859,7 +3890,7 @@ body.login-active .app {
 }
 
 .compare-track.leakage span {
-  background: linear-gradient(90deg, #fb7185, #dc2626);
+  background: linear-gradient(90deg, #f97316, #dc2626);
 }
 
 .compare-track b {
@@ -3969,6 +4000,113 @@ body.login-active .app {
 
 .analytics-trend-chart {
   min-height: 190px;
+}
+
+.analytics-total-board {
+  display: grid;
+  gap: 10px;
+}
+
+.ward-total-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(145px, 0.7fr) minmax(230px, 1fr) minmax(180px, 0.72fr);
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+  padding: 11px 12px;
+  border: 1px solid color-mix(in srgb, var(--ward-accent) 24%, #dbe7f3);
+  border-radius: 10px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--ward-accent) 10%, #ffffff) 0 var(--ward-fill), #ffffff var(--ward-fill) 100%);
+}
+
+.ward-total-row::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--ward-accent);
+}
+
+.ward-total-main,
+.ward-total-costs {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 4px;
+}
+
+.ward-total-main span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #20384f;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.ward-total-main i {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--ward-accent);
+}
+
+.ward-total-main strong {
+  color: #062b4a;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.ward-month-chip-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(42px, 1fr));
+  gap: 6px;
+}
+
+.ward-month-chip-row b {
+  display: grid;
+  gap: 2px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chip-accent) 11%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--chip-accent) 28%, #ffffff);
+  color: #39516a;
+  font-size: 9px;
+  font-weight: 850;
+  text-align: center;
+}
+
+.ward-month-chip-row em {
+  color: var(--chip-accent);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 950;
+}
+
+.ward-total-costs {
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.ward-total-costs span {
+  display: grid;
+  gap: 3px;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  color: #64748b;
+  font-size: 9px;
+  font-weight: 820;
+}
+
+.ward-total-costs strong {
+  color: #d92d20;
+  font-size: 10px;
+  font-weight: 920;
 }
 
 .trend-bars {
@@ -11606,6 +11744,31 @@ body:not(.login-active) .main {
 #adminAuditTable th:nth-child(3),
 #adminAuditTable td:nth-child(3) {
   width: 22% !important;
+}
+
+@media (max-width: 1180px) {
+  .ward-total-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ward-total-costs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .analytics-grid > .report-card {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .ward-month-chip-row,
+  .ward-total-costs {
+    grid-template-columns: 1fr;
+  }
+
+  .leakage-compare-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 1180px) {
