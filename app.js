@@ -270,6 +270,10 @@ const permissionViews = {
     label: "Nurse Manager",
     allowedViews: ["report"]
   },
+  nurse: {
+    label: "Nurse",
+    allowedViews: ["report"]
+  },
   maintenance: {
     label: "Executive",
     allowedViews: ["report", "analytics"]
@@ -648,6 +652,26 @@ function getLocalLoginUser(username, password) {
       label: "Nurse Manager",
       email: "nurse.supervisor@monamercy.local",
       permissions: ["resolve_alert", "view_logs"]
+    },
+    facilities: {
+      password: "facilities1",
+      user_id: "AA011",
+      username: "facilities",
+      role: "facilities-manager",
+      role_id: 3,
+      label: "Facilities Manager",
+      email: "facilities.manager@monamercy.local",
+      permissions: ["view_logs"]
+    },
+    nurse: {
+      password: "nurse1",
+      user_id: "AA012",
+      username: "nurse",
+      role: "nurse",
+      role_id: 5,
+      label: "Nurse",
+      email: "ward.nurse@monamercy.local",
+      permissions: ["view_logs"]
     },
     executive: {
       password: "executive1",

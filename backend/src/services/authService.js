@@ -13,7 +13,7 @@ export function createAuthService(db) {
     const permissions = getPermissionNamesForRole(user.role_id);
     const accessToken = randomUUID();
     const roleLabel = String(role.role_name || "").toLowerCase();
-    const isAdministrator = roleLabel === "administrator";
+    const roleKey = roleKeyForLabel(roleLabel);
 
     sessions.set(accessToken, { user, issued_at: new Date().toISOString() });
 
@@ -23,7 +23,7 @@ export function createAuthService(db) {
       user: {
         user_id: user.user_id,
         username: user.username,
-        role: isAdministrator ? "admin" : "viewer",
+        role: roleKey,
         role_id: user.role_id,
         label: role.role_name,
         email: user.email,
@@ -85,6 +85,17 @@ export function createAuthService(db) {
     return db.permissions
       .filter(permission => permissionIds.includes(permission.permission_id))
       .map(permission => permission.permission_name || permission.permission_key);
+  }
+
+  function roleKeyForLabel(roleLabel) {
+    const keys = {
+      administrator: "admin",
+      executive: "executive",
+      "facilities manager": "facilities-manager",
+      "nurse manager": "nurse-supervisor",
+      nurse: "nurse"
+    };
+    return keys[roleLabel] || "viewer";
   }
 
   return { authenticate, authorizeRequest };
