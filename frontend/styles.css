@@ -11984,6 +11984,45 @@ body:not(.login-active) .main {
   font-size: 9.5px !important;
 }
 
+/* Tighten analytics vertical whitespace */
+#analyticsView .analytics-grid {
+  gap: 7px !important;
+}
+
+#analyticsView .analytics-grid > .report-card {
+  padding: 10px 12px !important;
+}
+
+#analyticsView .top-insight,
+#analyticsView .analytics-trend-chart {
+  min-height: 118px !important;
+}
+
+#analyticsView .analytics-trend-chart {
+  padding-bottom: 8px !important;
+}
+
+#analyticsView .trend-bars {
+  min-height: 96px !important;
+  padding: 5px 8px 4px !important;
+  gap: 8px !important;
+  background-size: 100% 24px !important;
+}
+
+#analyticsView .trend-bar {
+  grid-template-rows: 14px 68px 13px 12px !important;
+  gap: 1px !important;
+}
+
+#analyticsView .trend-bar strong {
+  font-size: 10px !important;
+}
+
+#analyticsView .trend-bar small,
+#analyticsView .trend-bar em {
+  font-size: 9px !important;
+}
+
 @media (max-width: 1180px) {
   #analyticsView .analytics-summary {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;

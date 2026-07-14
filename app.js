@@ -4243,7 +4243,7 @@ function renderUsageTrendChart(wardTotals) {
         return `
           <div class="trend-bar">
             <strong>${value}</strong>
-            <span style="height:${Math.max(18, Math.round((value / maxTotal) * 118))}px"></span>
+            <span style="height:${Math.max(12, Math.round((value / maxTotal) * 66))}px"></span>
             <small>${analyticsMonths[index]}</small>
             <em class="${delta >= 0 ? "up" : "down"}">${index === 0 ? "base" : `${delta >= 0 ? "+" : ""}${delta}`}</em>
           </div>
