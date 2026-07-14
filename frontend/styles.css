@@ -11792,3 +11792,119 @@ body:not(.login-active) .main {
     grid-template-columns: 1fr !important;
   }
 }
+
+/* Final ward-card and analytics title polish */
+#analyticsView .report-head h2 {
+  color: #082744 !important;
+  font-size: clamp(28px, 2.35vw, 38px) !important;
+  font-weight: 950 !important;
+  line-height: 1.05 !important;
+  letter-spacing: 0 !important;
+}
+
+#analyticsView .report-head p {
+  max-width: 840px !important;
+  margin-top: 8px !important;
+  color: #526982 !important;
+  font-size: 15px !important;
+  font-weight: 620 !important;
+  line-height: 1.35 !important;
+}
+
+.alert-ward-cards {
+  grid-template-columns: repeat(4, minmax(250px, 1fr)) !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+
+.alert-ward-panel {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 292px !important;
+  height: 292px !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 16px 18px !important;
+}
+
+.alert-ward-panel .alert-panel-head {
+  min-height: 32px !important;
+  margin-bottom: 12px !important;
+}
+
+.alert-ward-panel .alert-data-table {
+  width: 100% !important;
+  table-layout: fixed !important;
+}
+
+.alert-ward-panel .alert-data-table th,
+.alert-ward-panel .alert-data-table td {
+  padding: 8px 6px !important;
+  font-size: 9.5px !important;
+  line-height: 1.12 !important;
+}
+
+.alert-ward-panel .alert-data-table th:nth-child(1),
+.alert-ward-panel .alert-data-table td:nth-child(1) {
+  width: 28% !important;
+}
+
+.alert-ward-panel .alert-data-table th:nth-child(2),
+.alert-ward-panel .alert-data-table td:nth-child(2) {
+  width: 27% !important;
+}
+
+.alert-ward-panel .alert-data-table th:nth-child(3),
+.alert-ward-panel .alert-data-table td:nth-child(3) {
+  width: 18% !important;
+}
+
+.alert-ward-panel .alert-data-table th:nth-child(4),
+.alert-ward-panel .alert-data-table td:nth-child(4) {
+  width: 27% !important;
+}
+
+.alert-ward-panel .alert-data-table td small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: #64748b !important;
+  font-size: 8.5px !important;
+  line-height: 1.05 !important;
+}
+
+.alert-ward-panel .assignment-result {
+  max-width: 72px !important;
+  padding: 5px 7px !important;
+  font-size: 8.5px !important;
+  line-height: 1.04 !important;
+}
+
+.alert-ward-panel footer {
+  margin-top: auto !important;
+  padding-top: 10px !important;
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+
+.alert-ward-panel.expanded {
+  height: auto !important;
+  min-height: 340px !important;
+  grid-column: 1 / -1 !important;
+}
+
+@media (max-width: 1320px) {
+  .alert-ward-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .alert-ward-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  .alert-ward-panel {
+    height: auto !important;
+    min-height: 292px !important;
+  }
+}
