@@ -34,8 +34,8 @@
     const target = document.getElementById(TABLE_ID);
     if (!target || !Array.isArray(rows) || !rows.length) return;
 
-    target.innerHTML = `
-      <table>
+    const html = `
+      <table class="admin-table audit-log-table">
         <thead>
           <tr>
             <th>Time</th>
@@ -58,6 +58,7 @@
             .join("")}
         </tbody>
       </table>`;
+    if (target.innerHTML !== html) target.innerHTML = html;
   };
 
   const refreshAuditLogs = async () => {

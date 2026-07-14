@@ -11267,3 +11267,140 @@ body:not(.login-active) .main {
     grid-column: auto !important;
   }
 }
+
+/* Real-time alert layout refinement */
+.alert-monitor-grid {
+  grid-template-columns: minmax(420px, 1.2fr) minmax(360px, 1fr) minmax(320px, 0.9fr) !important;
+  grid-template-areas:
+    "map map feed"
+    "wards wards wards"
+    "incidents incidents assignment" !important;
+  gap: 14px !important;
+  align-items: stretch !important;
+}
+
+.live-feed-panel {
+  min-height: 100% !important;
+}
+
+.alert-activity-feed {
+  gap: 4px !important;
+}
+
+.alert-feed-row {
+  min-height: 46px !important;
+  grid-template-columns: 64px 22px minmax(0, 1fr) !important;
+  font-size: 10.5px !important;
+}
+
+.alert-ward-cards {
+  grid-template-columns: repeat(4, minmax(210px, 1fr)) !important;
+  gap: 12px !important;
+}
+
+.alert-ward-panel,
+.patient-assignment-panel,
+.active-incidents-panel,
+.live-feed-panel {
+  border-radius: 10px !important;
+}
+
+.alert-ward-panel {
+  min-height: 172px !important;
+  max-height: 212px !important;
+  overflow: hidden !important;
+}
+
+.alert-ward-panel.expanded {
+  max-height: none !important;
+  min-height: 304px !important;
+}
+
+.alert-ward-panel .alert-data-table th,
+.alert-ward-panel .alert-data-table td {
+  padding: 7px 6px !important;
+  font-size: 9px !important;
+}
+
+.alert-ward-panel footer {
+  margin-top: 8px !important;
+  font-size: 9px !important;
+}
+
+.patient-assignment-panel {
+  align-self: start !important;
+  min-height: 0 !important;
+  max-height: 278px !important;
+  overflow: hidden !important;
+}
+
+.patient-assignment-panel .alert-panel-head {
+  margin-bottom: 8px !important;
+}
+
+.patient-assignment-panel .alert-data-table th,
+.patient-assignment-panel .alert-data-table td {
+  padding: 6px 5px !important;
+  font-size: 8.5px !important;
+}
+
+.admin-audit-panel {
+  min-height: 360px !important;
+  align-self: start !important;
+}
+
+#adminAuditTable {
+  min-height: 254px !important;
+  max-height: 286px !important;
+  overflow: auto !important;
+}
+
+#adminAuditTable .admin-table,
+#adminAuditTable table {
+  table-layout: fixed !important;
+  width: 100% !important;
+}
+
+#adminAuditTable th,
+#adminAuditTable td {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+#adminAuditTable th:nth-child(1),
+#adminAuditTable td:nth-child(1) {
+  width: 32% !important;
+}
+
+#adminAuditTable th:nth-child(2),
+#adminAuditTable td:nth-child(2) {
+  width: 18% !important;
+}
+
+#adminAuditTable th:nth-child(3),
+#adminAuditTable td:nth-child(3) {
+  width: 22% !important;
+}
+
+@media (max-width: 1180px) {
+  .alert-monitor-grid {
+    grid-template-columns: 1fr !important;
+    grid-template-areas:
+      "map"
+      "feed"
+      "wards"
+      "incidents"
+      "assignment" !important;
+  }
+
+  .alert-ward-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .alert-ward-cards {
+    grid-template-columns: 1fr !important;
+  }
+}

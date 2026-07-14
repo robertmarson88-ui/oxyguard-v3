@@ -3689,7 +3689,7 @@ function getOrderCriticalTanks(activeTanks) {
 
 function setOrderHtml(id, html) {
   const target = document.getElementById(id);
-  if (target) target.innerHTML = html;
+  if (target && target.innerHTML !== html) target.innerHTML = html;
 }
 
 function orderMetric(label, value, icon, tone = "") {
