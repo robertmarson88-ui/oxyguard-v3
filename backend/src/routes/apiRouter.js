@@ -138,8 +138,18 @@ async function login(req, res, db, auth, apiV1) {
 }
 
 async function createTelemetry(req, res, db) {
-  const payload = await readJson(req);
-  const result = await ingestTelemetry(db, payload);
+  let result;
+  try {
+    const payload = await readJson(req);
+    result = await ingestTelemetry(db, payload);
+  } catch (error) {
+    sendJson(res, 500, {
+      ok: false,
+      message: "Telemetry could not be logged.",
+      error: String(error?.message || "Unknown telemetry error").replace(/postgresql:\/\/[^@\s]+@/gi, "postgresql://***:***@")
+    });
+    return;
+  }
 
   if (!result.ok) {
     sendJson(res, 400, { ok: false, errors: result.errors });

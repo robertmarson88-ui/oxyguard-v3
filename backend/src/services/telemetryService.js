@@ -6,8 +6,8 @@ export async function ingestTelemetry(db, payload) {
   const validation = validateTelemetryPayload(payload);
   if (!validation.ok) return validation;
 
-  ensureWard(db, payload.ward_id);
-  ensureDevice(db, payload.device_id, payload.ward_id);
+  await ensureWard(db, payload.ward_id);
+  await ensureDevice(db, payload.device_id, payload.ward_id);
 
   let telemetry_log = {
     log_id: db.nextLogId++,
@@ -74,14 +74,38 @@ function evaluateAlert(db, log) {
   };
 }
 
-function ensureWard(db, wardId) {
+async function ensureWard(db, wardId) {
   if (db.wards.some(ward => ward.ward_id === wardId)) return;
   db.wards.push({ ward_id: wardId, ward_name: wardId, location: null });
+
+  if (!db.pgPool) return;
+  await db.pgPool.query(
+    `insert into public.wards (ward_id, ward_name, location)
+     values ($1, $2, $3)
+     on conflict (ward_id) do nothing`,
+    [wardId, wardId, "Simulator source"]
+  );
 }
 
-function ensureDevice(db, deviceId, wardId) {
-  if (db.devices.some(device => device.device_id === deviceId)) return;
-  db.devices.push({ device_id: deviceId, ward_id: wardId, created_at: new Date().toISOString() });
+async function ensureDevice(db, deviceId, wardId) {
+  const now = new Date().toISOString();
+  const existingDevice = db.devices.find(device => device.device_id === deviceId);
+  if (existingDevice) {
+    existingDevice.ward_id = wardId;
+  } else {
+    db.devices.push({ device_id: deviceId, ward_id: wardId, created_at: now });
+  }
+
+  if (!db.pgPool) return;
+  await db.pgPool.query(
+    `insert into public.devices (device_id, ward_id, created_at, device_name, device_status, last_seen)
+     values ($1, $2, $3, $4, $5, $6)
+     on conflict (device_id) do update set
+       ward_id = excluded.ward_id,
+       device_status = excluded.device_status,
+       last_seen = excluded.last_seen`,
+    [deviceId, wardId, now, `${deviceId} Simulator`, "active", now]
+  );
 }
 
 async function insertTelemetryLog(db, log) {

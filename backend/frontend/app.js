@@ -1276,7 +1276,7 @@ async function submitSimulatorEvent(event) {
   updateSimulatorApiStatus(
     telemetryResult.ok
       ? `${alertType} sent to dashboard and telemetry API.`
-      : `${alertType} shown on dashboard. API did not accept telemetry yet.`,
+      : `${alertType} shown on dashboard. API response: ${telemetryResult.message || "Telemetry was not accepted."}`,
     telemetryResult.ok ? "success" : "warn"
   );
   renderAll();
@@ -1311,22 +1311,44 @@ function applySimulatorEventToTank(tankItem, simulation) {
 }
 
 async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt) {
+  const payload = {
+    device_id: getSimulatorDeviceId(ward, tankItem),
+    ward_id: getSimulatorWardId(ward),
+    flow_rate: Number(live),
+    operational_status: getSimulatorOperationalStatus(alertType, live),
+    timestamp: createdAt
+  };
+
   try {
     const response = await fetch("/api/v1/telemetry", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        device_id: getSimulatorDeviceId(ward, tankItem),
-        ward_id: getSimulatorWardId(ward),
-        flow_rate: Number(live),
-        operational_status: getSimulatorOperationalStatus(alertType, live),
-        timestamp: createdAt
-      })
+      body: JSON.stringify(payload)
     });
-    return { ok: response.ok };
-  } catch {
-    return { ok: false };
+
+    const data = await readSimulatorApiResponse(response);
+    return {
+      ok: response.ok,
+      message: data?.message || data?.error || formatSimulatorErrors(data?.errors) || `API returned ${response.status}`
+    };
+  } catch (error) {
+    return { ok: false, message: error?.message || "Telemetry API is not reachable." };
   }
+}
+
+async function readSimulatorApiResponse(response) {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { message: text.slice(0, 120) };
+  }
+}
+
+function formatSimulatorErrors(errors) {
+  if (!Array.isArray(errors) || !errors.length) return "";
+  return errors.join("; ");
 }
 
 function getSimulatorSelectedWard() {
