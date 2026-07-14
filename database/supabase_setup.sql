@@ -199,7 +199,7 @@ begin
         ('AA003', 'vernon', 'vernon.dacosta@gmail.com', true, 'demo-hash:vernon-2026', 2, '2026-06-09 08:00:00+00'),
         ('AA004', 'user1', 'robertmarson88@gmail.com', true, 'demo-hash:user1-2026', 1, '2026-06-09 08:00:00+00'),
         ('AA005', 'user2', 'robertmarson88@gmail.com', true, 'demo-hash:user2-2026', 1, '2026-06-09 08:00:00+00'),
-        ('AA006', 'martinm', 'robinsonmartin187@gmail.com', true, 'demo-hash:martinm-2026', 1, '2026-06-09 08:00:00+00'),
+        ('AA006', 'martinm', 'robinsonmartin187@gmail.com', true, 'demo-hash:martinm-2026', 4, '2026-06-09 08:00:00+00'),
         ('AA007', 'vernond', 'vernon.dacosta@gmail.com', true, 'demo-hash:vernond-2026', 1, '2026-06-09 08:00:00+00')
       on conflict (user_id) do update set
         username = excluded.username,
