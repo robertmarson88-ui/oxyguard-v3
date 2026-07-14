@@ -4403,8 +4403,9 @@ function reportSummaryCard(title, value, status, color, icon = "dot", options = 
   const delta = options.delta
     ? `<em class="kpi-delta ${options.deltaTone || ""}">${options.delta}</em>`
     : "";
+  const hoverDetail = escapeHtml(options.hover || `${title}: ${String(value).replace(/<[^>]*>/g, " ")}. ${String(status).replace(/<[^>]*>/g, " ")}`);
   return `
-    <article class="summary-card v5-kpi-card ${icon}">
+    <article class="summary-card v5-kpi-card ${icon}" title="${hoverDetail}">
       <div class="kpi-copy">
         <span>${title}</span>
         <strong style="color:${color}">${value}</strong>
