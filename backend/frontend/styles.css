@@ -12173,7 +12173,7 @@ body:not(.login-active) .main {
 /* Final ward-card and analytics title polish */
 #analyticsView .report-head h2 {
   color: #082744 !important;
-  font-size: clamp(28px, 2.35vw, 38px) !important;
+  font-size: clamp(22px, 1.65vw, 28px) !important;
   font-weight: 950 !important;
   line-height: 1.05 !important;
   letter-spacing: 0 !important;
@@ -12181,11 +12181,11 @@ body:not(.login-active) .main {
 
 #analyticsView .report-head p {
   max-width: 840px !important;
-  margin-top: 8px !important;
+  margin-top: 5px !important;
   color: #526982 !important;
-  font-size: 15px !important;
+  font-size: 13px !important;
   font-weight: 620 !important;
-  line-height: 1.35 !important;
+  line-height: 1.28 !important;
 }
 
 .alert-ward-cards {
