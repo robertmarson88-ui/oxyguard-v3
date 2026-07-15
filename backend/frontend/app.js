@@ -261,7 +261,7 @@ let auditLogDialogRequestId = 0;
 let wardCardStatusOverrides = new Map();
 let activeWardAlertKey = "";
 
-const WARD_STATUS_EDITOR_ROLE_IDS = new Set([1, 4, 5]);
+const WARD_STATUS_EDITOR_ROLES = new Set(["admin", "nurse-supervisor", "nurse"]);
 const WARD_STATUS_OPTIONS = ["Normal", "Supply Failure", "Ghost Flow", "Flow Anomaly", "Leakage"];
 
 const permissionViews = {
@@ -1550,7 +1550,8 @@ function getWardRowStatus(card, row) {
 }
 
 function canEditWardStatus() {
-  return WARD_STATUS_EDITOR_ROLE_IDS.has(Number(currentUser?.role_id));
+  const role = normalizePermissionRole(currentUser?.role || currentUser?.label || "");
+  return WARD_STATUS_EDITOR_ROLES.has(role);
 }
 
 function renderWardStatusControl(card, row) {
