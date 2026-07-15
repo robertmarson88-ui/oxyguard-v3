@@ -6454,57 +6454,48 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 }
 
 .oxygen-room-popover {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 10px);
-  z-index: 20;
-  width: min(260px, 70vw);
-  padding: 14px 16px;
+  position: fixed;
+  left: 50vw;
+  top: 50vh;
+  z-index: 10010;
+  width: min(390px, calc(100vw - 48px));
+  padding: 18px 20px;
   border: 1px solid #b7cce3;
-  border-radius: 12px;
+  border-radius: 16px;
   background: #ffffff;
   color: #08223f;
-  box-shadow: 0 18px 42px rgba(10, 35, 66, 0.24);
+  box-shadow: 0 24px 60px rgba(10, 35, 66, 0.3);
   opacity: 0;
   pointer-events: none;
-  transform: translate(-50%, 8px) scale(0.98);
+  transform: translate(-50%, -50%) scale(0.96);
   transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
 .oxygen-room-popover::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  width: 12px;
-  height: 12px;
-  background: #ffffff;
-  border-right: 1px solid #b7cce3;
-  border-bottom: 1px solid #b7cce3;
-  transform: translate(-50%, -6px) rotate(45deg);
+  display: none;
 }
 
 .oxygen-room-popover span {
   display: block;
   color: #506782;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .oxygen-room-popover strong {
   display: block;
-  margin-top: 4px;
+  margin-top: 8px;
   color: #062b50;
-  font-size: 24px;
+  font-size: 30px;
   line-height: 1;
   text-align: left;
 }
 
 .oxygen-room-popover p {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   color: #243d58;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 800;
   line-height: 1.25;
 }
@@ -6517,7 +6508,7 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 .oxygen-room:hover .oxygen-room-popover,
 .oxygen-room:focus .oxygen-room-popover {
   opacity: 1;
-  transform: translate(-50%, 0) scale(1);
+  transform: translate(-50%, -50%) scale(1);
 }
 
 .oxygen-room.normal {

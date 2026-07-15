@@ -18,11 +18,14 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     if (!apiPath) return false;
 
     if (req.method === "GET" && apiPath === "/health") {
+      const databaseConnected = db.source === "supabase";
       sendJson(res, 200, {
         status: "healthy",
         database: db.source || "demo",
+        database_status: databaseConnected ? "connected" : process.env.DATABASE_URL ? "not_connected" : "local_demo",
         database_url_configured: Boolean(process.env.DATABASE_URL),
-        database_error: db.connection_error || null
+        database_error: db.connection_error || null,
+        telemetry_rows: db.telemetry_logs.length
       });
       return true;
     }

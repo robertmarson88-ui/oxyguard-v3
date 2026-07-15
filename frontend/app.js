@@ -768,13 +768,16 @@ async function loadDatabaseConnectionStatus() {
     if (!response.ok) throw new Error("Health check failed");
 
     const health = await response.json();
-    const connected = health.database === "supabase"
+    const connected = health.database_status === "connected"
+      || health.database === "supabase"
       || health.database === "connected"
       || (health.database_url_configured === true && health.database_error == null && health.status === "healthy");
+    const usingDemoData = health.database_status === "local_demo"
+      || (health.database === "demo" && health.database_url_configured !== true);
 
     databaseConnectionStatus = {
-      label: connected ? "Connected" : "Not Connected",
-      tone: connected ? "good" : "bad"
+      label: connected ? "Connected" : usingDemoData ? "Local Data Active" : "Not Connected",
+      tone: connected ? "good" : usingDemoData ? "warn" : "bad"
     };
   } catch {
     databaseConnectionStatus = {
@@ -4860,14 +4863,42 @@ function renderHospitalHeatMap() {
       }
     };
   };
+  const supportRoom = (label, className, meta, details) => ({
+    label,
+    className,
+    state: details.alertCount > 0 ? "high" : "normal",
+    meta,
+    details: {
+      ...details,
+      stateLabel: details.alertCount > 0 ? "Review needed" : "Normal usage"
+    }
+  });
+  const allTanks = wards.flatMap(ward => ward.tanks);
+  const onlineTanks = allTanks.filter(tank => tank.active);
+  const hospitalPressure = onlineTanks.length
+    ? Math.round(onlineTanks.reduce((sum, tank) => sum + tank.pressure, 0) / onlineTanks.length)
+    : 0;
+  const hospitalAlerts = activeAlerts().length;
   const mapRooms = [
-    { label: "ICU", className: "icu", state: "normal", meta: "North intake" },
+    supportRoom("ICU", "icu", "North intake | 8.0 Litre/Min | 2 online", {
+      flow: 8,
+      activeCount: 2,
+      tankCount: 2,
+      alertCount: 0,
+      pressure: 48
+    }),
     roomForWard("ae", "ward-a", "A&E Ward", "Emergency feed"),
     roomForWard("labour", "ward-b", "Labour Ward", "Labour line"),
     roomForWard("recovery", "ward-c", "Recovery Bay", "Recovery line"),
     roomForWard("paediatric", "pediatrics", "Pediatrics", "Paediatric feed"),
     roomForWard("nurse", "maternity", "Nurse Station", "Station feed"),
-    { label: "Plant Room", className: "plant-room", state: "normal", meta: "Supply control" },
+    supportRoom("Plant Room", "plant-room", `Supply control | ${totalFlowAllWards().toFixed(1)} Litre/Min | ${onlineTanks.length} online`, {
+      flow: totalFlowAllWards(),
+      activeCount: onlineTanks.length,
+      tankCount: allTanks.length,
+      alertCount: hospitalAlerts,
+      pressure: hospitalPressure
+    }),
     { label: "", className: "south-service", state: "normal", meta: "Isolation room" }
   ];
 

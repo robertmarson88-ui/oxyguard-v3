@@ -1,6 +1,7 @@
 export const demoCreatedAt = "2026-06-09T08:00:00Z";
 
 export async function createRelationalStore() {
+  const demoAuditLogs = createDemoAuditLogs();
   const store = {
     source: "demo",
     roles: [
@@ -55,10 +56,10 @@ export async function createRelationalStore() {
     ],
     telemetry_logs: [],
     alerts: [],
-    audit_logs: [],
+    audit_logs: demoAuditLogs,
     nextLogId: 1,
     nextAlertId: 1,
-    nextAuditId: 1
+    nextAuditId: nextId(demoAuditLogs, "audit_id")
   };
 
   if (!process.env.DATABASE_URL) return store;
@@ -71,6 +72,8 @@ export async function createRelationalStore() {
     await seedSupabaseDemoUsers(pool);
     remote = await loadSupabaseTables(pool);
     await seedSupabaseDemoAlerts(pool, remote);
+    await seedSupabaseDemoAuditLogs(pool);
+    remote = await loadSupabaseTables(pool);
     Object.assign(store, remote, {
       source: "supabase",
       pgPool: pool,
@@ -156,6 +159,57 @@ async function loadSupabaseTables(pool) {
   };
 }
 
+function createDemoAuditLogs() {
+  const users = ["AA002", "AA011", "AA010", "AA009", "AA008", "AA012"];
+  const actions = [
+    "User Login",
+    "Telemetry Review",
+    "Alert Created",
+    "Alert Acknowledged",
+    "Report Generated",
+    "Heat Map Review",
+    "Device Status Review",
+    "Audit Log Viewed"
+  ];
+  const targets = [
+    "A&E Ward oxygen status checked",
+    "Paediatric Ward ghost flow investigation",
+    "Labour Ward high usage threshold reviewed",
+    "Recovery Bay residual gas alert recorded",
+    "Nurse Station device telemetry confirmed",
+    "Plant Room supply status synchronized",
+    "System health card refreshed",
+    "Monthly oxygen report opened"
+  ];
+  const logs = [];
+  let auditId = 1;
+  const start = new Date("2026-01-01T08:15:00Z");
+  const end = new Date("2026-07-13T17:45:00Z");
+  const addDayLogs = day => {
+    const countForDay = 2 + (auditId % 3);
+    for (let index = 0; index < countForDay; index += 1) {
+      const performedAt = new Date(day);
+      performedAt.setUTCHours(8 + ((auditId + index) % 10), (auditId * 7 + index * 11) % 60, 0, 0);
+      logs.push({
+        audit_id: auditId,
+        user_id: users[auditId % users.length],
+        action: actions[(auditId + index) % actions.length],
+        target_resource: targets[(auditId + index * 2) % targets.length],
+        ip_address: `10.20.${(auditId % 30) + 1}.${40 + (auditId % 180)}`,
+        performed_at: performedAt.toISOString()
+      });
+      auditId += 1;
+    }
+  };
+
+  for (let day = new Date(start); day <= end; day.setUTCDate(day.getUTCDate() + 3)) {
+    addDayLogs(day);
+  }
+  addDayLogs(end);
+
+  return logs;
+}
+
 async function queryRows(pool, sql, params = []) {
   const result = await pool.query(sql, params);
   return result.rows;
@@ -225,6 +279,43 @@ async function seedSupabaseDemoAlerts(pool, remote) {
     remote.telemetry_logs.push(log);
     remote.alerts.push(alertResult.rows[0]);
   }
+}
+
+async function seedSupabaseDemoAuditLogs(pool) {
+  const auditLogColumns = await tableColumns(pool, "audit_logs");
+  const targetColumn = auditLogColumns.has("target_resource")
+    ? "target_resource"
+    : auditLogColumns.has("target")
+      ? "target"
+      : null;
+  if (!targetColumn) return;
+
+  const logs = createDemoAuditLogs();
+  const values = [];
+  const placeholders = logs.map((log, index) => {
+    const base = index * 5;
+    values.push(log.user_id, log.action, log.target_resource, log.ip_address, log.performed_at);
+    return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}::timestamptz)`;
+  }).join(",\n        ");
+
+  await pool.query(
+    `with demo_audit(user_id, action, target_resource, ip_address, performed_at) as (
+       values
+        ${placeholders}
+     )
+     insert into public.audit_logs (user_id, action, ${targetColumn}, ip_address, performed_at)
+     select user_id, action, target_resource, ip_address::inet, performed_at
+     from demo_audit demo
+     where not exists (
+       select 1
+       from public.audit_logs existing
+       where existing.user_id = demo.user_id
+         and existing.action = demo.action
+         and existing.${targetColumn} = demo.target_resource
+         and existing.performed_at = demo.performed_at
+     )`,
+    values
+  );
 }
 
 function nextId(rows, key) {

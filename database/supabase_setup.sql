@@ -355,6 +355,57 @@ begin
       and column_name = 'user_id'
       and data_type in ('character varying', 'text')
   ) then
+    execute $audit_history$
+      with calendar_days as (
+        select day::date, row_number() over (order by day) as day_index
+        from (
+          select day::date
+          from generate_series(date '2026-01-01', date '2026-07-13', interval '3 days') as day
+          union
+          select date '2026-07-13'
+        ) seeded_days(day)
+      ),
+      demo_audit as (
+        select
+          (array['AA002','AA011','AA010','AA009','AA008','AA012'])[1 + ((day_index + event_index) % 6)] as user_id,
+          (array[
+            'User Login',
+            'Telemetry Review',
+            'Alert Created',
+            'Alert Acknowledged',
+            'Report Generated',
+            'Heat Map Review',
+            'Device Status Review',
+            'Audit Log Viewed'
+          ])[1 + ((day_index + event_index) % 8)] as action,
+          (array[
+            'A&E Ward oxygen status checked',
+            'Paediatric Ward ghost flow investigation',
+            'Labour Ward high usage threshold reviewed',
+            'Recovery Bay residual gas alert recorded',
+            'Nurse Station device telemetry confirmed',
+            'Plant Room supply status synchronized',
+            'System health card refreshed',
+            'Monthly oxygen report opened'
+          ])[1 + ((day_index + (event_index * 2)) % 8)] as target_resource,
+          ('10.20.' || (1 + (day_index % 30)) || '.' || (40 + ((day_index + event_index) % 180)))::inet as ip_address,
+          (day + make_interval(hours => 8 + ((day_index + event_index) % 10), mins => ((day_index * 7 + event_index * 11) % 60)))::timestamptz as performed_at
+        from calendar_days
+        cross join generate_series(0, 2) as event_index
+      )
+      insert into public.audit_logs (user_id, action, target_resource, ip_address, performed_at)
+      select user_id, action, target_resource, ip_address, performed_at
+      from demo_audit
+      where not exists (
+        select 1
+        from public.audit_logs existing
+        where existing.user_id = demo_audit.user_id
+          and existing.action = demo_audit.action
+          and existing.target_resource = demo_audit.target_resource
+          and existing.performed_at = demo_audit.performed_at
+      )
+    $audit_history$;
+
     execute $audit$
       insert into public.audit_logs (user_id, action, target_resource, ip_address, performed_at)
       select 'AA002', 'supabase_demo_seeded', 'OxyGuard Supabase demo data', null, now()
