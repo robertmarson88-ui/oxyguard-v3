@@ -2643,33 +2643,22 @@ function renderAlertsByWard() {
       accent: ward.accent
     };
   });
-  const maxTotal = Math.max(1, ...rows.map(row => row.total));
   target.innerHTML = `
-    <div class="ward-alert-chart" aria-label="Alerts by ward graph">
-      <div class="ward-alert-legend">
-        <span><i class="critical"></i>Critical</span>
-        <span><i class="warning"></i>Warning</span>
-        <span><i class="active"></i>Active Alert</span>
+    <div class="ward-alert-summary" aria-label="Alerts by ward status summary">
+      <div class="ward-alert-summary-head" aria-hidden="true">
+        <span>Ward</span><span>Crit</span><span>Warn</span><span>Act</span>
       </div>
-      ${rows.map(row => {
-        const criticalWidth = row.total ? Math.max(4, (row.critical / maxTotal) * 100) : 0;
-        const warningWidth = row.total ? Math.max(4, (row.warning / maxTotal) * 100) : 0;
-        const activeWidth = row.total ? Math.max(4, (row.activeAlerts / maxTotal) * 100) : 0;
-        return `
-          <div class="ward-alert-row">
-            <div class="ward-alert-label">
-              <strong>${row.ward}</strong>
-              <span>${row.total} total</span>
+      ${rows.map(row => `
+          <div class="ward-alert-summary-row">
+            <div class="ward-alert-identity">
+              <i style="--ward-accent:${row.accent}"></i>
+              <div><strong>${row.ward}</strong><span>${row.total ? `${row.total} open` : "Clear"}</span></div>
             </div>
-            <div class="ward-alert-track">
-              ${row.critical ? `<i class="critical" style="width:${criticalWidth}%"></i>` : ""}
-              ${row.warning ? `<i class="warning" style="width:${warningWidth}%"></i>` : ""}
-              ${row.activeAlerts ? `<i class="active" style="width:${activeWidth}%"></i>` : ""}
-            </div>
-            <b>${row.total}</b>
+            <b class="ward-alert-count critical ${row.critical ? "" : "zero"}" aria-label="${row.critical} critical alerts">${row.critical}</b>
+            <b class="ward-alert-count warning ${row.warning ? "" : "zero"}" aria-label="${row.warning} warning alerts">${row.warning}</b>
+            <b class="ward-alert-count active ${row.activeAlerts ? "" : "zero"}" aria-label="${row.activeAlerts} active alerts">${row.activeAlerts}</b>
           </div>
-        `;
-      }).join("")}
+        `).join("")}
     </div>
   `;
 }
@@ -4259,11 +4248,12 @@ function renderAdministration() {
 }
 
 function renderAdminAuditTable(rows) {
+  const visibleRows = rows.slice(0, 5);
   setOrderHtml("adminAuditTable", `
     <table class="admin-table">
       <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
       <tbody>
-        ${rows.map(row => `
+        ${visibleRows.map(row => `
           <tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>
         `).join("")}
       </tbody>
@@ -4273,8 +4263,7 @@ function renderAdminAuditTable(rows) {
 
 async function loadAdminAuditLogs(fallbackRows) {
   try {
-    const today = new Date().toISOString().slice(0, 10);
-    const response = await fetch(`/api/audit-logs?day=${encodeURIComponent(today)}`, { cache: "no-store", headers: authHeaders(false) });
+    const response = await fetch("/api/audit-logs?limit=5", { cache: "no-store", headers: authHeaders(false) });
     const result = await response.json();
     if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) return;
     const rows = result.audit_logs.map(log => [
@@ -5003,13 +4992,13 @@ function reportSummaryCard(title, value, status, color, icon = "dot", options = 
   const hoverDetail = escapeHtml(options.hover || `${title}: ${String(value).replace(/<[^>]*>/g, " ")}. ${String(status).replace(/<[^>]*>/g, " ")}`);
   const extraClass = options.className ? ` ${options.className}` : "";
   return `
-    <article class="summary-card v5-kpi-card ${icon}${extraClass}" title="${hoverDetail}">
+    <article class="summary-card v5-kpi-card ${icon}${extraClass}" style="--kpi-accent:${color}" aria-label="${hoverDetail}" title="${hoverDetail}">
       <div class="kpi-copy">
         <span>${title}</span>
         <strong style="color:${color}">${value}</strong>
         <small>${status}${delta}</small>
       </div>
-      <b class="kpi-icon ${icon}"></b>
+      <b class="kpi-icon ${icon}" aria-hidden="true"></b>
     </article>
   `;
 }
