@@ -71,6 +71,7 @@ export async function createRelationalStore() {
   try {
     const { Pool } = await import("pg");
     const pool = await connectPostgres(Pool, connectionString);
+    await ensureOperationalSchema(pool);
 
     let remote = await loadSupabaseTables(pool);
     await runOptionalSeed("users", () => seedSupabaseDemoUsers(pool));
@@ -91,6 +92,96 @@ export async function createRelationalStore() {
     console.warn(`OxyGuard Supabase connection failed; using demo data. ${store.connection_error}`);
     return store;
   }
+}
+
+async function ensureOperationalSchema(pool) {
+  await pool.query(
+    `create table if not exists public.ward_card_statuses (
+       ward_key varchar(40) not null,
+       asset_key varchar(40) not null,
+       status varchar(30) not null check (status in ('Normal', 'Supply Failure', 'Ghost Flow', 'Flow Anomaly', 'Leakage')),
+       updated_by varchar(50),
+       updated_at timestamptz not null default now(),
+       primary key (ward_key, asset_key)
+     )`
+  );
+  await pool.query(
+    `insert into public.ward_card_statuses (ward_key, asset_key, status) values
+       ('ae', 'bed-05', 'Normal'),
+       ('ae', 'bed-06', 'Normal'),
+       ('ae', 'bed-07', 'Ghost Flow'),
+       ('paediatrics', 'bed-10', 'Normal'),
+       ('paediatrics', 'bed-11', 'Supply Failure'),
+       ('paediatrics', 'bed-12', 'Flow Anomaly'),
+       ('recovery', 'bed-15', 'Normal'),
+       ('recovery', 'bed-16', 'Normal'),
+       ('recovery', 'tank-r1', 'Leakage'),
+       ('labour', 'bed-20', 'Normal'),
+       ('labour', 'bed-21', 'Supply Failure'),
+       ('labour', 'bed-22', 'Normal')
+     on conflict (ward_key, asset_key) do nothing`
+  );
+
+  const roles = await queryRows(pool, "select role_id, lower(role_name) as role_name from public.roles");
+  const adminRole = await ensureRole(pool, roles, ["administrator", "facilities admin"], "Administrator");
+  const nurseManagerRole = await ensureRole(pool, roles, ["nurse manager", "nurse supervisor"], "Nurse Manager");
+  const nurseRole = await ensureRole(pool, roles, ["nurse"], "Nurse");
+
+  await ensureOperationalUser(pool, "admin", "admin1", "facilities.admin@monamercy.local", adminRole.role_id);
+  await ensureOperationalUser(pool, "supervisor", "nurse1", "nurse.supervisor@monamercy.local", nurseManagerRole.role_id);
+  await ensureOperationalUser(pool, "nurse", "nurse1", "ward.nurse@monamercy.local", nurseRole.role_id);
+
+  const permissions = await loadPermissions(pool);
+  const viewPermission = permissions.find(permission => [
+    "view_logs",
+    "dashboard:view",
+    "reports:view",
+    "alerts:view",
+    "view_dashboard"
+  ].includes(String(permission.permission_name || "").toLowerCase()));
+  if (viewPermission) {
+    for (const role of [adminRole, nurseManagerRole, nurseRole]) {
+      await pool.query(
+        `insert into public.role_permissions (role_id, permission_id)
+         values ($1, $2)
+         on conflict do nothing`,
+        [role.role_id, viewPermission.permission_id]
+      );
+    }
+  }
+}
+
+async function ensureRole(pool, roles, acceptedNames, roleName) {
+  const existing = roles.find(role => acceptedNames.includes(role.role_name));
+  if (existing) return existing;
+  const role = {
+    role_id: roles.reduce((max, item) => Math.max(max, Number(item.role_id) || 0), 0) + 1,
+    role_name: roleName.toLowerCase()
+  };
+  await pool.query("insert into public.roles (role_id, role_name) values ($1, $2)", [role.role_id, roleName]);
+  roles.push(role);
+  return role;
+}
+
+async function ensureOperationalUser(pool, username, password, email, roleId) {
+  const updated = await pool.query(
+    `update public.users
+     set role_id = $2, password_hash = $3
+     where lower(username) = lower($1)`,
+    [username, roleId, `demo-plain:${password}`]
+  );
+  if (updated.rowCount) return;
+
+  const userIdType = await tableColumnDataType(pool, "users", "user_id");
+  const userId = isIntegerDataType(userIdType)
+    ? Number((await pool.query("select coalesce(max(user_id), 0) + 1 as user_id from public.users")).rows[0].user_id)
+    : `OXY-${username.toUpperCase()}`;
+  await pool.query(
+    `insert into public.users
+       (user_id, username, email, email_verified, password_hash, role_id, created_at)
+     values ($1, $2, $3, true, $4, $5, now())`,
+    [userId, username, email, `demo-plain:${password}`, roleId]
+  );
 }
 
 async function runOptionalSeed(label, seed) {
