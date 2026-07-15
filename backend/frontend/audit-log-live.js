@@ -1,6 +1,6 @@
 (() => {
   const TABLE_ID = "adminAuditTable";
-  const ENDPOINT = "/api/audit-logs";
+  const ENDPOINT = "/api/audit-logs?limit=5";
 
   const escapeHtml = (value) =>
     String(value ?? "")
@@ -46,6 +46,7 @@
         </thead>
         <tbody>
           ${rows
+            .slice(0, 5)
             .map(
               (row) => `
                 <tr>
