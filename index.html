@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260714-modern-kpi-2" />
+    <link rel="stylesheet" href="./styles.css?v=20260715-ward-status" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -739,6 +739,19 @@
       <div id="heatMapDialogBody" class="heatmap-dialog-body"></div>
     </dialog>
 
+    <dialog id="wardAlertDialog" class="ward-alert-dialog">
+      <div class="dialog-head ward-alert-dialog-head">
+        <div>
+          <span>Live ward telemetry</span>
+          <h2 id="wardAlertDialogTitle">Ward table</h2>
+          <p id="wardAlertDialogSummary"></p>
+        </div>
+        <button id="closeWardAlertDialog" aria-label="Close ward table">Close</button>
+      </div>
+      <div id="wardAlertDialogStatus" class="ward-alert-dialog-status">Select a status to update this ward record.</div>
+      <div id="wardAlertDialogBody" class="ward-alert-dialog-body"></div>
+    </dialog>
+
     <dialog id="auditLogDialog" class="audit-log-dialog">
       <div class="dialog-head audit-log-dialog-head">
         <div>
@@ -838,7 +851,6 @@
       <p class="user-message" id="deviceMessage"></p>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260714-modern-kpi"></script>
-    <script src="./audit-log-live.js?v=20260714-top-five-audit"></script>
+    <script type="module" src="./app.js?v=20260715-card-status-badges"></script>
   </body>
 </html>

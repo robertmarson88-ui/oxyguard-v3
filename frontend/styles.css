@@ -11282,6 +11282,188 @@ body:not(.login-active) .main {
   }
 }
 
+/* Ward telemetry drill-down and role-editable status controls */
+.alert-ward-panel {
+  height: 306px !important;
+  min-height: 306px !important;
+  cursor: pointer !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease !important;
+}
+
+.alert-ward-panel:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(36, 128, 220, 0.42) !important;
+  box-shadow: 0 16px 32px rgba(12, 66, 111, 0.14), 0 0 0 3px rgba(51, 153, 255, 0.08) !important;
+}
+
+.alert-ward-panel .alert-data-table th:nth-child(1),
+.alert-ward-panel .alert-data-table td:nth-child(1) { width: 22% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(2),
+.alert-ward-panel .alert-data-table td:nth-child(2) { width: 17% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(3),
+.alert-ward-panel .alert-data-table td:nth-child(3) { width: 14% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(4),
+.alert-ward-panel .alert-data-table td:nth-child(4) { width: 13% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(5),
+.alert-ward-panel .alert-data-table td:nth-child(5) { width: 34% !important; }
+
+.alert-ward-panel .ward-status-select {
+  padding-right: 18px;
+  padding-left: 6px;
+  font-size: 8.5px;
+}
+
+.ward-status-select {
+  width: 100%;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 24px 4px 8px;
+  border: 1px solid #bdd4e8;
+  border-radius: 6px;
+  background: #f7fbff;
+  color: #123b63;
+  font: inherit;
+  font-size: 9px;
+  font-weight: 760;
+  line-height: 1.15;
+  cursor: pointer;
+}
+
+.ward-status-select:hover,
+.ward-status-select:focus-visible {
+  border-color: #2480dc;
+  box-shadow: 0 0 0 3px rgba(36, 128, 220, 0.12);
+  outline: none;
+}
+
+.ward-status-select:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.ward-alert-dialog {
+  width: min(1120px, calc(100vw - 48px));
+  max-width: 1120px;
+  max-height: calc(100vh - 64px);
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #bed3e6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0c2c4a;
+  box-shadow: 0 28px 72px rgba(3, 29, 52, 0.28);
+}
+
+.ward-alert-dialog::backdrop {
+  background: rgba(3, 24, 43, 0.62);
+}
+
+.ward-alert-dialog-head {
+  margin: 0;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #d8e5ef;
+  background: #f7fbff;
+}
+
+.ward-alert-dialog-head span {
+  display: block;
+  margin-bottom: 5px;
+  color: #287acb;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.ward-alert-dialog-head h2 {
+  margin: 0;
+  color: #082f54;
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+.ward-alert-dialog-head p {
+  margin: 5px 0 0;
+  color: #587087;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ward-alert-dialog-status {
+  min-height: 38px;
+  padding: 11px 24px;
+  border-bottom: 1px solid #e1eaf1;
+  background: #ffffff;
+  color: #62758a;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ward-alert-dialog-status[data-tone="success"] { color: #087b4c; background: #f1fbf6; }
+.ward-alert-dialog-status[data-tone="error"] { color: #b4232f; background: #fff5f5; }
+.ward-alert-dialog-status[data-tone="saving"] { color: #1769b0; background: #f3f9ff; }
+
+.ward-alert-dialog-body {
+  max-height: calc(100vh - 220px);
+  padding: 18px 24px 24px;
+  overflow: auto;
+}
+
+.ward-alert-dialog-table {
+  width: 100%;
+  min-width: 760px;
+  table-layout: fixed;
+  border: 1px solid #d7e4ee;
+}
+
+.ward-alert-dialog-table th,
+.ward-alert-dialog-table td {
+  padding: 15px 14px;
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.ward-alert-dialog-table th {
+  background: #edf5fb;
+  color: #3b5671;
+  font-size: 10px;
+}
+
+.ward-alert-dialog-table td small {
+  display: block;
+  margin-top: 3px;
+  color: #6d7f91;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.ward-alert-dialog-table .ward-status-select {
+  min-height: 38px;
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .alert-ward-panel {
+    height: auto !important;
+    min-height: 306px !important;
+  }
+
+  .ward-alert-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100vh - 20px);
+  }
+
+  .ward-alert-dialog-head,
+  .ward-alert-dialog-status,
+  .ward-alert-dialog-body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .ward-alert-dialog-body {
+    max-height: calc(100vh - 190px);
+  }
+}
+
 /* Final facilities dashboard placement */
 @media (min-width: 1180px) {
   .v5-dashboard-grid {
@@ -13233,5 +13415,35 @@ body:not(.login-active) #logoutButton:hover::before {
   .ward-alert-summary-head,
   .ward-alert-summary-row {
     grid-template-columns: minmax(84px, 1fr) repeat(3, 28px);
+  }
+}
+
+/* Final ward card sizing overrides */
+.alert-ward-panel {
+  height: 306px !important;
+  min-height: 306px !important;
+}
+
+.alert-ward-panel .alert-data-table th:nth-child(1),
+.alert-ward-panel .alert-data-table td:nth-child(1) { width: 22% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(2),
+.alert-ward-panel .alert-data-table td:nth-child(2) { width: 17% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(3),
+.alert-ward-panel .alert-data-table td:nth-child(3) { width: 14% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(4),
+.alert-ward-panel .alert-data-table td:nth-child(4) { width: 13% !important; }
+.alert-ward-panel .alert-data-table th:nth-child(5),
+.alert-ward-panel .alert-data-table td:nth-child(5) { width: 34% !important; }
+
+.alert-ward-panel .ward-status-select {
+  padding-right: 18px;
+  padding-left: 6px;
+  font-size: 8.5px;
+}
+
+@media (max-width: 760px) {
+  .alert-ward-panel {
+    height: auto !important;
+    min-height: 306px !important;
   }
 }

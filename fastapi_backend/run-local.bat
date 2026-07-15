@@ -9,3 +9,7 @@ echo Health check: http://localhost:8000/api/v1/health
 echo.
 "%PYTHON%" -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 pause
+
+
+
+
