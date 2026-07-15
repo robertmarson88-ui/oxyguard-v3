@@ -471,6 +471,8 @@ function queryAlerts(db, url) {
 async function listAuditLogs(db, url) {
   const requestedDay = String(url?.searchParams?.get("day") || "");
   const day = /^\d{4}-\d{2}-\d{2}$/.test(requestedDay) ? requestedDay : "";
+  const requestedLimit = Number.parseInt(url?.searchParams?.get("limit") || "500", 10);
+  const limit = Number.isFinite(requestedLimit) ? Math.min(500, Math.max(1, requestedLimit)) : 500;
 
   if (db.pgPool) {
     const availableColumns = new Set(db.audit_log_columns || []);
@@ -493,7 +495,7 @@ async function listAuditLogs(db, url) {
        left join public.users u on u.user_id = a.user_id
        ${dayFilter}
        order by a.performed_at desc
-       limit 500`,
+       limit ${limit}`,
       params
     );
     return result.rows;
@@ -504,7 +506,7 @@ async function listAuditLogs(db, url) {
     .slice()
     .filter(log => !day || String(log.performed_at || "").slice(0, 10) === day)
     .sort((a, b) => new Date(b.performed_at) - new Date(a.performed_at))
-    .slice(0, 500)
+    .slice(0, limit)
     .map(log => {
       const user = usersById.get(String(log.user_id));
       return {
