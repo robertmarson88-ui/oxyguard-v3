@@ -257,6 +257,7 @@ let adminDeviceRows = [
 ];
 let simulatorEvents = [];
 let auditLogDialogRows = [];
+let auditLogDialogRequestId = 0;
 
 const permissionViews = {
   admin: {
@@ -4309,21 +4310,28 @@ async function openAuditLogDialog() {
   const dialog = document.getElementById("auditLogDialog");
   const dayFilter = document.getElementById("auditLogDayFilter");
   if (!dialog) return;
-  if (dayFilter) dayFilter.value = "";
+  if (dayFilter) {
+    const today = localDateInputValue(new Date());
+    dayFilter.max = today;
+    if (!dayFilter.value) dayFilter.value = today;
+  }
   dialog.showModal();
   await loadAuditLogDialogRows();
 }
 
 async function loadAuditLogDialogRows() {
+  const requestId = ++auditLogDialogRequestId;
   const table = document.getElementById("auditLogDialogTable");
   const status = document.getElementById("auditLogDialogStatus");
   const day = document.getElementById("auditLogDayFilter")?.value || "";
   if (!table) return;
-  table.innerHTML = "<div class=\"audit-log-empty\">Loading audit logs...</div>";
+  table.setAttribute("aria-busy", "true");
+  if (status) status.textContent = day ? `Loading audit logs for ${day}...` : "Loading recent audit logs...";
   try {
     const query = day ? `?day=${encodeURIComponent(day)}` : "";
     const response = await fetch(`/api/audit-logs${query}`, { cache: "no-store", headers: authHeaders(false) });
     const result = await response.json();
+    if (requestId !== auditLogDialogRequestId) return;
     if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) {
       throw new Error(result?.message || "Audit logs could not be loaded.");
     }
@@ -4335,10 +4343,20 @@ async function loadAuditLogDialogRows() {
         : `Showing ${auditLogDialogRows.length} recent log entries.`;
     }
   } catch (error) {
+    if (requestId !== auditLogDialogRequestId) return;
     auditLogDialogRows = [];
     table.innerHTML = `<div class="audit-log-empty">${escapeHtml(error.message || "Audit logs could not be loaded.")}</div>`;
     if (status) status.textContent = "Unable to load audit logs.";
+  } finally {
+    if (requestId === auditLogDialogRequestId) table.removeAttribute("aria-busy");
   }
+}
+
+function localDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function renderAuditLogDialogRows(rows) {
