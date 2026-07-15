@@ -9,13 +9,17 @@ export function createAuthService(db) {
 
     if (!user || !isValidPassword(user, password)) return null;
 
-    const role = db.roles.find(item => item.role_id === user.role_id);
+    const role = db.roles.find(item => Number(item.role_id) === Number(user.role_id));
+    if (!role) return null;
     const permissions = getPermissionNamesForRole(user.role_id);
     const accessToken = randomUUID();
     const roleLabel = String(role.role_name || "").toLowerCase();
     const roleKey = roleKeyForLabel(roleLabel);
 
-    sessions.set(accessToken, { user, issued_at: new Date().toISOString() });
+    sessions.set(accessToken, {
+      user: { ...user, role_name: role.role_name },
+      issued_at: new Date().toISOString()
+    });
 
     return {
       access_token: accessToken,
@@ -79,20 +83,24 @@ export function createAuthService(db) {
 
   function getPermissionNamesForRole(roleId) {
     const permissionIds = db.role_permissions
-      .filter(item => item.role_id === roleId)
+      .filter(item => Number(item.role_id) === Number(roleId))
       .map(item => item.permission_id);
 
     return db.permissions
-      .filter(permission => permissionIds.includes(permission.permission_id))
+      .filter(permission => permissionIds.some(id => Number(id) === Number(permission.permission_id)))
       .map(permission => permission.permission_name || permission.permission_key);
   }
 
   function roleKeyForLabel(roleLabel) {
     const keys = {
       administrator: "admin",
+      "facilities admin": "admin",
       executive: "executive",
+      "executive user": "executive",
       "facilities manager": "facilities-manager",
       "nurse manager": "nurse-supervisor",
+      "nurse supervisor": "nurse-supervisor",
+      "biomedical technician": "facilities-manager",
       nurse: "nurse"
     };
     return keys[roleLabel] || "viewer";
