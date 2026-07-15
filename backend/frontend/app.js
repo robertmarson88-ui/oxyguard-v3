@@ -258,6 +258,11 @@ let adminDeviceRows = [
 let simulatorEvents = [];
 let auditLogDialogRows = [];
 let auditLogDialogRequestId = 0;
+let wardCardStatusOverrides = new Map();
+let activeWardAlertKey = "";
+
+const WARD_STATUS_EDITOR_ROLE_IDS = new Set([1, 4, 5]);
+const WARD_STATUS_OPTIONS = ["Normal", "Supply Failure", "Ghost Flow", "Flow Anomaly", "Leakage"];
 
 const permissionViews = {
   admin: {
@@ -270,11 +275,11 @@ const permissionViews = {
   },
   "nurse-supervisor": {
     label: "Nurse Manager",
-    allowedViews: ["report"]
+    allowedViews: ["report", "alert"]
   },
   nurse: {
     label: "Nurse",
-    allowedViews: ["report"]
+    allowedViews: ["report", "alert"]
   },
   maintenance: {
     label: "Executive",
@@ -355,6 +360,7 @@ function start() {
   document.getElementById("closeHeatMapDialog")?.addEventListener("click", () => document.getElementById("heatMapDialog")?.close());
   document.getElementById("viewAllAuditLogsButton")?.addEventListener("click", openAuditLogDialog);
   document.getElementById("closeAuditLogDialog")?.addEventListener("click", () => document.getElementById("auditLogDialog")?.close());
+  document.getElementById("closeWardAlertDialog")?.addEventListener("click", () => document.getElementById("wardAlertDialog")?.close());
   document.getElementById("auditLogDayFilter")?.addEventListener("change", loadAuditLogDialogRows);
   document.getElementById("emailAuditLogButton")?.addEventListener("click", emailAuditLogRows);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
@@ -365,6 +371,10 @@ function start() {
     }
   });
   document.getElementById("logoutButton").addEventListener("click", logout);
+  document.addEventListener("change", event => {
+    const select = event.target.closest(".ward-status-select");
+    if (select) updateWardCardStatus(select);
+  });
   setupNotifications();
   setupPermissionPreview();
   setupAdministrationActions();
@@ -728,6 +738,7 @@ function showApp() {
   updateCurrentUserDisplay();
   updatePageTitle();
   loadDatabaseAlerts();
+  loadWardCardStatuses();
 }
 
 function logout() {
@@ -765,6 +776,23 @@ async function loadDatabaseAlerts() {
     updateNotifications(activeAlerts());
   } catch {
     databaseAlertsLoaded = false;
+  }
+}
+
+async function loadWardCardStatuses() {
+  if (!currentUser?.accessToken) return;
+  try {
+    const response = await fetch("/api/ward-card-statuses", {
+      cache: "no-store",
+      headers: { authorization: `Bearer ${currentUser.accessToken}` }
+    });
+    if (!response.ok) throw new Error("Ward statuses could not be loaded.");
+    const payload = await response.json();
+    const rows = Array.isArray(payload?.statuses) ? payload.statuses : [];
+    wardCardStatusOverrides = new Map(rows.map(row => [wardStatusKey(row.ward_key, row.asset_key), row.status]));
+    if (activeView === "alert") renderRealTimeAlert();
+  } catch {
+    wardCardStatusOverrides = new Map();
   }
 }
 
@@ -925,6 +953,7 @@ function normalizePermissionRole(role = "") {
   if (value.includes("executive")) return "maintenance";
   if (value.includes("maintenance")) return "maintenance";
   if (value === "admin" || value.includes("administrator") || value.includes("facilities-admin")) return "admin";
+  if (value === "nurse" || value.includes("ward-nurse")) return "nurse";
   return "viewer";
 }
 
@@ -1106,24 +1135,14 @@ function renderRealTimeAlert() {
   if (wardTarget) {
     wardTarget.innerHTML = getAlertWardCards().map(renderAlertWardCard).join("");
     wardTarget.querySelectorAll(".alert-ward-panel").forEach(card => {
-      const toggleCard = () => {
-        const isExpanded = card.classList.contains("expanded");
-        wardTarget.querySelectorAll(".alert-ward-panel.expanded").forEach(openCard => {
-          openCard.classList.remove("expanded");
-          openCard.setAttribute("aria-expanded", "false");
-        });
-        if (!isExpanded) {
-          card.classList.add("expanded");
-          card.setAttribute("aria-expanded", "true");
-        } else {
-          card.setAttribute("aria-expanded", "false");
-        }
-      };
-      card.addEventListener("click", toggleCard);
+      card.addEventListener("click", event => {
+        if (event.target.closest("select, button, a, input, label")) return;
+        openAlertWardDialog(card.dataset.wardKey);
+      });
       card.addEventListener("keydown", event => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          toggleCard();
+          openAlertWardDialog(card.dataset.wardKey);
         }
       });
     });
@@ -1511,34 +1530,132 @@ function assignmentResult(value) {
 
 function getAlertWardCards() {
   return [
-    { ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [["Bed 05", "PT-0005", "On", "4.0", "Normal"], ["Bed 06", "PT-0006", "On", "3.8", "Normal"], ["Bed 07", "PT-0007", "Off", "2.8", "Ghost Flow"]] },
-    { ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [["Bed 10", "PT-0010", "On", "2.5", "Normal"], ["Bed 11", "PT-0011", "On", "0.0", "Supply Failure"], ["Bed 12", "PT-0012", "On", "5.2", "Flow Anomaly"]] },
-    { ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [["Bed 15", "PT-0015", "On", "4.1", "Normal"], ["Bed 16", "PT-0016", "Off", "0.0", "Normal"], ["Tank R1", "TANK-R1", "-", "-", "Leakage"]] },
-    { ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [["Bed 20", "PT-0020", "On", "3.9", "Normal"], ["Bed 21", "PT-0021", "On", "0.0", "Supply Failure"], ["Bed 22", "PT-0022", "Off", "0.0", "Normal"]] }
+    { key: "ae", ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [wardAlertRow("bed-05", "Bed 05", "PT-0005", "On", "4.0", "4.0", "Normal"), wardAlertRow("bed-06", "Bed 06", "PT-0006", "On", "3.5", "3.8", "Normal"), wardAlertRow("bed-07", "Bed 07", "PT-0007", "Off", "0.0", "2.8", "Ghost Flow")] },
+    { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "2.5", "2.5", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "3.0", "0.0", "Supply Failure"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "4.0", "5.2", "Flow Anomaly")] },
+    { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "4.0", "4.1", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "0.0", "0.0", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "0.0", "-", "Leakage")] },
+    { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "4.0", "3.9", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "3.0", "0.0", "Supply Failure"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "0.0", "0.0", "Normal")] }
   ];
+}
+
+function wardAlertRow(assetKey, asset, patientId, patientFlag, setValue, flow, defaultStatus) {
+  return { assetKey, asset, patientId, patientFlag, setValue, flow, defaultStatus };
+}
+
+function wardStatusKey(wardKey, assetKey) {
+  return `${wardKey}:${assetKey}`;
+}
+
+function getWardRowStatus(card, row) {
+  return wardCardStatusOverrides.get(wardStatusKey(card.key, row.assetKey)) || row.defaultStatus;
+}
+
+function canEditWardStatus() {
+  return WARD_STATUS_EDITOR_ROLE_IDS.has(Number(currentUser?.role_id));
+}
+
+function renderWardStatusControl(card, row) {
+  const status = getWardRowStatus(card, row);
+  if (!canEditWardStatus()) return assignmentResult(status);
+  return `
+    <select class="ward-status-select" data-ward-key="${card.key}" data-asset-key="${row.assetKey}" aria-label="Status for ${row.asset}, ${card.ward}">
+      ${WARD_STATUS_OPTIONS.map(option => `<option value="${option}"${option === status ? " selected" : ""}>${option}</option>`).join("")}
+    </select>
+  `;
 }
 
 function renderAlertWardCard(card) {
   return `
-    <article class="alert-panel alert-ward-panel" tabindex="0" role="button" aria-expanded="false" aria-label="Expand ${card.ward} card">
+    <article class="alert-panel alert-ward-panel" data-ward-key="${card.key}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="Open large ${card.ward} table">
       <div class="alert-panel-head">
         <h3>${card.ward}</h3>
         <span class="live-dot">Live</span>
       </div>
       <table class="alert-data-table compact">
-        <thead><tr><th>Bed / Tank</th><th>Patient Flag</th><th>Flow</th><th>Status</th></tr></thead>
+        <thead><tr><th>Bed / Tank</th><th>Patient Flag</th><th>Set Value</th><th>Flow</th><th>Status</th></tr></thead>
         <tbody>${card.rows.map(row => `
           <tr>
-            <td><b>${row[0]}</b><small>${row[1]}</small></td>
-            <td>${assignmentFlag(row[2])}</td>
-            <td>${row[3]}</td>
-            <td>${assignmentResult(row[4])}</td>
+            <td><b>${row.asset}</b><small>${row.patientId}</small></td>
+            <td>${assignmentFlag(row.patientFlag)}</td>
+            <td>${row.setValue}</td>
+            <td>${row.flow}</td>
+            <td>${renderWardStatusControl(card, row)}</td>
           </tr>
         `).join("")}</tbody>
       </table>
       <footer>Avg Pressure: ${card.pressure} PSI | Total Flow: ${card.totalFlow} Litre/Min</footer>
     </article>
   `;
+}
+
+function openAlertWardDialog(cardKey) {
+  activeWardAlertKey = cardKey;
+  renderAlertWardDialog(cardKey);
+  const dialog = document.getElementById("wardAlertDialog");
+  if (dialog && !dialog.open) dialog.showModal();
+}
+
+function renderAlertWardDialog(cardKey) {
+  const card = getAlertWardCards().find(item => item.key === cardKey);
+  if (!card) return;
+  const title = document.getElementById("wardAlertDialogTitle");
+  const summary = document.getElementById("wardAlertDialogSummary");
+  const body = document.getElementById("wardAlertDialogBody");
+  if (title) title.textContent = card.ward;
+  if (summary) summary.textContent = `Average pressure ${card.pressure} PSI | Total flow ${card.totalFlow} Litre/Min`;
+  if (body) {
+    body.innerHTML = `
+      <table class="alert-data-table ward-alert-dialog-table">
+        <thead><tr><th>Bed / Tank</th><th>Patient ID</th><th>Patient Flag</th><th>Set Value</th><th>Live Flow</th><th>Status</th></tr></thead>
+        <tbody>${card.rows.map(row => `
+          <tr>
+            <td><b>${row.asset}</b></td>
+            <td>${row.patientId}</td>
+            <td>${assignmentFlag(row.patientFlag)}</td>
+            <td><strong>${row.setValue}</strong><small>Litre/Min</small></td>
+            <td><strong>${row.flow}</strong><small>Litre/Min</small></td>
+            <td>${renderWardStatusControl(card, row)}</td>
+          </tr>
+        `).join("")}</tbody>
+      </table>
+    `;
+  }
+}
+
+async function updateWardCardStatus(select) {
+  if (!canEditWardStatus() || !currentUser?.accessToken) return;
+  const wardKey = select.dataset.wardKey;
+  const assetKey = select.dataset.assetKey;
+  const status = select.value;
+  const previous = wardCardStatusOverrides.get(wardStatusKey(wardKey, assetKey));
+  select.disabled = true;
+  setWardStatusMessage("Saving status...", "saving");
+  try {
+    const response = await fetch("/api/ward-card-statuses", {
+      method: "PATCH",
+      headers: {
+        "content-type": "application/json",
+        authorization: `Bearer ${currentUser.accessToken}`
+      },
+      body: JSON.stringify({ ward_key: wardKey, asset_key: assetKey, status })
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload?.message || "Status could not be saved.");
+    wardCardStatusOverrides.set(wardStatusKey(wardKey, assetKey), payload.status.status);
+    renderRealTimeAlert();
+    if (document.getElementById("wardAlertDialog")?.open) renderAlertWardDialog(activeWardAlertKey);
+    setWardStatusMessage("Status saved to Supabase.", "success");
+  } catch (error) {
+    select.value = previous || getAlertWardCards().find(card => card.key === wardKey)?.rows.find(row => row.assetKey === assetKey)?.defaultStatus || "Normal";
+    select.disabled = false;
+    setWardStatusMessage(error.message || "Status could not be saved.", "error");
+  }
+}
+
+function setWardStatusMessage(message, tone) {
+  const target = document.getElementById("wardAlertDialogStatus");
+  if (!target) return;
+  target.textContent = message;
+  target.dataset.tone = tone;
 }
 
 function renderAlertPipelineMap() {
