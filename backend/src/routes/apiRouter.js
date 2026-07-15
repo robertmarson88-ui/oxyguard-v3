@@ -120,6 +120,8 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     }
 
     if (req.method === "GET" && apiPath === "/audit-logs") {
+      const session = requireAuthorized(req, res, auth, "view_logs");
+      if (!session) return true;
       try {
         sendJson(res, 200, { ok: true, audit_logs: await listAuditLogs(db, url) });
       } catch (error) {
