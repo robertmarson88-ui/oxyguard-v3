@@ -73,10 +73,10 @@ export async function createRelationalStore() {
     const pool = await connectPostgres(Pool, connectionString);
 
     let remote = await loadSupabaseTables(pool);
-    await seedSupabaseDemoUsers(pool);
+    await runOptionalSeed("users", () => seedSupabaseDemoUsers(pool));
     remote = await loadSupabaseTables(pool);
-    await seedSupabaseDemoAlerts(pool, remote);
-    await seedSupabaseDemoAuditLogs(pool);
+    await runOptionalSeed("alerts", () => seedSupabaseDemoAlerts(pool, remote));
+    await runOptionalSeed("audit logs", () => seedSupabaseDemoAuditLogs(pool));
     remote = await loadSupabaseTables(pool);
     Object.assign(store, remote, {
       source: "supabase",
@@ -90,6 +90,14 @@ export async function createRelationalStore() {
     store.connection_error = sanitizeDatabaseError(error);
     console.warn(`OxyGuard Supabase connection failed; using demo data. ${store.connection_error}`);
     return store;
+  }
+}
+
+async function runOptionalSeed(label, seed) {
+  try {
+    await seed();
+  } catch (error) {
+    console.warn(`OxyGuard skipped optional ${label} seed. ${sanitizeDatabaseError(error)}`);
   }
 }
 
@@ -283,12 +291,7 @@ async function seedSupabaseDemoUsers(pool) {
      values
        ($1, 'facilities', 'facilities.manager@monamercy.local', true, 'demo-hash:facilities-2026', 3, $3),
        ($2, 'nurse', 'ward.nurse@monamercy.local', true, 'demo-hash:nurse-2026', 5, $3)
-     on conflict (user_id) do update set
-       username = excluded.username,
-       email = excluded.email,
-       email_verified = excluded.email_verified,
-       password_hash = excluded.password_hash,
-       role_id = excluded.role_id`,
+     on conflict do nothing`,
     [facilitiesId, nurseId, demoCreatedAt]
   );
 }
