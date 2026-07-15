@@ -6458,14 +6458,15 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   left: 50vw;
   top: 50vh;
   z-index: 10010;
-  width: min(330px, calc(100vw - 48px));
-  padding: 14px 16px;
-  border: 1px solid rgba(183, 204, 227, 0.78);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.78);
-  backdrop-filter: blur(12px) saturate(1.15);
+  width: max-content;
+  max-width: calc(100vw - 48px);
+  padding: 10px 12px;
+  border: 1px solid rgba(183, 204, 227, 0.42);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px) saturate(1.1);
   color: #08223f;
-  box-shadow: 0 18px 44px rgba(10, 35, 66, 0.22);
+  box-shadow: 0 10px 28px rgba(10, 35, 66, 0.14);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.96);
@@ -11956,6 +11957,7 @@ body:not(.login-active) .main {
 }
 
 .audit-log-dialog-table {
+  min-height: 240px;
   max-height: 520px;
   margin: 0 18px 18px;
   overflow: auto;
