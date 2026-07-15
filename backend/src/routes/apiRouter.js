@@ -120,7 +120,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     }
 
     if (req.method === "GET" && apiPath === "/audit-logs") {
-      const session = requireAuthorized(req, res, auth, "view_logs");
+      const session = requireSession(req, res, auth);
       if (!session) return true;
       try {
         sendJson(res, 200, { ok: true, audit_logs: await listAuditLogs(db, url) });
@@ -249,6 +249,15 @@ async function auditDatabaseHealth(db, req, connectionInfo = getDatabaseConnecti
 
 function requireAuthorized(req, res, auth, permissionName) {
   const result = auth.authorizeRequest(req, permissionName);
+  if (!result.ok) {
+    sendJson(res, result.status, { ok: false, message: result.message });
+    return null;
+  }
+  return result.session;
+}
+
+function requireSession(req, res, auth) {
+  const result = auth.authorizeRequest(req);
   if (!result.ok) {
     sendJson(res, result.status, { ok: false, message: result.message });
     return null;

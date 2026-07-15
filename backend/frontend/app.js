@@ -1967,6 +1967,23 @@ function authHeaders(includeContentType = true) {
   return headers;
 }
 
+function hasServerToken() {
+  return Boolean(currentUser?.accessToken || currentUser?.access_token || sessionStorage.getItem("oxyguardAccessToken"));
+}
+
+function clearInvalidServerToken() {
+  if (currentUser) {
+    delete currentUser.accessToken;
+    delete currentUser.access_token;
+    sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
+  }
+  sessionStorage.removeItem("oxyguardAccessToken");
+}
+
+function isInvalidBearerTokenError(response, result) {
+  return response?.status === 401 && /bearer token/i.test(String(result?.message || ""));
+}
+
 function syncCurrentUser(users) {
   const updatedUser = users.find(user => user.username === currentUser?.username);
   if (!updatedUser) return;
@@ -4389,6 +4406,10 @@ function renderAdminAuditTable(rows, emptyMessage = "No audit activity recorded 
 async function loadAdminAuditLogs() {
   const requestId = ++adminAuditRequestId;
   const today = localDateInputValue(new Date());
+  if (!hasServerToken()) {
+    renderAdminAuditTable(buildLiveAuditFallbackRows(), "Live audit activity is available after login.");
+    return;
+  }
   try {
     const response = await fetch(`/api/audit-logs?day=${encodeURIComponent(today)}&limit=7`, {
       cache: "no-store",
@@ -4396,6 +4417,11 @@ async function loadAdminAuditLogs() {
     });
     const result = await response.json();
     if (requestId !== adminAuditRequestId) return;
+    if (isInvalidBearerTokenError(response, result)) {
+      clearInvalidServerToken();
+      renderAdminAuditTable(buildLiveAuditFallbackRows(), "Live audit activity is available after login.");
+      return;
+    }
     if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) {
       throw new Error(result?.message || "Today's audit activity could not be loaded.");
     }
@@ -4453,11 +4479,37 @@ async function loadAuditLogDialogRows() {
   if (!table) return;
   table.setAttribute("aria-busy", "true");
   if (status) status.textContent = day ? `Loading audit logs for ${day}...` : "Loading recent audit logs...";
+  if (!hasServerToken()) {
+    auditLogDialogRows = buildLiveAuditFallbackRows().map((row, index) => ({
+      audit_id: `live-${index + 1}`,
+      performed_at: new Date().toISOString(),
+      username: row[1],
+      action: row[2],
+      target_resource: row[3]
+    }));
+    renderAuditLogDialogRows(auditLogDialogRows);
+    if (status) status.textContent = "Showing live session activity. Log in through the server to load Supabase history.";
+    table.removeAttribute("aria-busy");
+    return;
+  }
   try {
     const query = day ? `?day=${encodeURIComponent(day)}` : "";
     const response = await fetch(`/api/audit-logs${query}`, { cache: "no-store", headers: authHeaders(false) });
     const result = await response.json();
     if (requestId !== auditLogDialogRequestId) return;
+    if (isInvalidBearerTokenError(response, result)) {
+      clearInvalidServerToken();
+      auditLogDialogRows = buildLiveAuditFallbackRows().map((row, index) => ({
+        audit_id: `live-${index + 1}`,
+        performed_at: new Date().toISOString(),
+        username: row[1],
+        action: row[2],
+        target_resource: row[3]
+      }));
+      renderAuditLogDialogRows(auditLogDialogRows);
+      if (status) status.textContent = "Showing live session activity. Please log in again to load Supabase history.";
+      return;
+    }
     if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) {
       throw new Error(result?.message || "Audit logs could not be loaded.");
     }
