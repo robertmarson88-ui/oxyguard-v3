@@ -85,7 +85,11 @@
 
   window.addEventListener("DOMContentLoaded", () => {
     refreshAuditLogs();
-    window.setInterval(refreshAuditLogs, 5000);
-    document.addEventListener("click", () => window.setTimeout(refreshAuditLogs, 250), true);
+    window.setInterval(() => {
+      if (!document.hidden && !document.getElementById("auditLogDialog")?.open) refreshAuditLogs();
+    }, 30000);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) refreshAuditLogs();
+    });
   });
 })();
