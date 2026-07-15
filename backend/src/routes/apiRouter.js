@@ -100,6 +100,25 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "GET" && apiPath === "/ward-card-statuses") {
+      const session = requireAuthorized(req, res, auth, "view_logs");
+      if (!session) return true;
+      try {
+        sendJson(res, 200, { ok: true, statuses: await listWardCardStatuses(db) });
+      } catch (error) {
+        console.warn(`OxyGuard ward status query failed: ${String(error?.message || error)}`);
+        sendJson(res, 500, { ok: false, message: "Ward statuses could not be loaded from the database." });
+      }
+      return true;
+    }
+
+    if (req.method === "PATCH" && apiPath === "/ward-card-statuses") {
+      const session = requireWardStatusEditor(req, res, auth);
+      if (!session) return true;
+      await updateWardCardStatus(req, res, db, session.user);
+      return true;
+    }
+
     if (req.method === "GET" && apiPath === "/audit-logs") {
       try {
         sendJson(res, 200, { ok: true, audit_logs: await listAuditLogs(db, url) });
@@ -298,6 +317,75 @@ async function createUser(req, res, db, actor) {
   db.users.push(user);
   await addAuditLog(db, actor, "Create User", user.username);
   sendJson(res, 201, { ok: true, users: listUsers(db) });
+}
+
+function requireWardStatusEditor(req, res, auth) {
+  const result = auth.authorizeRequest(req, "view_logs");
+  if (!result.ok) {
+    sendJson(res, result.status, { ok: false, message: result.message });
+    return null;
+  }
+
+  if (![1, 4, 5].includes(Number(result.session.user.role_id))) {
+    sendJson(res, 403, { ok: false, message: "Administrator, Nurse Manager, or Nurse permission required." });
+    return null;
+  }
+
+  return result.session;
+}
+
+const WARD_STATUS_OPTIONS = new Set(["Normal", "Supply Failure", "Ghost Flow", "Flow Anomaly", "Leakage"]);
+
+async function listWardCardStatuses(db) {
+  if (db.pgPool) {
+    const result = await db.pgPool.query(
+      `select ward_key, asset_key, status, updated_by, updated_at
+       from public.ward_card_statuses
+       order by ward_key, asset_key`
+    );
+    return result.rows;
+  }
+  return Array.isArray(db.ward_card_statuses) ? db.ward_card_statuses : [];
+}
+
+async function updateWardCardStatus(req, res, db, actor) {
+  const payload = await readJson(req);
+  const wardKey = String(payload.ward_key || "").trim().toLowerCase();
+  const assetKey = String(payload.asset_key || "").trim().toLowerCase();
+  const status = String(payload.status || "").trim();
+
+  if (!/^[a-z0-9-]{1,40}$/.test(wardKey) || !/^[a-z0-9-]{1,40}$/.test(assetKey) || !WARD_STATUS_OPTIONS.has(status)) {
+    sendJson(res, 400, { ok: false, message: "Select a valid ward asset and status." });
+    return;
+  }
+
+  const updatedAt = new Date().toISOString();
+  let savedStatus = { ward_key: wardKey, asset_key: assetKey, status, updated_by: actor.user_id, updated_at: updatedAt };
+
+  try {
+    if (db.pgPool) {
+      const result = await db.pgPool.query(
+        `insert into public.ward_card_statuses (ward_key, asset_key, status, updated_by, updated_at)
+         values ($1, $2, $3, $4, now())
+         on conflict (ward_key, asset_key)
+         do update set status = excluded.status, updated_by = excluded.updated_by, updated_at = now()
+         returning ward_key, asset_key, status, updated_by, updated_at`,
+        [wardKey, assetKey, status, String(actor.user_id)]
+      );
+      savedStatus = result.rows[0];
+    } else {
+      db.ward_card_statuses ||= [];
+      const existing = db.ward_card_statuses.find(item => item.ward_key === wardKey && item.asset_key === assetKey);
+      if (existing) Object.assign(existing, savedStatus);
+      else db.ward_card_statuses.push(savedStatus);
+    }
+
+    await addAuditLog(db, actor, "Update Ward Status", `${wardKey}/${assetKey}: ${status}`, getClientIp(req));
+    sendJson(res, 200, { ok: true, status: savedStatus });
+  } catch (error) {
+    console.warn(`OxyGuard ward status update failed: ${String(error?.message || error)}`);
+    sendJson(res, 500, { ok: false, message: "Ward status could not be saved to the database." });
+  }
 }
 
 async function updateUserRole(req, res, db, username, actor) {
