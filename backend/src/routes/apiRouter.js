@@ -1,6 +1,6 @@
 import { createAuthService } from "../services/authService.js";
 import { buildReportSummary } from "../services/reportService.js";
-import { getDatabaseConnectionString } from "../database/store.js";
+import { getDatabaseConnectionInfo } from "../database/store.js";
 import { ingestTelemetry, queryTelemetry } from "../services/telemetryService.js";
 import { readNurseStationData } from "../services/nurseStationService.js";
 import { readJson, sendJson } from "../utils/http.js";
@@ -20,12 +20,22 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
     if (req.method === "GET" && apiPath === "/health") {
       const databaseConnected = db.source === "supabase";
-      const databaseUrlConfigured = Boolean(getDatabaseConnectionString());
+      const databaseConnectionInfo = getDatabaseConnectionInfo();
+      const databaseUrlConfigured = Boolean(databaseConnectionInfo.connectionString);
+      await auditDatabaseHealth(db, req, databaseConnectionInfo);
       sendJson(res, 200, {
         status: "healthy",
         database: db.source || "demo",
-        database_status: databaseConnected ? "connected" : databaseUrlConfigured ? "not_connected" : "local_demo",
+        database_status: databaseConnected
+          ? "connected"
+          : databaseUrlConfigured
+            ? "not_connected"
+            : databaseConnectionInfo.projectUrlConfigured
+              ? "project_url_only"
+              : "local_demo",
         database_url_configured: databaseUrlConfigured,
+        database_config_source: databaseConnectionInfo.envName || (databaseConnectionInfo.projectUrlConfigured ? "SUPABASE_URL_ONLY" : "none"),
+        supabase_project_url_configured: databaseConnectionInfo.projectUrlConfigured,
         database_error: db.connection_error || null,
         telemetry_rows: db.telemetry_logs.length
       });
@@ -175,6 +185,42 @@ async function createTelemetry(req, res, db) {
   }
 }
 
+async function auditDatabaseHealth(db, req, connectionInfo = getDatabaseConnectionInfo()) {
+  const isConnected = db.source === "supabase";
+  const hasPostgresUrl = Boolean(connectionInfo.connectionString);
+  const status = isConnected
+    ? "connected"
+    : hasPostgresUrl
+      ? "not_connected"
+      : connectionInfo.projectUrlConfigured
+        ? "project_url_only"
+        : "local_demo";
+  const error = db.connection_error
+    || (status === "project_url_only"
+      ? "Supabase project URL is configured, but no Postgres connection string is configured."
+      : status === "local_demo"
+        ? "No Postgres connection string configured; using local data."
+        : "No database error reported.");
+  const signature = `${status}|${error}`;
+  const now = Date.now();
+  const fifteenMinutes = 15 * 60 * 1000;
+
+  if (db.lastDatabaseStatusAuditSignature === signature && now - (db.lastDatabaseStatusAuditAt || 0) < fifteenMinutes) {
+    return;
+  }
+
+  db.lastDatabaseStatusAuditSignature = signature;
+  db.lastDatabaseStatusAuditAt = now;
+  const source = connectionInfo.envName || (connectionInfo.projectUrlConfigured ? "SUPABASE_URL_ONLY" : "none");
+  await addAuditLog(
+    db,
+    getSystemAuditActor(db),
+    "Database Status",
+    truncateAuditDetail(`Supabase ${status}; source=${source}; error=${error}`),
+    getClientIp(req)
+  );
+}
+
 function requireAuthorized(req, res, auth, permissionName) {
   const result = auth.authorizeRequest(req, permissionName);
   if (!result.ok) {
@@ -308,8 +354,8 @@ async function addAuditLog(db, actor, action, target, ipAddress = null) {
     audit_id: db.nextAuditId++,
     user_id: actor.user_id,
     action,
-    target_resource: target,
-    target,
+    target_resource: truncateAuditDetail(target),
+    target: truncateAuditDetail(target),
     ip_address: ipAddress,
     performed_at: new Date().toISOString()
   };
@@ -341,6 +387,11 @@ function getSystemAuditActor(db) {
     || db.users.find(user => Number(user.role_id) === 1)
     || db.users[0]
     || { user_id: "AA008", username: "system" };
+}
+
+function truncateAuditDetail(value) {
+  const text = String(value || "Recorded");
+  return text.length > 100 ? `${text.slice(0, 97)}...` : text;
 }
 
 function buildAuditInsert(db, auditLog) {

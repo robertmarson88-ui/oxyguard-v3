@@ -62,7 +62,10 @@ export async function createRelationalStore() {
     nextAuditId: nextId(demoAuditLogs, "audit_id")
   };
 
-  const connectionString = getDatabaseConnectionString();
+  const connectionInfo = getDatabaseConnectionInfo();
+  const connectionString = connectionInfo.connectionString;
+  store.database_connection_env = connectionInfo.envName;
+  store.database_project_url_configured = connectionInfo.projectUrlConfigured;
   if (!connectionString) return store;
 
   try {
@@ -96,14 +99,25 @@ function sanitizeDatabaseError(error) {
     .replace(/password=[^&\s]+/gi, "password=***");
 }
 
+export function getDatabaseConnectionInfo() {
+  const candidates = [
+    "DATABASE_URL",
+    "SUPABASE_DB_URL",
+    "SUPABASE_DATABASE_URL",
+    "POSTGRES_URL",
+    "POSTGRES_PRISMA_URL",
+    "POSTGRES_URL_NON_POOLING"
+  ];
+  const envName = candidates.find(name => Boolean(process.env[name]));
+  return {
+    connectionString: envName ? process.env[envName] : "",
+    envName: envName || "",
+    projectUrlConfigured: Boolean(process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL)
+  };
+}
+
 export function getDatabaseConnectionString() {
-  return process.env.DATABASE_URL
-    || process.env.SUPABASE_DB_URL
-    || process.env.SUPABASE_DATABASE_URL
-    || process.env.POSTGRES_URL
-    || process.env.POSTGRES_PRISMA_URL
-    || process.env.POSTGRES_URL_NON_POOLING
-    || "";
+  return getDatabaseConnectionInfo().connectionString;
 }
 
 async function connectPostgres(Pool, connectionString) {

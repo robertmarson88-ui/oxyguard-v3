@@ -779,9 +779,10 @@ async function loadDatabaseConnectionStatus() {
       || (health.database_url_configured === true && health.database_error == null && health.status === "healthy");
     const usingDemoData = health.database_status === "local_demo"
       || (health.database === "demo" && health.database_url_configured !== true);
+    const projectUrlOnly = health.database_status === "project_url_only";
 
     databaseConnectionStatus = {
-      label: connected ? "Connected" : usingDemoData ? "Local Data Active" : "Not Connected",
+      label: connected ? "Connected" : projectUrlOnly ? "DB URL Missing" : usingDemoData ? "Local Data Active" : "Not Connected",
       tone: connected ? "good" : usingDemoData ? "warn" : "bad"
     };
   } catch {
