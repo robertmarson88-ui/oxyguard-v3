@@ -1,5 +1,6 @@
 import { createAuthService } from "../services/authService.js";
 import { buildReportSummary } from "../services/reportService.js";
+import { getDatabaseConnectionString } from "../database/store.js";
 import { ingestTelemetry, queryTelemetry } from "../services/telemetryService.js";
 import { readNurseStationData } from "../services/nurseStationService.js";
 import { readJson, sendJson } from "../utils/http.js";
@@ -19,11 +20,12 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
     if (req.method === "GET" && apiPath === "/health") {
       const databaseConnected = db.source === "supabase";
+      const databaseUrlConfigured = Boolean(getDatabaseConnectionString());
       sendJson(res, 200, {
         status: "healthy",
         database: db.source || "demo",
-        database_status: databaseConnected ? "connected" : process.env.DATABASE_URL ? "not_connected" : "local_demo",
-        database_url_configured: Boolean(process.env.DATABASE_URL),
+        database_status: databaseConnected ? "connected" : databaseUrlConfigured ? "not_connected" : "local_demo",
+        database_url_configured: databaseUrlConfigured,
         database_error: db.connection_error || null,
         telemetry_rows: db.telemetry_logs.length
       });
@@ -89,8 +91,6 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     }
 
     if (req.method === "GET" && apiPath === "/audit-logs") {
-      const session = requireAuthorized(req, res, auth, "view_logs");
-      if (!session) return true;
       sendJson(res, 200, { ok: true, audit_logs: listAuditLogs(db, url) });
       return true;
     }

@@ -558,7 +558,11 @@ function setupLogin() {
 
   const savedUser = readSavedUser();
   if (savedUser) {
-    currentUser = savedUser;
+    currentUser = {
+      ...savedUser,
+      accessToken: savedUser.accessToken || savedUser.access_token || sessionStorage.getItem("oxyguardAccessToken") || ""
+    };
+    sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
     showApp();
   } else {
     username.focus();
@@ -595,6 +599,7 @@ function setupLogin() {
         loginAt: new Date().toISOString()
       };
       sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
+      sessionStorage.setItem("oxyguardAccessToken", result.access_token);
       password.value = "";
       error.classList.remove("visible");
       showApp();
@@ -1830,8 +1835,9 @@ function renderUserData(users) {
 
 function authHeaders(includeContentType = true) {
   const headers = includeContentType ? { "content-type": "application/json" } : {};
-  if (currentUser?.accessToken) {
-    headers.authorization = `Bearer ${currentUser.accessToken}`;
+  const token = currentUser?.accessToken || currentUser?.access_token || sessionStorage.getItem("oxyguardAccessToken");
+  if (token) {
+    headers.authorization = `Bearer ${token}`;
   }
   return headers;
 }

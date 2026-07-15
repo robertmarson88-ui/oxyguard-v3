@@ -6458,13 +6458,14 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   left: 50vw;
   top: 50vh;
   z-index: 10010;
-  width: min(390px, calc(100vw - 48px));
-  padding: 18px 20px;
-  border: 1px solid #b7cce3;
-  border-radius: 16px;
-  background: #ffffff;
+  width: min(330px, calc(100vw - 48px));
+  padding: 14px 16px;
+  border: 1px solid rgba(183, 204, 227, 0.78);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(12px) saturate(1.15);
   color: #08223f;
-  box-shadow: 0 24px 60px rgba(10, 35, 66, 0.3);
+  box-shadow: 0 18px 44px rgba(10, 35, 66, 0.22);
   opacity: 0;
   pointer-events: none;
   transform: translate(-50%, -50%) scale(0.96);
@@ -6478,24 +6479,24 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 .oxygen-room-popover span {
   display: block;
   color: #506782;
-  font-size: 13px;
+  font-size: 9px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .oxygen-room-popover strong {
   display: block;
-  margin-top: 8px;
+  margin-top: 6px;
   color: #062b50;
-  font-size: 30px;
+  font-size: 21px;
   line-height: 1;
   text-align: left;
 }
 
 .oxygen-room-popover p {
-  margin: 10px 0 0;
+  margin: 7px 0 0;
   color: #243d58;
-  font-size: 15px;
+  font-size: 11px;
   font-weight: 800;
   line-height: 1.25;
 }

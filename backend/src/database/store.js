@@ -62,11 +62,12 @@ export async function createRelationalStore() {
     nextAuditId: nextId(demoAuditLogs, "audit_id")
   };
 
-  if (!process.env.DATABASE_URL) return store;
+  const connectionString = getDatabaseConnectionString();
+  if (!connectionString) return store;
 
   try {
     const { Pool } = await import("pg");
-    const pool = await connectPostgres(Pool);
+    const pool = await connectPostgres(Pool, connectionString);
 
     let remote = await loadSupabaseTables(pool);
     await seedSupabaseDemoUsers(pool);
@@ -95,15 +96,25 @@ function sanitizeDatabaseError(error) {
     .replace(/password=[^&\s]+/gi, "password=***");
 }
 
-async function connectPostgres(Pool) {
+export function getDatabaseConnectionString() {
+  return process.env.DATABASE_URL
+    || process.env.SUPABASE_DB_URL
+    || process.env.SUPABASE_DATABASE_URL
+    || process.env.POSTGRES_URL
+    || process.env.POSTGRES_PRISMA_URL
+    || process.env.POSTGRES_URL_NON_POOLING
+    || "";
+}
+
+async function connectPostgres(Pool, connectionString) {
   const ssl = process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false };
   try {
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl });
+    const pool = new Pool({ connectionString, ssl });
     await pool.query("select 1");
     return pool;
   } catch (error) {
     if (!String(error.message || "").toLowerCase().includes("ssl")) throw error;
-    const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: false });
+    const pool = new Pool({ connectionString, ssl: false });
     await pool.query("select 1");
     return pool;
   }
