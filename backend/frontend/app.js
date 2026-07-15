@@ -258,6 +258,8 @@ let adminDeviceRows = [
 let simulatorEvents = [];
 let auditLogDialogRows = [];
 let auditLogDialogRequestId = 0;
+let adminAuditRequestId = 0;
+let selectedAuditLogDay = "";
 let wardCardStatusOverrides = new Map();
 let activeWardAlertKey = "";
 
@@ -361,7 +363,10 @@ function start() {
   document.getElementById("viewAllAuditLogsButton")?.addEventListener("click", openAuditLogDialog);
   document.getElementById("closeAuditLogDialog")?.addEventListener("click", () => document.getElementById("auditLogDialog")?.close());
   document.getElementById("closeWardAlertDialog")?.addEventListener("click", () => document.getElementById("wardAlertDialog")?.close());
-  document.getElementById("auditLogDayFilter")?.addEventListener("change", loadAuditLogDialogRows);
+  document.getElementById("auditLogDayFilter")?.addEventListener("change", event => {
+    selectedAuditLogDay = event.currentTarget.value;
+    loadAuditLogDialogRows();
+  });
   document.getElementById("emailAuditLogButton")?.addEventListener("click", emailAuditLogRows);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("keydown", event => {
@@ -4312,8 +4317,6 @@ function renderAdministration() {
     ["FS", "Facilities Team", "facilities@hospital.com", "Facilities", "Active", "19 Jun 2026<br>10:15 AM"],
     ["CF", "CFO", "cfo@hospital.com", "CFO", "Active", "19 Jun 2026<br>09:05 AM"]
   ];
-  const auditRows = buildLiveAuditFallbackRows();
-
   setOrderHtml("adminUsersTable", `
     <table class="admin-table">
       <thead><tr><th>User</th><th>Role</th><th>Status</th><th>Last Login</th><th>Actions</th></tr></thead>
@@ -4361,12 +4364,16 @@ function renderAdministration() {
     </table>
   `);
 
-  renderAdminAuditTable(auditRows);
-  loadAdminAuditLogs(auditRows);
+  renderAdminAuditTable([], "Loading today's activity...");
+  loadAdminAuditLogs();
 }
 
-function renderAdminAuditTable(rows) {
-  const visibleRows = rows.slice(0, 5);
+function renderAdminAuditTable(rows, emptyMessage = "No audit activity recorded for today.") {
+  const visibleRows = rows.slice(0, 7);
+  if (!visibleRows.length) {
+    setOrderHtml("adminAuditTable", `<div class="audit-log-empty">${escapeHtml(emptyMessage)}</div>`);
+    return;
+  }
   setOrderHtml("adminAuditTable", `
     <table class="admin-table">
       <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
@@ -4379,20 +4386,29 @@ function renderAdminAuditTable(rows) {
   `);
 }
 
-async function loadAdminAuditLogs(fallbackRows) {
+async function loadAdminAuditLogs() {
+  const requestId = ++adminAuditRequestId;
+  const today = localDateInputValue(new Date());
   try {
-    const response = await fetch("/api/audit-logs?limit=5", { cache: "no-store", headers: authHeaders(false) });
+    const response = await fetch(`/api/audit-logs?day=${encodeURIComponent(today)}&limit=7`, {
+      cache: "no-store",
+      headers: authHeaders(false)
+    });
     const result = await response.json();
-    if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) return;
+    if (requestId !== adminAuditRequestId) return;
+    if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) {
+      throw new Error(result?.message || "Today's audit activity could not be loaded.");
+    }
     const rows = result.audit_logs.map(log => [
       formatAdminAuditTime(log.performed_at),
       escapeHtml(log.username || log.user_id || "System"),
       escapeHtml(log.action || "Activity"),
       escapeHtml(log.target_resource || log.ip_address || "Recorded")
     ]);
-    renderAdminAuditTable(rows.length ? rows : fallbackRows);
-  } catch {
-    renderAdminAuditTable(fallbackRows);
+    renderAdminAuditTable(rows);
+  } catch (error) {
+    if (requestId !== adminAuditRequestId) return;
+    renderAdminAuditTable([], error.message || "Today's audit activity could not be loaded.");
   }
 }
 
@@ -4420,7 +4436,8 @@ async function openAuditLogDialog() {
   if (dayFilter) {
     const today = localDateInputValue(new Date());
     dayFilter.max = today;
-    if (!dayFilter.value) dayFilter.value = today;
+    if (!selectedAuditLogDay || selectedAuditLogDay > today) selectedAuditLogDay = today;
+    dayFilter.value = selectedAuditLogDay;
   }
   dialog.showModal();
   await loadAuditLogDialogRows();
@@ -4430,7 +4447,9 @@ async function loadAuditLogDialogRows() {
   const requestId = ++auditLogDialogRequestId;
   const table = document.getElementById("auditLogDialogTable");
   const status = document.getElementById("auditLogDialogStatus");
-  const day = document.getElementById("auditLogDayFilter")?.value || "";
+  const dayFilter = document.getElementById("auditLogDayFilter");
+  const day = selectedAuditLogDay || dayFilter?.value || localDateInputValue(new Date());
+  selectedAuditLogDay = day;
   if (!table) return;
   table.setAttribute("aria-busy", "true");
   if (status) status.textContent = day ? `Loading audit logs for ${day}...` : "Loading recent audit logs...";
