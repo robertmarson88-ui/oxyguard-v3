@@ -326,7 +326,15 @@ function requireWardStatusEditor(req, res, auth) {
     return null;
   }
 
-  if (![1, 4, 5].includes(Number(result.session.user.role_id))) {
+  const roleName = String(result.session.user.role_name || "").trim().toLowerCase();
+  const editorRoles = new Set([
+    "administrator",
+    "facilities admin",
+    "nurse manager",
+    "nurse supervisor",
+    "nurse"
+  ]);
+  if (!editorRoles.has(roleName)) {
     sendJson(res, 403, { ok: false, message: "Administrator, Nurse Manager, or Nurse permission required." });
     return null;
   }
