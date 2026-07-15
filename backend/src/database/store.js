@@ -290,13 +290,17 @@ async function seedSupabaseDemoUsers(pool) {
   const numericUserIds = isIntegerDataType(userIdType);
   const facilitiesId = numericUserIds ? 11 : "AA011";
   const nurseId = numericUserIds ? 12 : "AA012";
+  const roles = await queryRows(pool, "select role_id, lower(role_name) as role_name from public.roles");
+  const facilitiesRole = roles.find(role => ["facilities admin", "facilities manager"].includes(role.role_name));
+  const nurseRole = roles.find(role => role.role_name === "nurse");
+  if (!facilitiesRole || !nurseRole) return;
   await pool.query(
     `insert into public.users (user_id, username, email, email_verified, password_hash, role_id, created_at)
      values
-       ($1, 'facilities', 'facilities.manager@monamercy.local', true, 'demo-hash:facilities-2026', 3, $3),
-       ($2, 'nurse', 'ward.nurse@monamercy.local', true, 'demo-hash:nurse-2026', 5, $3)
+       ($1, 'facilities', 'facilities.manager@monamercy.local', true, 'demo-hash:facilities-2026', $4, $3),
+       ($2, 'nurse', 'ward.nurse@monamercy.local', true, 'demo-plain:nurse1', $5, $3)
      on conflict do nothing`,
-    [facilitiesId, nurseId, demoCreatedAt]
+    [facilitiesId, nurseId, demoCreatedAt, facilitiesRole.role_id, nurseRole.role_id]
   );
 }
 
