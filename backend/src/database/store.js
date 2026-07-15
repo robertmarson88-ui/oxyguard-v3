@@ -184,8 +184,8 @@ async function loadSupabaseTables(pool) {
   };
 }
 
-function createDemoAuditLogs() {
-  const users = ["AA002", "AA011", "AA010", "AA009", "AA008", "AA012"];
+function createDemoAuditLogs({ numericUserIds = false } = {}) {
+  const users = numericUserIds ? [2, 11, 10, 9, 8, 12] : ["AA002", "AA011", "AA010", "AA009", "AA008", "AA012"];
   const actions = [
     "User Login",
     "Telemetry Review",
@@ -257,19 +257,39 @@ async function tableColumns(pool, tableName) {
   return new Set(columns.map(column => column.column_name));
 }
 
+async function tableColumnDataType(pool, tableName, columnName) {
+  const rows = await queryRows(
+    pool,
+    `select data_type
+     from information_schema.columns
+     where table_schema = 'public' and table_name = $1 and column_name = $2
+     limit 1`,
+    [tableName, columnName]
+  );
+  return rows[0]?.data_type || "";
+}
+
+function isIntegerDataType(dataType) {
+  return ["integer", "bigint", "smallint"].includes(String(dataType || "").toLowerCase());
+}
+
 async function seedSupabaseDemoUsers(pool) {
+  const userIdType = await tableColumnDataType(pool, "users", "user_id");
+  const numericUserIds = isIntegerDataType(userIdType);
+  const facilitiesId = numericUserIds ? 11 : "AA011";
+  const nurseId = numericUserIds ? 12 : "AA012";
   await pool.query(
     `insert into public.users (user_id, username, email, email_verified, password_hash, role_id, created_at)
      values
-       ('AA011', 'facilities', 'facilities.manager@monamercy.local', true, 'demo-hash:facilities-2026', 3, $1),
-       ('AA012', 'nurse', 'ward.nurse@monamercy.local', true, 'demo-hash:nurse-2026', 5, $1)
+       ($1, 'facilities', 'facilities.manager@monamercy.local', true, 'demo-hash:facilities-2026', 3, $3),
+       ($2, 'nurse', 'ward.nurse@monamercy.local', true, 'demo-hash:nurse-2026', 5, $3)
      on conflict (user_id) do update set
        username = excluded.username,
        email = excluded.email,
        email_verified = excluded.email_verified,
        password_hash = excluded.password_hash,
        role_id = excluded.role_id`,
-    [demoCreatedAt]
+    [facilitiesId, nurseId, demoCreatedAt]
   );
 }
 
@@ -308,6 +328,8 @@ async function seedSupabaseDemoAlerts(pool, remote) {
 
 async function seedSupabaseDemoAuditLogs(pool) {
   const auditLogColumns = await tableColumns(pool, "audit_logs");
+  const userIdType = await tableColumnDataType(pool, "audit_logs", "user_id");
+  const numericUserIds = isIntegerDataType(userIdType);
   const targetColumn = auditLogColumns.has("target_resource")
     ? "target_resource"
     : auditLogColumns.has("target")
@@ -315,7 +337,7 @@ async function seedSupabaseDemoAuditLogs(pool) {
       : null;
   if (!targetColumn) return;
 
-  const logs = createDemoAuditLogs();
+  const logs = createDemoAuditLogs({ numericUserIds });
   const values = [];
   const placeholders = logs.map((log, index) => {
     const base = index * 5;
