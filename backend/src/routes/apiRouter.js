@@ -101,7 +101,12 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     }
 
     if (req.method === "GET" && apiPath === "/audit-logs") {
-      sendJson(res, 200, { ok: true, audit_logs: listAuditLogs(db, url) });
+      try {
+        sendJson(res, 200, { ok: true, audit_logs: await listAuditLogs(db, url) });
+      } catch (error) {
+        console.warn(`OxyGuard audit log query failed: ${String(error?.message || error)}`);
+        sendJson(res, 500, { ok: false, message: "Audit logs could not be loaded from the database." });
+      }
       return true;
     }
 
@@ -463,9 +468,38 @@ function queryAlerts(db, url) {
   });
 }
 
-function listAuditLogs(db, url) {
+async function listAuditLogs(db, url) {
+  const requestedDay = String(url?.searchParams?.get("day") || "");
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(requestedDay) ? requestedDay : "";
+
+  if (db.pgPool) {
+    const availableColumns = new Set(db.audit_log_columns || []);
+    const targetSelect = availableColumns.has("target_resource")
+      ? "a.target_resource"
+      : availableColumns.has("target")
+        ? "a.target as target_resource"
+        : "null::text as target_resource";
+    const ipSelect = availableColumns.has("ip_address")
+      ? "a.ip_address::text as ip_address"
+      : "null::text as ip_address";
+    const params = day ? [day] : [];
+    const dayFilter = day
+      ? "where (a.performed_at at time zone 'America/Jamaica')::date = $1::date"
+      : "";
+    const result = await db.pgPool.query(
+      `select a.audit_id, a.user_id, coalesce(u.username, a.user_id::text) as username,
+              ${targetSelect}, ${ipSelect}, a.action, a.performed_at
+       from public.audit_logs a
+       left join public.users u on u.user_id = a.user_id
+       ${dayFilter}
+       order by a.performed_at desc
+       limit 500`,
+      params
+    );
+    return result.rows;
+  }
+
   const usersById = new Map(db.users.map(user => [String(user.user_id), user]));
-  const day = url?.searchParams?.get("day") || "";
   return db.audit_logs
     .slice()
     .filter(log => !day || String(log.performed_at || "").slice(0, 10) === day)
