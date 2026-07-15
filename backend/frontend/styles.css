@@ -13125,9 +13125,9 @@ body:not(.login-active) #logoutButton:hover::before {
 .ward-alert-summary-head,
 .ward-alert-summary-row {
   display: grid;
-  grid-template-columns: minmax(66px, 1fr) repeat(3, 22px);
+  grid-template-columns: minmax(54px, 1fr) repeat(3, 20px);
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 
 .ward-alert-summary-head {
@@ -13145,7 +13145,7 @@ body:not(.login-active) #logoutButton:hover::before {
 
 .ward-alert-summary-row {
   min-height: 40px;
-  padding: 6px 8px;
+  padding: 6px;
   border: 1px solid #dbe7f2;
   border-radius: 8px;
   background: #fbfdff;
@@ -13192,7 +13192,7 @@ body:not(.login-active) #logoutButton:hover::before {
 }
 
 .ward-alert-count {
-  width: 22px;
+  width: 20px;
   height: 24px;
   display: grid;
   place-items: center;
