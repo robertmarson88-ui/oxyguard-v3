@@ -1559,9 +1559,9 @@ function canEditWardStatus() {
   return WARD_STATUS_EDITOR_ROLES.has(role);
 }
 
-function renderWardStatusControl(card, row) {
+function renderWardStatusControl(card, row, editable = false) {
   const status = getWardRowStatus(card, row);
-  if (!canEditWardStatus()) return assignmentResult(status);
+  if (!editable || !canEditWardStatus()) return assignmentResult(status);
   return `
     <select class="ward-status-select" data-ward-key="${card.key}" data-asset-key="${row.assetKey}" aria-label="Status for ${row.asset}, ${card.ward}">
       ${WARD_STATUS_OPTIONS.map(option => `<option value="${option}"${option === status ? " selected" : ""}>${option}</option>`).join("")}
@@ -1619,7 +1619,7 @@ function renderAlertWardDialog(cardKey) {
             <td>${assignmentFlag(row.patientFlag)}</td>
             <td><strong>${row.setValue}</strong><small>Litre/Min</small></td>
             <td><strong>${row.flow}</strong><small>Litre/Min</small></td>
-            <td>${renderWardStatusControl(card, row)}</td>
+            <td>${renderWardStatusControl(card, row, true)}</td>
           </tr>
         `).join("")}</tbody>
       </table>
