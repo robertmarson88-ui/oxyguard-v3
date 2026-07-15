@@ -537,7 +537,7 @@
                     <p>Recent system activities and configuration changes.</p>
                   </div>
                 </div>
-                <button class="admin-link-button" type="button">View all logs</button>
+                <button class="admin-link-button" id="viewAllAuditLogsButton" type="button">View all logs</button>
               </div>
               <div id="adminAuditTable" class="admin-table-wrap"></div>
             </article>
@@ -737,6 +737,29 @@
         <button id="closeHeatMapDialog" aria-label="Close heat map">Close</button>
       </div>
       <div id="heatMapDialogBody" class="heatmap-dialog-body"></div>
+    </dialog>
+
+    <dialog id="auditLogDialog" class="audit-log-dialog">
+      <div class="dialog-head audit-log-dialog-head">
+        <div>
+          <h2>Audit Log History</h2>
+          <p>Filter current logins, alert events, user actions, and resolved alerts by day.</p>
+        </div>
+        <button id="closeAuditLogDialog" aria-label="Close audit logs">Close</button>
+      </div>
+      <div class="audit-log-toolbar">
+        <label>
+          Sort by day
+          <input id="auditLogDayFilter" type="date" />
+        </label>
+        <label>
+          Email log
+          <input id="auditLogEmail" type="email" placeholder="name@example.com" />
+        </label>
+        <button id="emailAuditLogButton" type="button">Email Log</button>
+      </div>
+      <div id="auditLogDialogStatus" class="audit-log-status">Showing recent audit activity.</div>
+      <div id="auditLogDialogTable" class="admin-table-wrap audit-log-dialog-table"></div>
     </dialog>
 
     <dialog class="user-dialog" id="userDialog">

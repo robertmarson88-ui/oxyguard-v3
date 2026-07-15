@@ -11817,6 +11817,98 @@ body:not(.login-active) .main {
   width: 22% !important;
 }
 
+.audit-log-dialog {
+  width: min(1120px, calc(100vw - 32px));
+  max-height: min(780px, calc(100vh - 32px));
+  border: 1px solid #c7d9ec;
+  border-radius: 14px;
+  padding: 0;
+  overflow: hidden;
+  background: #f8fbff;
+  color: #08223f;
+  box-shadow: 0 28px 80px rgba(10, 35, 66, 0.28);
+}
+
+.audit-log-dialog::backdrop {
+  background: rgba(4, 16, 32, 0.48);
+}
+
+.audit-log-dialog-head {
+  background: linear-gradient(135deg, #073763, #0b72e7);
+  color: #fff;
+}
+
+.audit-log-dialog-head h2,
+.audit-log-dialog-head p {
+  color: #fff;
+}
+
+.audit-log-dialog-head button {
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.audit-log-toolbar {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(240px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px 18px 10px;
+}
+
+.audit-log-toolbar label {
+  display: grid;
+  gap: 6px;
+  color: #35506c;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.audit-log-toolbar input {
+  height: 40px;
+  border: 1px solid #bdd3ea;
+  border-radius: 9px;
+  padding: 0 12px;
+  background: #fff;
+  color: #09233f;
+  font-weight: 760;
+}
+
+.audit-log-toolbar button {
+  height: 40px;
+  border: 0;
+  border-radius: 9px;
+  padding: 0 18px;
+  background: #0b72e7;
+  color: #fff;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.audit-log-status {
+  padding: 0 18px 10px;
+  color: #51677f;
+  font-size: 13px;
+  font-weight: 760;
+}
+
+.audit-log-dialog-table {
+  max-height: 520px;
+  margin: 0 18px 18px;
+  overflow: auto;
+  border: 1px solid #d5e3f1;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.audit-log-empty {
+  padding: 20px;
+  color: #51677f;
+  font-weight: 800;
+}
+
 @media (max-width: 1180px) {
   .ward-total-row {
     grid-template-columns: 1fr;
@@ -11832,6 +11924,10 @@ body:not(.login-active) .main {
 }
 
 @media (max-width: 760px) {
+  .audit-log-toolbar {
+    grid-template-columns: 1fr;
+  }
+
   .ward-month-chip-row,
   .ward-total-costs {
     grid-template-columns: 1fr;

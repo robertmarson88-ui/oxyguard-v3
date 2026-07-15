@@ -256,6 +256,7 @@ let adminDeviceRows = [
   { device: "ESP32-E01", location: "Maternity Ward", status: "Offline", seen: "19 Jun 2026 01:40 PM" }
 ];
 let simulatorEvents = [];
+let auditLogDialogRows = [];
 
 const permissionViews = {
   admin: {
@@ -351,6 +352,10 @@ function start() {
     });
   });
   document.getElementById("closeHeatMapDialog")?.addEventListener("click", () => document.getElementById("heatMapDialog")?.close());
+  document.getElementById("viewAllAuditLogsButton")?.addEventListener("click", openAuditLogDialog);
+  document.getElementById("closeAuditLogDialog")?.addEventListener("click", () => document.getElementById("auditLogDialog")?.close());
+  document.getElementById("auditLogDayFilter")?.addEventListener("change", loadAuditLogDialogRows);
+  document.getElementById("emailAuditLogButton")?.addEventListener("click", emailAuditLogRows);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("click", openHeatMapDialog);
   document.getElementById("dashboardHeatMapCard")?.addEventListener("keydown", event => {
     if (event.key === "Enter" || event.key === " ") {
@@ -4278,6 +4283,90 @@ async function loadAdminAuditLogs(fallbackRows) {
   }
 }
 
+async function openAuditLogDialog() {
+  const dialog = document.getElementById("auditLogDialog");
+  const dayFilter = document.getElementById("auditLogDayFilter");
+  if (!dialog) return;
+  if (dayFilter && !dayFilter.value) dayFilter.value = new Date().toISOString().slice(0, 10);
+  dialog.showModal();
+  await loadAuditLogDialogRows();
+}
+
+async function loadAuditLogDialogRows() {
+  const table = document.getElementById("auditLogDialogTable");
+  const status = document.getElementById("auditLogDialogStatus");
+  const day = document.getElementById("auditLogDayFilter")?.value || "";
+  if (!table) return;
+  table.innerHTML = "<div class=\"audit-log-empty\">Loading audit logs...</div>";
+  try {
+    const query = day ? `?day=${encodeURIComponent(day)}` : "";
+    const response = await fetch(`/api/audit-logs${query}`, { cache: "no-store", headers: authHeaders(false) });
+    const result = await response.json();
+    if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) {
+      throw new Error(result?.message || "Audit logs could not be loaded.");
+    }
+    auditLogDialogRows = result.audit_logs;
+    renderAuditLogDialogRows(auditLogDialogRows);
+    if (status) {
+      status.textContent = day
+        ? `Showing ${auditLogDialogRows.length} log entr${auditLogDialogRows.length === 1 ? "y" : "ies"} for ${day}.`
+        : `Showing ${auditLogDialogRows.length} recent log entries.`;
+    }
+  } catch (error) {
+    auditLogDialogRows = [];
+    table.innerHTML = `<div class="audit-log-empty">${escapeHtml(error.message || "Audit logs could not be loaded.")}</div>`;
+    if (status) status.textContent = "Unable to load audit logs.";
+  }
+}
+
+function renderAuditLogDialogRows(rows) {
+  const table = document.getElementById("auditLogDialogTable");
+  if (!table) return;
+  if (!rows.length) {
+    table.innerHTML = "<div class=\"audit-log-empty\">No audit logs found for this day.</div>";
+    return;
+  }
+  table.innerHTML = `
+    <table class="admin-table">
+      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th><th>IP</th></tr></thead>
+      <tbody>
+        ${rows.map(log => `
+          <tr>
+            <td>${formatAdminAuditTime(log.performed_at)}</td>
+            <td>${escapeHtml(log.username || log.user_id || "System")}</td>
+            <td>${escapeHtml(log.action || "Activity")}</td>
+            <td>${escapeHtml(log.target_resource || "Recorded")}</td>
+            <td>${escapeHtml(log.ip_address || "-")}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function emailAuditLogRows() {
+  const email = document.getElementById("auditLogEmail")?.value.trim();
+  const day = document.getElementById("auditLogDayFilter")?.value || "recent";
+  const status = document.getElementById("auditLogDialogStatus");
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (status) status.textContent = "Enter a valid email address before sending the log.";
+    return;
+  }
+  const lines = auditLogDialogRows.length
+    ? auditLogDialogRows.map(log => [
+        formatAdminAuditTime(log.performed_at),
+        log.username || log.user_id || "System",
+        log.action || "Activity",
+        log.target_resource || "Recorded",
+        log.ip_address || "-"
+      ].join(" | "))
+    : ["No audit logs found for the selected period."];
+  const subject = encodeURIComponent(`OxyGuard audit log - ${day}`);
+  const body = encodeURIComponent(["OxyGuard Audit Log", `Period: ${day}`, "", ...lines].join("\n"));
+  window.location.href = `mailto:${email}?subject=${subject}&body=${body}`;
+  if (status) status.textContent = `Prepared email for ${email}.`;
+}
+
 function formatAdminAuditTime(value) {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return escapeHtml(value || "");
@@ -4736,14 +4825,24 @@ function renderHospitalHeatMap() {
     return;
   }
 
-  const zoneState = () => "normal";
+  const roomForWard = (wardId, className, label, metaLabel) => {
+    const ward = wards.find(item => item.id === wardId);
+    const flow = ward ? totalFlow(ward) : 0;
+    const activeCount = ward ? ward.tanks.filter(tankItem => tankItem.active).length : 0;
+    return {
+      label,
+      className,
+      state: getHeatMapWardState(ward),
+      meta: `${metaLabel} | ${flow.toFixed(1)} Litre/Min | ${activeCount} online`
+    };
+  };
   const mapRooms = [
     { label: "ICU", className: "icu", state: "normal", meta: "North intake" },
-    { label: "Ward A", className: "ward-a", state: zoneState(wards[0]), meta: "A&E feed" },
-    { label: "Ward B", className: "ward-b", state: zoneState(wards[1]), meta: "Labour line" },
-    { label: "A&E Ward", className: "ward-c", state: zoneState(wards[3]), meta: "Recovery line" },
-    { label: "Pediatrics", className: "pediatrics", state: zoneState(wards[2]), meta: "Paediatric feed" },
-    { label: "Maternity", className: "maternity", state: zoneState(wards[4]), meta: "Nurse station" },
+    roomForWard("ae", "ward-a", "A&E Ward", "Emergency feed"),
+    roomForWard("labour", "ward-b", "Labour Ward", "Labour line"),
+    roomForWard("recovery", "ward-c", "Recovery Bay", "Recovery line"),
+    roomForWard("paediatric", "pediatrics", "Pediatrics", "Paediatric feed"),
+    roomForWard("nurse", "maternity", "Nurse Station", "Station feed"),
     { label: "Plant Room", className: "plant-room", state: "normal", meta: "Supply control" },
     { label: "", className: "south-service", state: "normal", meta: "Isolation room" }
   ];
@@ -4771,6 +4870,16 @@ function renderHospitalHeatMap() {
       <div class="floorplan-door door-b"></div>
     </div>
   `;
+}
+
+function getHeatMapWardState(ward) {
+  if (!ward) return "offline";
+  const activeTanks = ward.tanks.filter(tankItem => tankItem.active);
+  if (!activeTanks.length) return "offline";
+  if (ward.tanks.some(tankItem => tankItem.leakageAlert || tankItem.highFlowAlert || getReportVolumePercent(tankItem) < 10)) return "ghost";
+  const flow = totalFlow(ward);
+  if (flow >= 18 || ward.tanks.some(tankItem => tankItem.fixedFlow || getReportVolumePercent(tankItem) < 30)) return "high";
+  return "normal";
 }
 
 function openHeatMapDialog() {

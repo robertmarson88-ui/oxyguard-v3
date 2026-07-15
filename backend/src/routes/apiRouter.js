@@ -88,7 +88,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     if (req.method === "GET" && apiPath === "/audit-logs") {
       const session = requireAuthorized(req, res, auth, "view_logs");
       if (!session) return true;
-      sendJson(res, 200, { ok: true, audit_logs: listAuditLogs(db) });
+      sendJson(res, 200, { ok: true, audit_logs: listAuditLogs(db, url) });
       return true;
     }
 
@@ -164,6 +164,12 @@ async function createTelemetry(req, res, db) {
     alert_created: Boolean(result.alert),
     alert: result.alert
   });
+
+  if (result.alert) {
+    const actor = getSystemAuditActor(db);
+    const target = `${result.alert.alert_type} on ${result.alert.device_id} (${result.alert.severity})`;
+    await addAuditLog(db, actor, "Alert Created", target, getClientIp(req));
+  }
 }
 
 function requireAuthorized(req, res, auth, permissionName) {
@@ -327,6 +333,13 @@ async function addAuditLog(db, actor, action, target, ipAddress = null) {
   return auditLog;
 }
 
+function getSystemAuditActor(db) {
+  return db.users.find(user => user.username === "admin")
+    || db.users.find(user => Number(user.role_id) === 1)
+    || db.users[0]
+    || { user_id: "AA008", username: "system" };
+}
+
 function buildAuditInsert(db, auditLog) {
   const availableColumns = new Set(db.audit_log_columns || []);
   const hasKnownColumns = availableColumns.size > 0;
@@ -396,12 +409,14 @@ function queryAlerts(db, url) {
   });
 }
 
-function listAuditLogs(db) {
+function listAuditLogs(db, url) {
   const usersById = new Map(db.users.map(user => [String(user.user_id), user]));
+  const day = url?.searchParams?.get("day") || "";
   return db.audit_logs
     .slice()
+    .filter(log => !day || String(log.performed_at || "").slice(0, 10) === day)
     .sort((a, b) => new Date(b.performed_at) - new Date(a.performed_at))
-    .slice(0, 75)
+    .slice(0, 500)
     .map(log => {
       const user = usersById.get(String(log.user_id));
       return {
