@@ -217,7 +217,8 @@ function createDemoAuditLogs({ numericUserIds = false } = {}) {
   const logs = [];
   let auditId = 1;
   const start = new Date("2026-01-01T08:15:00Z");
-  const end = new Date("2026-07-13T17:45:00Z");
+  const end = new Date();
+  end.setUTCHours(17, 45, 0, 0);
   const addDayLogs = day => {
     const countForDay = 2 + (auditId % 3);
     for (let index = 0; index < countForDay; index += 1) {
@@ -235,10 +236,9 @@ function createDemoAuditLogs({ numericUserIds = false } = {}) {
     }
   };
 
-  for (let day = new Date(start); day <= end; day.setUTCDate(day.getUTCDate() + 3)) {
+  for (let day = new Date(start); day <= end; day.setUTCDate(day.getUTCDate() + 1)) {
     addDayLogs(day);
   }
-  addDayLogs(end);
 
   return logs;
 }
@@ -341,11 +341,12 @@ async function seedSupabaseDemoAuditLogs(pool) {
   if (!targetColumn) return;
 
   const logs = createDemoAuditLogs({ numericUserIds });
+  const userIdSqlType = numericUserIds ? userIdType : "text";
   const values = [];
   const placeholders = logs.map((log, index) => {
     const base = index * 5;
     values.push(log.user_id, log.action, log.target_resource, log.ip_address, log.performed_at);
-    return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}::timestamptz)`;
+    return `($${base + 1}::${userIdSqlType}, $${base + 2}::text, $${base + 3}::text, $${base + 4}::text, $${base + 5}::timestamptz)`;
   }).join(",\n        ");
 
   await pool.query(
