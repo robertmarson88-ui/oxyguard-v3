@@ -192,8 +192,12 @@ async function loadSupabaseTables(pool) {
   };
 }
 
-function createDemoAuditLogs({ numericUserIds = false } = {}) {
-  const users = numericUserIds ? [2, 11, 10, 9, 8, 12] : ["AA002", "AA011", "AA010", "AA009", "AA008", "AA012"];
+function createDemoAuditLogs({ numericUserIds = false, userIds = [] } = {}) {
+  const users = userIds.length
+    ? userIds
+    : numericUserIds
+      ? [2, 11, 10, 9, 8, 12]
+      : ["AA002", "AA011", "AA010", "AA009", "AA008", "AA012"];
   const actions = [
     "User Login",
     "Telemetry Review",
@@ -340,7 +344,12 @@ async function seedSupabaseDemoAuditLogs(pool) {
       : null;
   if (!targetColumn) return;
 
-  const logs = createDemoAuditLogs({ numericUserIds });
+  const databaseUsers = await queryRows(pool, "select user_id from public.users order by user_id");
+  if (!databaseUsers.length) return;
+  const logs = createDemoAuditLogs({
+    numericUserIds,
+    userIds: databaseUsers.map(user => user.user_id)
+  });
   const userIdSqlType = numericUserIds ? userIdType : "text";
   const values = [];
   const placeholders = logs.map((log, index) => {
