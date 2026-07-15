@@ -4194,13 +4194,7 @@ function renderAdministration() {
     ["FS", "Facilities Team", "facilities@hospital.com", "Facilities", "Active", "19 Jun 2026<br>10:15 AM"],
     ["CF", "CFO", "cfo@hospital.com", "CFO", "Active", "19 Jun 2026<br>09:05 AM"]
   ];
-  const auditRows = [
-    ["19 Jun 2026 02:12 PM", "John Admin", "Updated Alert Rule", "Ghost Flow Threshold changed to 0.5 Litre/Min"],
-    ["19 Jun 2026 02:05 PM", "John Admin", "User Role Updated", "Nurse Station role changed to Nurse"],
-    ["19 Jun 2026 01:58 PM", "Nurse Manager", "User Login", "Successful login"],
-    ["19 Jun 2026 01:45 PM", "John Admin", "Privacy Setting Changed", "Data Retention Period set to 365 days"],
-    ["19 Jun 2026 01:30 PM", "Facilities Team", "Device Registered", "ESP32-E01 registered to Maternity Ward"]
-  ];
+  const auditRows = buildLiveAuditFallbackRows();
 
   setOrderHtml("adminUsersTable", `
     <table class="admin-table">
@@ -4268,7 +4262,8 @@ function renderAdminAuditTable(rows) {
 
 async function loadAdminAuditLogs(fallbackRows) {
   try {
-    const response = await fetch("/api/audit-logs", { cache: "no-store", headers: authHeaders(false) });
+    const today = new Date().toISOString().slice(0, 10);
+    const response = await fetch(`/api/audit-logs?day=${encodeURIComponent(today)}`, { cache: "no-store", headers: authHeaders(false) });
     const result = await response.json();
     if (!response.ok || !result.ok || !Array.isArray(result.audit_logs)) return;
     const rows = result.audit_logs.map(log => [
@@ -4283,11 +4278,28 @@ async function loadAdminAuditLogs(fallbackRows) {
   }
 }
 
+function buildLiveAuditFallbackRows() {
+  const now = new Date();
+  const active = activeAlerts();
+  const latestAlert = active[0] || "No active alert";
+  return [
+    [formatAdminAuditTime(now.toISOString()), currentUser?.username || "Current Session", "User Login", "Live session active"],
+    [formatAdminAuditTime(minutesFromNow(1)), "System", "Telemetry Check", `${totalFlowAllWards().toFixed(1)} Litre/Min live hospital flow`],
+    [formatAdminAuditTime(minutesFromNow(2)), "System", active.length ? "Alert Review" : "System Normal", latestAlert],
+    [formatAdminAuditTime(minutesFromNow(3)), "System", "Database Sync", databaseConnectionStatus.label || "Checking connection"],
+    [formatAdminAuditTime(minutesFromNow(4)), "System", "Heat Map Refresh", "Ward oxygen usage status updated"]
+  ];
+}
+
+function totalFlowAllWards() {
+  return wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
+}
+
 async function openAuditLogDialog() {
   const dialog = document.getElementById("auditLogDialog");
   const dayFilter = document.getElementById("auditLogDayFilter");
   if (!dialog) return;
-  if (dayFilter && !dayFilter.value) dayFilter.value = new Date().toISOString().slice(0, 10);
+  if (dayFilter) dayFilter.value = "";
   dialog.showModal();
   await loadAuditLogDialogRows();
 }
@@ -4829,11 +4841,23 @@ function renderHospitalHeatMap() {
     const ward = wards.find(item => item.id === wardId);
     const flow = ward ? totalFlow(ward) : 0;
     const activeCount = ward ? ward.tanks.filter(tankItem => tankItem.active).length : 0;
+    const tankCount = ward?.tanks.length || 0;
+    const alertCount = ward ? ward.tanks.filter(tankItem => tankItem.leakageAlert || tankItem.highFlowAlert || getReportVolumePercent(tankItem) < 10).length : 0;
+    const pressure = ward ? averagePressure(ward) : 0;
+    const state = getHeatMapWardState(ward);
     return {
       label,
       className,
-      state: getHeatMapWardState(ward),
-      meta: `${metaLabel} | ${flow.toFixed(1)} Litre/Min | ${activeCount} online`
+      state,
+      meta: `${metaLabel} | ${flow.toFixed(1)} Litre/Min | ${activeCount} online`,
+      details: {
+        flow,
+        activeCount,
+        tankCount,
+        alertCount,
+        pressure,
+        stateLabel: heatMapStateLabel(state)
+      }
     };
   };
   const mapRooms = [
@@ -4856,10 +4880,19 @@ function renderHospitalHeatMap() {
       <div class="floorplan-pipeline lower"></div>
       <div class="floorplan-corridor">Central Corridor</div>
       ${mapRooms.map(room => `
-        <div class="oxygen-room ${room.className} ${room.state}">
+        <div class="oxygen-room ${room.className} ${room.state}" tabindex="0">
           <b class="room-status ${room.state}"></b>
           <strong>${room.label}</strong>
           <small>${room.meta}</small>
+          ${room.details ? `
+            <div class="oxygen-room-popover">
+              <span>${room.label}</span>
+              <strong>${room.details.flow.toFixed(1)} Litre/Min</strong>
+              <p>${room.details.activeCount} of ${room.details.tankCount} devices online</p>
+              <p>${room.details.pressure} PSI average pressure</p>
+              <p>${room.details.alertCount} active alert${room.details.alertCount === 1 ? "" : "s"} | ${room.details.stateLabel}</p>
+            </div>
+          ` : ""}
         </div>
       `).join("")}
       <div class="floorplan-wall wall-a"></div>
@@ -4870,6 +4903,17 @@ function renderHospitalHeatMap() {
       <div class="floorplan-door door-b"></div>
     </div>
   `;
+}
+
+function heatMapStateLabel(state) {
+  const labels = {
+    normal: "Normal usage",
+    high: "High oxygen usage",
+    ghost: "Alert condition",
+    offline: "Offline",
+    maintenance: "Maintenance"
+  };
+  return labels[state] || "Monitoring";
 }
 
 function getHeatMapWardState(ward) {
