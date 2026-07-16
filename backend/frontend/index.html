@@ -408,6 +408,27 @@
         </section>
 
         <section class="order view order-summary-page" id="orderView">
+          <section class="order-recommendation">
+            <div class="order-status-badge">OK</div>
+            <div class="order-recommendation-copy">
+              <h2>Replacement Order Recommended</h2>
+              <p>System has detected low oxygen capacity and forecasted shortage.</p>
+            </div>
+            <div class="order-metrics" id="orderRecommendMetrics"></div>
+            <div class="order-protocol-box">
+              <span>Protocol</span>
+              <strong>10-Minute Protocol</strong>
+              <i>Time remaining <b id="orderCountdown">06:56</b></i>
+              <button id="protocolDetails" type="button">View Protocol Details</button>
+            </div>
+          </section>
+
+          <nav class="order-tabs order-flow-tabs" aria-label="Order summary sections">
+            <span class="active">1. Replacement Tanks</span>
+            <span>2. Order Details</span>
+            <span>3. Capacity & Forecast</span>
+          </nav>
+
           <section class="order-dashboard-grid">
             <article class="order-panel critical-tanks-panel">
               <h3>Critical Tanks (3)</h3>
@@ -427,6 +448,7 @@
             <article class="order-panel" id="orderTriggerSummary"></article>
             <article class="order-panel" id="financialSummary"></article>
             <article class="order-panel" id="supplierInformation"></article>
+            <article class="order-panel" id="inventoryDetails"></article>
             <article class="order-panel" id="orderDetails"></article>
           </section>
         </section>

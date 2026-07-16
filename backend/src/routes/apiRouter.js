@@ -643,6 +643,8 @@ function buildOrderSummary(db) {
   const estimatedWastePrevented = Math.round(Math.max(visibleReplacementTanks.length, 1) * tankCost * 2.2);
   const downtimeAvoided = Math.round(Math.max(criticalCount, 1) * tankCost * 6.5);
   const monthlySavings = Math.round((estimatedWastePrevented + downtimeAvoided) * 0.28);
+  const tanksInUse = tankRows.filter(row => Number(row.flow_rate || 0) > 0 || row.remaining_percent < 90).length;
+  const reserveTanks = Math.max(0, tankRows.length - tanksInUse);
 
   return {
     source: db.source || "demo",
@@ -666,11 +668,19 @@ function buildOrderSummary(db) {
       projected_monthly_savings: monthlySavings
     },
     supplier_information: {
-      supplier: "Caribbean Oxygen Ltd.",
+      supplier: "Industrial Gases Limited (IGL)",
       expected_delivery: "Tomorrow, 08:00 AM",
       lead_time: criticalCount ? "8 hours" : "14 hours",
       past_orders: 23,
       reliability: "99%"
+    },
+    inventory_details: {
+      total_tanks: tankRows.length,
+      tanks_in_use: tanksInUse,
+      critical_tanks: criticalCount,
+      reorder_level: "30%",
+      available_reserve: reserveTanks,
+      last_updated: new Date().toISOString()
     },
     order_details: {
       product: "Oxygen Tank (Medical)",

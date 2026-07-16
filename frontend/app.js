@@ -4146,11 +4146,19 @@ function renderOrderSummary() {
       projected_monthly_savings: 1200000
     },
     supplier_information: {
-      supplier: "Caribbean Oxygen Ltd.",
+      supplier: "Industrial Gases Limited (IGL)",
       expected_delivery: "Tomorrow, 08:00 AM",
       lead_time: "14 hours",
       past_orders: 23,
       reliability: "99%"
+    },
+    inventory_details: {
+      total_tanks: activeTanks.length,
+      tanks_in_use: activeTanks.length,
+      critical_tanks: replacementTanks.filter(t => t.volumePercent < 10).length,
+      reorder_level: "30%",
+      available_reserve: Math.max(0, 40 - activeTanks.length),
+      last_updated: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     },
     order_details: {
       product: "Oxygen Tank (Medical)",
@@ -4204,9 +4212,19 @@ function renderOrderSummaryData(summary) {
   const financial = summary.financial_summary || {};
   const supplier = summary.supplier_information || {};
   const details = summary.order_details || {};
+  const inventory = summary.inventory_details || {};
   const risk = summary.risk || {};
   const replacementTanks = Array.isArray(summary.replacement_tanks) ? summary.replacement_tanks : [];
+  const inventoryUpdatedAt = inventory.last_updated
+    ? new Date(inventory.last_updated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+  setOrderHtml("orderRecommendMetrics", `
+    ${orderMetric("Reason", metrics.reason || `${replacementTanks.length || 0} tanks below threshold`, "R")}
+    ${orderMetric("Predicted Shortage", metrics.predicted_shortage || risk.time_until_shortage || "Monitoring", "T")}
+    ${orderMetric("Recommendation", metrics.recommendation || `Order ${details.quantity || replacementTanks.length || 0} replacement tanks`, "O")}
+    ${orderMetric("Confidence", metrics.confidence || "96%", "%")}
+  `);
   renderReplacementSummary(replacementTanks);
   setOrderHtml("capacityForecastChart", renderCapacityForecastChart());
   setOrderHtml("riskAssessmentPanel", renderRiskAssessment(risk));
@@ -4223,11 +4241,19 @@ function renderOrderSummaryData(summary) {
     ["Projected Monthly Savings", currency(Number(financial.projected_monthly_savings || 0))]
   ], "money"));
   setOrderHtml("supplierInformation", orderMiniPanel("Supplier Information", [
-    ["Supplier", supplier.supplier || "Caribbean Oxygen Ltd."],
+    ["Supplier", supplier.supplier || "Industrial Gases Limited (IGL)"],
     ["Expected Delivery", supplier.expected_delivery || "Pending supplier confirmation"],
     ["Lead Time", supplier.lead_time || "14 hours"],
     ["Past Orders", supplier.past_orders ?? "23"],
     ["Reliability", `<b class=\"order-green\">${supplier.reliability || "99%"}</b>`]
+  ]));
+  setOrderHtml("inventoryDetails", orderMiniPanel("Inventory Details", [
+    ["Total Tanks", inventory.total_tanks ?? "Monitoring"],
+    ["Tanks in Use", inventory.tanks_in_use ?? "Monitoring"],
+    ["Critical Tanks", `<b class=\"${Number(inventory.critical_tanks || 0) ? "order-red" : "order-green"}\">${inventory.critical_tanks ?? 0}</b>`],
+    ["Reorder Level", inventory.reorder_level || "30%"],
+    ["Available Reserve", inventory.available_reserve ?? "Monitoring"],
+    ["Last Updated", inventoryUpdatedAt]
   ]));
   setOrderHtml("orderDetails", orderMiniPanel("Order Details (Preview)", [
     ["Product", details.product || "Oxygen Tank (Medical)"],
