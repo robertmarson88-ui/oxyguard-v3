@@ -262,6 +262,8 @@ let adminAuditRequestId = 0;
 let selectedAuditLogDay = "";
 let wardCardStatusOverrides = new Map();
 let activeWardAlertKey = "";
+let orderSummaryRequestId = 0;
+let lastOrderSummaryFetchAt = 0;
 
 const WARD_STATUS_EDITOR_ROLES = new Set(["admin", "nurse-supervisor", "nurse"]);
 const WARD_STATUS_OPTIONS = ["Normal", "Supply Failure", "Ghost Flow", "Flow Anomaly", "Leakage"];
@@ -2246,11 +2248,11 @@ function renderReport() {
 
   document.getElementById("reportSummary").innerHTML = [
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
-    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad" }),
+    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad", className: "dark-divider" }),
     reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
-    reportSummaryCard("Active Patients", ACTIVE_PATIENT_TARGET, "On Oxygen Support", colors.purple, "people"),
+    reportSummaryCard("Active Patients", ACTIVE_PATIENT_TARGET, "On Oxygen Support", colors.purple, "people", { className: "dark-divider" }),
     reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
-    reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
+    reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi", { className: "dark-divider" })
   ].join("");
 
   const nurseDashboard = isNurseSupervisorDashboard();
@@ -4124,41 +4126,122 @@ function renderOrderSummary() {
   const replacementCount = 20;
   const replacementCost = replacementCount * TANK_COST;
 
+  renderOrderSummaryData({
+    metrics: {
+      reason: "3 tanks below 10% capacity",
+      predicted_shortage: "In 2 hours 05 min",
+      recommendation: "Order 20 replacement tanks",
+      confidence: "96%"
+    },
+    trigger_summary: {
+      tanks_below_threshold: replacementTanks.length,
+      forecasted_demand_increase: "18%",
+      current_system_capacity: "15%",
+      threshold_exceeded: true
+    },
+    financial_summary: {
+      order_value: replacementCost,
+      estimated_waste_prevented: 820000,
+      potential_downtime_avoided: 3100000,
+      projected_monthly_savings: 1200000
+    },
+    supplier_information: {
+      supplier: "Caribbean Oxygen Ltd.",
+      expected_delivery: "Tomorrow, 08:00 AM",
+      lead_time: "14 hours",
+      past_orders: 23,
+      reliability: "99%"
+    },
+    order_details: {
+      product: "Oxygen Tank (Medical)",
+      quantity: replacementCount,
+      tank_type: "D-Type (6,800 L)",
+      po_number: "AUTO-PO-2026-0619-0018",
+      status: "Pending Approval"
+    },
+    risk: {
+      level: "High",
+      affected_wards: ["Recovery Bay", "Labour Ward"],
+      estimated_impact: "Service interruption, patient care delay",
+      time_until_shortage: "2 hours 05 minutes"
+    },
+    replacement_tanks: replacementTanks.map(t => ({
+      tank: t.name,
+      ward: t.wardName,
+      remaining_percent: t.volumePercent,
+      empty_in: t.emptyIn,
+      status: t.volumePercent < 10 ? "Critical" : "Low"
+    }))
+  });
+  loadOrderSummaryFromApi();
+}
+
+async function loadOrderSummaryFromApi() {
+  if (!hasServerToken()) return;
+  if (activeView !== "order") return;
+  const now = Date.now();
+  if (now - lastOrderSummaryFetchAt < 15000) return;
+  lastOrderSummaryFetchAt = now;
+  const requestId = ++orderSummaryRequestId;
+  try {
+    const response = await fetch("/api/order-summary", { cache: "no-store", headers: authHeaders(false) });
+    const result = await response.json();
+    if (requestId !== orderSummaryRequestId) return;
+    if (isInvalidBearerTokenError(response, result)) {
+      clearInvalidServerToken();
+      return;
+    }
+    if (!response.ok || !result.ok || !result.order_summary) throw new Error(result?.message || "Order summary unavailable.");
+    renderOrderSummaryData(result.order_summary);
+  } catch (error) {
+    console.warn(`OxyGuard order summary unavailable: ${error.message}`);
+  }
+}
+
+function renderOrderSummaryData(summary) {
+  const metrics = summary.metrics || {};
+  const trigger = summary.trigger_summary || {};
+  const financial = summary.financial_summary || {};
+  const supplier = summary.supplier_information || {};
+  const details = summary.order_details || {};
+  const risk = summary.risk || {};
+  const replacementTanks = Array.isArray(summary.replacement_tanks) ? summary.replacement_tanks : [];
+
   setOrderHtml("orderRecommendMetrics", `
-    ${orderMetric("Reason", "3 tanks below 10% capacity", "R")}
-    ${orderMetric("Predicted Shortage", "In 2 hours 05 min", "T", "bad")}
-    ${orderMetric("Recommendation", "Order 20 replacement tanks", "O")}
-    ${orderMetric("Confidence", "96%", "%", "good")}
+    ${orderMetric("Reason", metrics.reason || `${replacementTanks.length} tanks below reorder level`, "R")}
+    ${orderMetric("Predicted Shortage", metrics.predicted_shortage || "Monitoring", "T", replacementTanks.length ? "bad" : "")}
+    ${orderMetric("Recommendation", metrics.recommendation || "No immediate order", "O")}
+    ${orderMetric("Confidence", metrics.confidence || "82%", "%", "good")}
   `);
 
   renderReplacementSummary(replacementTanks);
   setOrderHtml("capacityForecastChart", renderCapacityForecastChart());
-  setOrderHtml("riskAssessmentPanel", renderRiskAssessment());
+  setOrderHtml("riskAssessmentPanel", renderRiskAssessment(risk));
   setOrderHtml("orderTriggerSummary", orderMiniPanel("Order Trigger Summary", [
-    ["Tanks below threshold", replacementTanks.length],
-    ["Forecasted demand increase", "18%"],
-    ["Current system capacity", "15%"],
-    ["Threshold exceeded", "<b class=\"order-red\">Yes</b>"]
+    ["Tanks below threshold", trigger.tanks_below_threshold ?? replacementTanks.length],
+    ["Forecasted demand increase", trigger.forecasted_demand_increase || "Calculating"],
+    ["Current system capacity", trigger.current_system_capacity || "Monitoring"],
+    ["Threshold exceeded", trigger.threshold_exceeded ? "<b class=\"order-red\">Yes</b>" : "<b class=\"order-green\">No</b>"]
   ]));
   setOrderHtml("financialSummary", orderMiniPanel("Financial Summary", [
-    ["Order Value (Est.)", currency(replacementCost)],
-    ["Estimated Waste Prevented", "JMD 820,000"],
-    ["Potential Downtime Avoided", "JMD 3,100,000"],
-    ["Projected Monthly Savings", "JMD 1,200,000"]
+    ["Order Value (Est.)", currency(Number(financial.order_value || 0))],
+    ["Estimated Waste Prevented", currency(Number(financial.estimated_waste_prevented || 0))],
+    ["Potential Downtime Avoided", currency(Number(financial.potential_downtime_avoided || 0))],
+    ["Projected Monthly Savings", currency(Number(financial.projected_monthly_savings || 0))]
   ], "money"));
   setOrderHtml("supplierInformation", orderMiniPanel("Supplier Information", [
-    ["Supplier", "Caribbean Oxygen Ltd."],
-    ["Expected Delivery", "Tomorrow, 08:00 AM"],
-    ["Lead Time", "14 hours"],
-    ["Past Orders", "23"],
-    ["Reliability", "<b class=\"order-green\">99%</b>"]
+    ["Supplier", supplier.supplier || "Caribbean Oxygen Ltd."],
+    ["Expected Delivery", supplier.expected_delivery || "Pending supplier confirmation"],
+    ["Lead Time", supplier.lead_time || "14 hours"],
+    ["Past Orders", supplier.past_orders ?? "23"],
+    ["Reliability", `<b class=\"order-green\">${supplier.reliability || "99%"}</b>`]
   ]));
   setOrderHtml("orderDetails", orderMiniPanel("Order Details (Preview)", [
-    ["Product", "Oxygen Tank (Medical)"],
-    ["Quantity", `${replacementCount} Tanks`],
-    ["Tank Type", "D-Type (6,800 L)"],
-    ["PO Number (Auto)", "AUTO-PO-2026-0619-0018"],
-    ["Order Status", "Pending Approval"]
+    ["Product", details.product || "Oxygen Tank (Medical)"],
+    ["Quantity", `${details.quantity || replacementTanks.length || 0} Tanks`],
+    ["Tank Type", details.tank_type || "D-Type (6,800 L)"],
+    ["PO Number (Auto)", details.po_number || "Pending"],
+    ["Order Status", details.status || "Pending Approval"]
   ]));
   setOrderHtml("orderProcessTimeline", renderOrderProcessTimeline());
 }
@@ -4183,6 +4266,8 @@ function tanksUnderVolumePercent(threshold) {
 function renderReplacementSummary(replacementTanks) {
   const summary = document.getElementById("replacementSummary");
   if (!summary) return;
+  const panelTitle = document.querySelector(".critical-tanks-panel h3");
+  if (panelTitle) panelTitle.textContent = `Critical Tanks (${replacementTanks.length})`;
 
   summary.innerHTML = `
     <table class="order-data-table">
@@ -4190,13 +4275,13 @@ function renderReplacementSummary(replacementTanks) {
       <tbody>
         ${replacementTanks.map(t => `
           <tr>
-            <td><b>${t.name}</b></td>
-            <td>${t.wardName}</td>
+            <td><b>${escapeHtml(t.tank || t.name || "Tank")}</b></td>
+            <td>${escapeHtml(t.ward || t.wardName || "Unassigned")}</td>
             <td>
-              <span class="order-remaining"><b>${t.volumePercent}%</b><i><em style="width:${Math.max(4, t.volumePercent)}%"></em></i></span>
+              <span class="order-remaining"><b>${t.remaining_percent ?? t.volumePercent}%</b><i><em style="width:${Math.max(4, Number(t.remaining_percent ?? t.volumePercent) || 0)}%"></em></i></span>
             </td>
-            <td class="${t.volumePercent < 8 ? "order-red" : "order-orange"}">${t.emptyIn}</td>
-            <td>${orderBadge(t.volumePercent < 10 ? "Critical" : "Low", t.volumePercent < 10 ? "bad" : "warn")}</td>
+            <td class="${Number(t.remaining_percent ?? t.volumePercent) < 8 ? "order-red" : "order-orange"}">${escapeHtml(t.empty_in || t.emptyIn || "Monitoring")}</td>
+            <td>${orderBadge(t.status || (Number(t.remaining_percent ?? t.volumePercent) < 10 ? "Critical" : "Low"), Number(t.remaining_percent ?? t.volumePercent) < 10 ? "bad" : "warn")}</td>
           </tr>
         `).join("")}
       </tbody>
@@ -4252,19 +4337,23 @@ function orderBadge(text, tone) {
   return `<span class="order-badge ${tone}">${text}</span>`;
 }
 
-function renderRiskAssessment() {
+function renderRiskAssessment(risk = {}) {
+  const level = risk.level || "High";
+  const affectedWards = Array.isArray(risk.affected_wards) && risk.affected_wards.length ? risk.affected_wards.join(", ") : "Recovery Bay, Labour Ward";
+  const impact = risk.estimated_impact || "Service interruption, patient care delay";
+  const timeUntilShortage = risk.time_until_shortage || "2 hours 05 minutes";
   return `
     <div class="risk-callout">
       <i>!</i>
       <div>
-        <strong>Operational Risk: High</strong>
+        <strong>Operational Risk: ${escapeHtml(level)}</strong>
         <span>Delay in ordering may cause ward disruption and impact patient care.</span>
       </div>
     </div>
     <div class="risk-list">
-      ${orderMiniRow("Affected Wards", "Recovery Bay, Labour Ward")}
-      ${orderMiniRow("Estimated Impact", "Service interruption, patient care delay")}
-      ${orderMiniRow("Time Until Shortage", "<b class=\"order-red\">2 hours 05 minutes</b>")}
+      ${orderMiniRow("Affected Wards", escapeHtml(affectedWards))}
+      ${orderMiniRow("Estimated Impact", escapeHtml(impact))}
+      ${orderMiniRow("Time Until Shortage", `<b class=\"order-red\">${escapeHtml(timeUntilShortage)}</b>`)}
     </div>
   `;
 }

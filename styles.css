@@ -13206,6 +13206,18 @@ body:not(.login-active) #logoutButton:hover::before {
   background: var(--kpi-accent);
 }
 
+.v5-dashboard .v5-kpi-card.dark-divider::after {
+  content: "";
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 39px;
+  height: 2px;
+  border-radius: 999px;
+  background: #475569;
+  opacity: 0.9;
+}
+
 .v5-dashboard .v5-kpi-card:hover {
   z-index: 2;
   transform: translateY(-3px);
@@ -13297,6 +13309,44 @@ body:not(.login-active) #logoutButton:hover::before {
 .v5-dashboard .kpi-icon.wifi::after {
   inset: 6px;
 }
+
+.v5-depletion-card {
+  height: auto !important;
+  min-height: 300px !important;
+  overflow: visible !important;
+}
+
+.v5-depletion-card .report-table {
+  overflow: visible !important;
+}
+
+.v5-depletion-card #depletionTable table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+.v5-depletion-card #depletionTable th,
+.v5-depletion-card #depletionTable td {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  line-height: 1.2 !important;
+}
+
+.v5-depletion-card #depletionTable th:nth-child(1),
+.v5-depletion-card #depletionTable td:nth-child(1) { width: 18%; }
+.v5-depletion-card #depletionTable th:nth-child(2),
+.v5-depletion-card #depletionTable td:nth-child(2) { width: 15%; }
+.v5-depletion-card #depletionTable th:nth-child(3),
+.v5-depletion-card #depletionTable td:nth-child(3) { width: 16%; }
+.v5-depletion-card #depletionTable th:nth-child(4),
+.v5-depletion-card #depletionTable td:nth-child(4) { width: 14%; }
+.v5-depletion-card #depletionTable th:nth-child(5),
+.v5-depletion-card #depletionTable td:nth-child(5) { width: 22%; }
+.v5-depletion-card #depletionTable th:nth-child(6),
+.v5-depletion-card #depletionTable td:nth-child(6) { width: 15%; }
 
 .ward-alert-summary {
   display: grid;
