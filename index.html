@@ -408,29 +408,6 @@
         </section>
 
         <section class="order view order-summary-page" id="orderView">
-          <section class="order-recommendation">
-            <div class="order-check">OK</div>
-            <div class="order-recommend-copy">
-              <h2>Replacement Order Recommended</h2>
-              <p>System has detected low oxygen capacity and forecasted shortage.</p>
-            </div>
-            <div class="order-recommend-metrics" id="orderRecommendMetrics"></div>
-            <div class="order-protocol-box">
-              <span>Protocol</span>
-              <strong>10-Minute Protocol</strong>
-              <i></i>
-              <span>Time Remaining</span>
-              <strong id="orderTimeRemaining">05:41</strong>
-              <button id="protocolDetails">View Protocol Details</button>
-            </div>
-          </section>
-
-          <nav class="order-tabs order-flow-tabs" aria-label="Order summary sections">
-            <span class="active">1. Replacement Tanks</span>
-            <span>2. Order Details</span>
-            <span>3. Capacity & Forecast</span>
-          </nav>
-
           <section class="order-dashboard-grid">
             <article class="order-panel critical-tanks-panel">
               <h3>Critical Tanks (3)</h3>
@@ -451,20 +428,6 @@
             <article class="order-panel" id="financialSummary"></article>
             <article class="order-panel" id="supplierInformation"></article>
             <article class="order-panel" id="orderDetails"></article>
-
-            <article class="order-panel order-process-panel">
-              <h3>Order Process</h3>
-              <div id="orderProcessTimeline"></div>
-            </article>
-
-            <article class="order-panel action-required-panel">
-              <h3>Action Required</h3>
-              <p>Please review the recommended order and confirm to proceed.</p>
-              <div class="order-actions">
-                <button id="rejectOrder" class="danger-action">Reject Order</button>
-                <button id="confirmOrder" class="confirm-action">Confirm Order Now</button>
-              </div>
-            </article>
           </section>
         </section>
         <section class="administration view" id="administrationView">

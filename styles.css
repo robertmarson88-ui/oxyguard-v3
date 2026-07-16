@@ -12985,6 +12985,12 @@ body:not(.login-active) #logoutButton::after {
   height: 18px !important;
 }
 
+body:not(.login-active) .side-button,
+body:not(.login-active) #logoutButton {
+  font-size: 12.5px !important;
+  letter-spacing: 0 !important;
+}
+
 /* Alert Simulator */
 .simulator {
   padding: 22px;

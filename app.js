@@ -4207,13 +4207,6 @@ function renderOrderSummaryData(summary) {
   const risk = summary.risk || {};
   const replacementTanks = Array.isArray(summary.replacement_tanks) ? summary.replacement_tanks : [];
 
-  setOrderHtml("orderRecommendMetrics", `
-    ${orderMetric("Reason", metrics.reason || `${replacementTanks.length} tanks below reorder level`, "R")}
-    ${orderMetric("Predicted Shortage", metrics.predicted_shortage || "Monitoring", "T", replacementTanks.length ? "bad" : "")}
-    ${orderMetric("Recommendation", metrics.recommendation || "No immediate order", "O")}
-    ${orderMetric("Confidence", metrics.confidence || "82%", "%", "good")}
-  `);
-
   renderReplacementSummary(replacementTanks);
   setOrderHtml("capacityForecastChart", renderCapacityForecastChart());
   setOrderHtml("riskAssessmentPanel", renderRiskAssessment(risk));
@@ -4243,7 +4236,6 @@ function renderOrderSummaryData(summary) {
     ["PO Number (Auto)", details.po_number || "Pending"],
     ["Order Status", details.status || "Pending Approval"]
   ]));
-  setOrderHtml("orderProcessTimeline", renderOrderProcessTimeline());
 }
 
 function tanksUnderVolumePercent(threshold) {
