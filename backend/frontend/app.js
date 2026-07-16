@@ -2248,11 +2248,11 @@ function renderReport() {
 
   document.getElementById("reportSummary").innerHTML = [
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
-    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad", className: "dark-divider" }),
+    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad" }),
     reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
-    reportSummaryCard("Active Patients", ACTIVE_PATIENT_TARGET, "On Oxygen Support", colors.purple, "people", { className: "dark-divider" }),
+    reportSummaryCard("Active Patients", ACTIVE_PATIENT_TARGET, "On Oxygen Support", colors.purple, "people"),
     reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
-    reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi", { className: "dark-divider" })
+    reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
   ].join("");
 
   const nurseDashboard = isNurseSupervisorDashboard();
