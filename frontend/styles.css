@@ -12958,6 +12958,33 @@ body:not(.login-active) .side-button.active {
     inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
 }
 
+body:not(.login-active) .topbar h1 {
+  color: #ffffff !important;
+  text-shadow: 0 1px 0 rgba(0, 22, 44, 0.22);
+}
+
+body:not(.login-active) .sidebar > .side-button,
+body:not(.login-active) #logoutButton {
+  width: 100% !important;
+  height: 58px !important;
+  min-height: 58px !important;
+  max-height: 58px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 12px 0 48px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  line-height: 1 !important;
+}
+
+body:not(.login-active) .side-button::after,
+body:not(.login-active) #logoutButton::after {
+  left: 17px !important;
+  width: 18px !important;
+  height: 18px !important;
+}
+
 /* Alert Simulator */
 .simulator {
   padding: 22px;
