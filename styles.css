@@ -12829,6 +12829,135 @@ body:not(.login-active) #logoutButton:hover::before {
   height: 22px;
 }
 
+/* Visual polish pass: stronger type, richer contrast, and menu icons */
+:root {
+  --app-ink-strong: #061f35;
+  --app-ink: #12314d;
+  --app-muted-strong: #425a72;
+  --sidebar-glow: #49c7ff;
+}
+
+body:not(.login-active) {
+  color: var(--app-ink) !important;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(16, 126, 214, 0.12), transparent 28%),
+    linear-gradient(180deg, #f5faff 0%, #eaf2f9 100%) !important;
+}
+
+body:not(.login-active) h1,
+body:not(.login-active) h2,
+body:not(.login-active) h3,
+body:not(.login-active) .topbar h1,
+body:not(.login-active) .report-card h3,
+body:not(.login-active) .order-panel h3,
+body:not(.login-active) .alert-panel h3 {
+  color: var(--app-ink-strong) !important;
+  font-weight: 950 !important;
+  letter-spacing: 0 !important;
+}
+
+body:not(.login-active) p,
+body:not(.login-active) small,
+body:not(.login-active) .report-table td,
+body:not(.login-active) .order-mini-row span,
+body:not(.login-active) .alert-kpi-copy small {
+  color: var(--app-muted-strong) !important;
+}
+
+body:not(.login-active) .report-card,
+body:not(.login-active) .order-panel,
+body:not(.login-active) .summary-card,
+body:not(.login-active) .alert-panel,
+body:not(.login-active) .admin-panel {
+  border-color: rgba(111, 151, 190, 0.34) !important;
+  box-shadow:
+    0 14px 32px rgba(15, 49, 82, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82) !important;
+}
+
+body:not(.login-active) .sidebar {
+  background:
+    radial-gradient(circle at 45% 0%, rgba(73, 199, 255, 0.3), transparent 31%),
+    linear-gradient(180deg, #07365f 0%, #082844 48%, #061a2e 100%) !important;
+}
+
+body:not(.login-active) .side-button,
+body:not(.login-active) #logoutButton {
+  min-height: 50px !important;
+  padding: 0 14px 0 50px !important;
+  color: #f8fbff !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  border-color: rgba(173, 216, 255, 0.24) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.055)),
+    rgba(8, 47, 78, 0.32) !important;
+}
+
+body:not(.login-active) .side-button::after,
+body:not(.login-active) #logoutButton::after {
+  content: "";
+  position: absolute;
+  left: 17px;
+  top: 50%;
+  width: 19px;
+  height: 19px;
+  background: currentColor;
+  opacity: 0.95;
+  transform: translateY(-50%);
+  mask: var(--menu-icon) center / contain no-repeat;
+  -webkit-mask: var(--menu-icon) center / contain no-repeat;
+}
+
+body:not(.login-active) .side-button[data-view="report"] {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M4 13h6v7H4v-7Zm10-9h6v16h-6V4ZM4 4h6v7H4V4Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) .side-button[data-view="alert"] {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M12 2 2 20h20L12 2Zm1 15h-2v-2h2v2Zm0-4h-2V8h2v5Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) .side-button[data-view="analytics"] {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M4 19h16v2H4v-2Zm2-8h3v6H6v-6Zm5-6h3v12h-3V5Zm5 3h3v9h-3V8Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) .side-button[data-view="dashboard"] {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v2H8v-2Zm0 4h8v2H8v-2Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) .side-button[data-view="order"] {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M7 4h14l-2 9H8.5L7 4ZM5 2H2v2h2l3 12h12v-2H8.6l-.4-2H19l3-10H5Zm4 18a2 2 0 1 0 0 .01V20Zm8 0a2 2 0 1 0 0 .01V20Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) .side-button[data-view="simulator"] {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M5 3h14v2H5V3Zm2 4h10v14H7V7Zm3 3v8h2v-8h-2Zm4 3v5h2v-5h-2Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) .side-button[data-view="administration"] {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M12 2a5 5 0 0 1 5 5v2h2v13H5V9h2V7a5 5 0 0 1 5-5Zm-3 7h6V7a3 3 0 0 0-6 0v2Zm4 5h-2v4h2v-4Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) #logoutButton {
+  --menu-icon: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M4 3h9v2H6v14h7v2H4V3Zm12.6 4.4L21.2 12l-4.6 4.6-1.4-1.4 2.2-2.2H10v-2h7.4l-2.2-2.2 1.4-1.4Z'/%3E%3C/svg%3E");
+}
+
+body:not(.login-active) .side-button:hover,
+body:not(.login-active) #logoutButton:hover {
+  color: #ffffff !important;
+  border-color: rgba(125, 211, 252, 0.72) !important;
+  background:
+    linear-gradient(135deg, rgba(30, 144, 219, 0.78), rgba(8, 85, 148, 0.54)) !important;
+}
+
+body:not(.login-active) .side-button.active {
+  color: #ffffff !important;
+  background:
+    linear-gradient(135deg, #1f9cf0 0%, #0b6fbd 58%, #09538f 100%) !important;
+  box-shadow:
+    0 16px 30px rgba(14, 116, 190, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24) !important;
+}
+
 /* Alert Simulator */
 .simulator {
   padding: 22px;
