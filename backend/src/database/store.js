@@ -24,12 +24,12 @@ export async function createRelationalStore() {
       { role_id: 5, permission_id: 2 }
     ],
     users: [
-      createUser("AA001", "martin", "martin1", "robinsonmartin187@gmail.com", 4, "demo-hash:martin-2026"),
+      createUser("AA001", "martin", "martin1", "robinsonmartin187@gmail.com", 1, "demo-hash:martin-2026"),
       createUser("AA002", "robertm", "password2", "marsonrobert88@gmail.com", 1, "demo-hash:robertm-2026"),
-      createUser("AA003", "vernon", "vernon1", "vernon.dacosta@gmail.com", 2, "demo-hash:vernon-2026"),
+      createUser("AA003", "vernon", "vernon1", "vernon.dacosta@gmail.com", 1, "demo-hash:vernon-2026"),
       createUser("AA004", "user1", "password1", "robertmarson88@gmail.com", 1, "demo-hash:user1-2026"),
       createUser("AA005", "user2", "password2", "robertmarson88@gmail.com", 1, "demo-hash:user2-2026"),
-      createUser("AA006", "martinm", "martin1", "robinsonmartin187@gmail.com", 4, "demo-hash:martinm-2026"),
+      createUser("AA006", "martinm", "martin1", "robinsonmartin187@gmail.com", 1, "demo-hash:martinm-2026"),
       createUser("AA007", "vernond", "vernon1", "vernon.dacosta@gmail.com", 1, "demo-hash:vernond-2026"),
       createUser("AA008", "admin", "admin1", "facilities.admin@monamercy.local", 1, "demo-hash:admin-2026"),
       createUser("AA009", "executive", "executive1", "executive@monamercy.local", 2, "demo-hash:executive-2026"),
@@ -128,6 +128,10 @@ async function ensureOperationalSchema(pool) {
   const nurseRole = await ensureRole(pool, roles, ["nurse"], "Nurse");
 
   await ensureOperationalUser(pool, "admin", "admin1", "facilities.admin@monamercy.local", adminRole.role_id);
+  await ensureOperationalUser(pool, "martin", "martin1", "robinsonmartin187@gmail.com", adminRole.role_id);
+  await ensureOperationalUser(pool, "martinm", "martin1", "robinsonmartin187@gmail.com", adminRole.role_id);
+  await ensureOperationalUser(pool, "vernon", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id);
+  await ensureOperationalUser(pool, "vernond", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id);
   await ensureOperationalUser(pool, "supervisor", "nurse1", "nurse.supervisor@monamercy.local", nurseManagerRole.role_id);
   await ensureOperationalUser(pool, "nurse", "nurse1", "ward.nurse@monamercy.local", nurseRole.role_id);
 
@@ -166,9 +170,9 @@ async function ensureRole(pool, roles, acceptedNames, roleName) {
 async function ensureOperationalUser(pool, username, password, email, roleId) {
   const updated = await pool.query(
     `update public.users
-     set role_id = $2, password_hash = $3
+     set role_id = $2, password_hash = $3, email = $4, email_verified = true
      where lower(username) = lower($1)`,
-    [username, roleId, `demo-plain:${password}`]
+    [username, roleId, `demo-plain:${password}`, email]
   );
   if (updated.rowCount) return;
 
@@ -377,22 +381,24 @@ function isIntegerDataType(dataType) {
 }
 
 async function seedSupabaseDemoUsers(pool) {
-  const userIdType = await tableColumnDataType(pool, "users", "user_id");
-  const numericUserIds = isIntegerDataType(userIdType);
-  const facilitiesId = numericUserIds ? 11 : "AA011";
-  const nurseId = numericUserIds ? 12 : "AA012";
   const roles = await queryRows(pool, "select role_id, lower(role_name) as role_name from public.roles");
-  const facilitiesRole = roles.find(role => ["facilities admin", "facilities manager"].includes(role.role_name));
+  const adminRole = roles.find(role => ["administrator", "facilities admin"].includes(role.role_name));
+  const facilitiesRole = roles.find(role => ["facilities manager", "facilities admin"].includes(role.role_name));
   const nurseRole = roles.find(role => role.role_name === "nurse");
-  if (!facilitiesRole || !nurseRole) return;
-  await pool.query(
-    `insert into public.users (user_id, username, email, email_verified, password_hash, role_id, created_at)
-     values
-       ($1, 'facilities', 'facilities.manager@monamercy.local', true, 'demo-hash:facilities-2026', $4, $3),
-       ($2, 'nurse', 'ward.nurse@monamercy.local', true, 'demo-plain:nurse1', $5, $3)
-     on conflict do nothing`,
-    [facilitiesId, nurseId, demoCreatedAt, facilitiesRole.role_id, nurseRole.role_id]
-  );
+  if (!adminRole || !facilitiesRole || !nurseRole) return;
+
+  const users = [
+    ["martin", "martin1", "robinsonmartin187@gmail.com", adminRole.role_id],
+    ["martinm", "martin1", "robinsonmartin187@gmail.com", adminRole.role_id],
+    ["vernon", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id],
+    ["vernond", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id],
+    ["facilities", "facilities1", "facilities.manager@monamercy.local", facilitiesRole.role_id],
+    ["nurse", "nurse1", "ward.nurse@monamercy.local", nurseRole.role_id]
+  ];
+
+  for (const [username, password, email, roleId] of users) {
+    await ensureOperationalUser(pool, username, password, email, roleId);
+  }
 }
 
 async function seedSupabaseDemoAlerts(pool, remote) {

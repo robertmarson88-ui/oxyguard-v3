@@ -743,6 +743,26 @@ function getLocalLoginUser(username, password) {
       email: "robertmarson88@gmail.com",
       permissions: ["resolve_alert", "view_logs"]
     },
+    martin: {
+      password: "martin1",
+      user_id: "AA001",
+      username: "martin",
+      role: "admin",
+      role_id: 1,
+      label: "Administrator",
+      email: "robinsonmartin187@gmail.com",
+      permissions: ["resolve_alert", "view_logs"]
+    },
+    martinm: {
+      password: "martin1",
+      user_id: "AA006",
+      username: "martinm",
+      role: "admin",
+      role_id: 1,
+      label: "Administrator",
+      email: "robinsonmartin187@gmail.com",
+      permissions: ["resolve_alert", "view_logs"]
+    },
     supervisor: {
       password: "nurse1",
       user_id: "AA010",
@@ -787,11 +807,21 @@ function getLocalLoginUser(username, password) {
       password: "vernon1",
       user_id: "AA003",
       username: "vernon",
-      role: "executive",
-      role_id: 2,
-      label: "Executive",
+      role: "admin",
+      role_id: 1,
+      label: "Administrator",
       email: "vernon.dacosta@gmail.com",
-      permissions: ["view_logs"]
+      permissions: ["resolve_alert", "view_logs"]
+    },
+    vernond: {
+      password: "vernon1",
+      user_id: "AA007",
+      username: "vernond",
+      role: "admin",
+      role_id: 1,
+      label: "Administrator",
+      email: "vernon.dacosta@gmail.com",
+      permissions: ["resolve_alert", "view_logs"]
     }
   };
   const user = users[normalizedUsername];
