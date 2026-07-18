@@ -698,7 +698,8 @@ function queryAlerts(db, url) {
 }
 
 function buildOrderSummary(db) {
-  const tankCost = 48000;
+  const refillCylinderCost = 7500;
+  const newCylinderCost = 48000;
   const wardsById = new Map(db.wards.map(ward => [ward.ward_id, ward]));
   const latestLogsByDevice = new Map();
   for (const log of db.telemetry_logs) {
@@ -754,9 +755,10 @@ function buildOrderSummary(db) {
   const lowestCapacity = tankRows.length ? Math.min(...tankRows.map(row => row.remaining_percent)) : 0;
   const affectedWards = [...new Set(visibleReplacementTanks.map(row => row.ward))].slice(0, 4);
   const predictedShortage = visibleReplacementTanks[0]?.empty_in || "No immediate shortage";
-  const orderValue = recommendedQuantity * tankCost;
-  const estimatedWastePrevented = Math.round(Math.max(visibleReplacementTanks.length, 1) * tankCost * 2.2);
-  const downtimeAvoided = Math.round(Math.max(criticalCount, 1) * tankCost * 6.5);
+  const orderValue = recommendedQuantity * refillCylinderCost;
+  const newCylinderExposure = recommendedQuantity * newCylinderCost;
+  const estimatedWastePrevented = Math.round(Math.max(visibleReplacementTanks.length, 1) * refillCylinderCost * 2.2);
+  const downtimeAvoided = Math.round(Math.max(criticalCount, 1) * newCylinderCost * 1.5);
   const monthlySavings = Math.round((estimatedWastePrevented + downtimeAvoided) * 0.28);
   const tanksInUse = tankRows.filter(row => Number(row.flow_rate || 0) > 0 || row.remaining_percent < 90).length;
   const reserveTanks = Math.max(0, tankRows.length - tanksInUse);
@@ -778,6 +780,10 @@ function buildOrderSummary(db) {
     },
     financial_summary: {
       order_value: orderValue,
+      refill_unit_cost: refillCylinderCost,
+      new_cylinder_unit_cost: newCylinderCost,
+      new_cylinder_exposure: newCylinderExposure,
+      refill_vs_new_savings: newCylinderExposure - orderValue,
       estimated_waste_prevented: estimatedWastePrevented,
       potential_downtime_avoided: downtimeAvoided,
       projected_monthly_savings: monthlySavings
@@ -798,9 +804,9 @@ function buildOrderSummary(db) {
       last_updated: new Date().toISOString()
     },
     order_details: {
-      product: "Oxygen Tank (Medical)",
+      product: "100 lb Oxygen Cylinder Refill",
       quantity: recommendedQuantity,
-      tank_type: "D-Type (6,800 L)",
+      tank_type: "100 lb medical oxygen cylinder",
       po_number: `AUTO-PO-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}${String(new Date().getDate()).padStart(2, "0")}-${String(visibleReplacementTanks.length || 1).padStart(2, "0")}`,
       status: "Pending Approval"
     },

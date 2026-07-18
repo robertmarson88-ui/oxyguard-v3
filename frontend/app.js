@@ -68,7 +68,9 @@ const initialWards = [
 
 const TANK_VOLUME_LITRES = 31700;
 const OXYGEN_COST_PER_LITRE = 1.51;
-const TANK_COST = 48000;
+const CYLINDER_REFILL_COST = 7500;
+const NEW_CYLINDER_COST = 48000;
+const TANK_COST = CYLINDER_REFILL_COST;
 const YESTERDAY_CONSUMPTION_LITRES = 69077;
 const ESP32_DEVICE_TOTAL = 24;
 const depletionVolumeFloors = {};
@@ -4232,7 +4234,8 @@ function renderOrderSummary() {
   const activeTanks = wards.flatMap(w => w.tanks).filter(t => t.active);
   const replacementTanks = getOrderCriticalTanks(activeTanks);
   const replacementCount = 20;
-  const replacementCost = replacementCount * TANK_COST;
+  const replacementCost = replacementCount * CYLINDER_REFILL_COST;
+  const newCylinderExposure = replacementCount * NEW_CYLINDER_COST;
 
   renderOrderSummaryData({
     metrics: {
@@ -4249,6 +4252,10 @@ function renderOrderSummary() {
     },
     financial_summary: {
       order_value: replacementCost,
+      refill_unit_cost: CYLINDER_REFILL_COST,
+      new_cylinder_unit_cost: NEW_CYLINDER_COST,
+      new_cylinder_exposure: newCylinderExposure,
+      refill_vs_new_savings: newCylinderExposure - replacementCost,
       estimated_waste_prevented: 820000,
       potential_downtime_avoided: 3100000,
       projected_monthly_savings: 1200000
@@ -4269,9 +4276,9 @@ function renderOrderSummary() {
       last_updated: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     },
     order_details: {
-      product: "Oxygen Tank (Medical)",
+      product: "100 lb Oxygen Cylinder Refill",
       quantity: replacementCount,
-      tank_type: "D-Type (6,800 L)",
+      tank_type: "100 lb medical oxygen cylinder",
       po_number: "AUTO-PO-2026-0619-0018",
       status: "Pending Approval"
     },
@@ -4343,7 +4350,11 @@ function renderOrderSummaryData(summary) {
     ["Threshold exceeded", trigger.threshold_exceeded ? "<b class=\"order-red\">Yes</b>" : "<b class=\"order-green\">No</b>"]
   ]));
   setOrderHtml("financialSummary", orderMiniPanel("Financial Summary", [
-    ["Order Value (Est.)", currency(Number(financial.order_value || 0))],
+    ["Refill Unit Cost", currency(Number(financial.refill_unit_cost || CYLINDER_REFILL_COST))],
+    ["New Cylinder Cost", currency(Number(financial.new_cylinder_unit_cost || NEW_CYLINDER_COST))],
+    ["Order Value (Refill)", currency(Number(financial.order_value || 0))],
+    ["New Cylinder Exposure", currency(Number(financial.new_cylinder_exposure || 0))],
+    ["Refill Savings vs New", currency(Number(financial.refill_vs_new_savings || 0))],
     ["Estimated Waste Prevented", currency(Number(financial.estimated_waste_prevented || 0))],
     ["Potential Downtime Avoided", currency(Number(financial.potential_downtime_avoided || 0))],
     ["Projected Monthly Savings", currency(Number(financial.projected_monthly_savings || 0))]
@@ -4364,9 +4375,9 @@ function renderOrderSummaryData(summary) {
     ["Last Updated", inventoryUpdatedAt]
   ]));
   setOrderHtml("orderDetails", orderMiniPanel("Order Details (Preview)", [
-    ["Product", details.product || "Oxygen Tank (Medical)"],
+    ["Product", details.product || "100 lb Oxygen Cylinder Refill"],
     ["Quantity", `${details.quantity || replacementTanks.length || 0} Tanks`],
-    ["Tank Type", details.tank_type || "D-Type (6,800 L)"],
+    ["Tank Type", details.tank_type || "100 lb medical oxygen cylinder"],
     ["PO Number (Auto)", details.po_number || "Pending"],
     ["Order Status", details.status || "Pending Approval"]
   ]));
@@ -4382,7 +4393,8 @@ function tanksUnderVolumePercent(threshold) {
           ...t,
           wardName: ward.name,
           volumePercent: percent,
-          replacementCost: TANK_COST
+          refillCost: CYLINDER_REFILL_COST,
+          replacementCost: NEW_CYLINDER_COST
         };
       })
       .filter(t => t.volumePercent < threshold);
@@ -4972,11 +4984,11 @@ function renderAnalytics() {
   summary.innerHTML = [
     reportSummaryCard("Tank Usage", totalTanks, "Jan-May total tanks", colors.ae),
     reportSummaryCard("Usage Cost", currency(totalUsageCost), "Jan-May oxygen spend", colors.green, "dot", {
-      hover: `Usage Cost: ${currency(totalUsageCost)}. Tank cost applied monthly.`
+      hover: `Usage Cost: ${currency(totalUsageCost)}. Refill cost of ${currency(CYLINDER_REFILL_COST)} per 100 lb cylinder applied monthly.`
     }),
     reportSummaryCard("Wasted Tanks", totalLeakageTanks, "Estimated leakage tanks", colors.red),
     reportSummaryCard("Wastage Cost", currency(totalLeakageCost), "Estimated loss value", colors.red, "dot", {
-      hover: `Wastage Cost: ${currency(totalLeakageCost)}. Estimated leakage and wastage cost.`
+      hover: `Wastage Cost: ${currency(totalLeakageCost)}. Estimated wasted refill value at ${currency(CYLINDER_REFILL_COST)} per 100 lb cylinder.`
     }),
     reportSummaryCard("Highest Usage Ward", topConsumption.ward, currency(topConsumption.usageCost), topConsumption.accent, "dot", {
       className: "ward-kpi",
