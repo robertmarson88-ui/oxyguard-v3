@@ -264,6 +264,7 @@ let wardCardStatusOverrides = new Map();
 let activeWardAlertKey = "";
 let orderSummaryRequestId = 0;
 let lastOrderSummaryFetchAt = 0;
+let pendingMfaChallenge = null;
 
 const WARD_STATUS_EDITOR_ROLES = new Set(["admin", "nurse-supervisor", "nurse"]);
 const WARD_STATUS_OPTIONS = ["Normal", "Supply Failure", "Ghost Flow", "Flow Anomaly", "Leakage"];
@@ -571,8 +572,12 @@ function setupLogin() {
   const form = document.getElementById("loginForm");
   const username = document.getElementById("loginUsername");
   const password = document.getElementById("loginPassword");
+  const mfaCode = document.getElementById("loginMfaCode");
+  const mfaField = document.getElementById("authCodeField");
+  const backButton = document.getElementById("loginBackButton");
   const submit = document.getElementById("loginSubmit");
   const error = document.getElementById("loginError");
+  const hint = document.getElementById("loginHint");
 
   const savedUser = readSavedUser();
   if (savedUser) {
@@ -586,12 +591,36 @@ function setupLogin() {
     username.focus();
   }
 
+  backButton?.addEventListener("click", () => {
+    pendingMfaChallenge = null;
+    setMfaLoginMode(false, { submit, mfaField, mfaCode, username, password, backButton, hint });
+    error.classList.remove("visible");
+  });
+
   form.addEventListener("submit", async event => {
     event.preventDefault();
     error.classList.remove("visible");
     submit.disabled = true;
 
     try {
+      if (pendingMfaChallenge) {
+        const verifyResponse = await fetch("/api/mfa/verify", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ challenge_id: pendingMfaChallenge.challenge_id, code: mfaCode.value.trim() })
+        });
+        const verifyText = await verifyResponse.text();
+        const verifyResult = parseJsonResponse(verifyText);
+        if (!verifyResponse.ok || !verifyResult.ok) {
+          throw new Error(verifyResult?.message || "Invalid authentication code.");
+        }
+
+        completeLogin(verifyResult);
+        pendingMfaChallenge = null;
+        setMfaLoginMode(false, { submit, mfaField, mfaCode, username, password, backButton, hint });
+        return;
+      }
+
       const response = await fetch("/api/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -611,16 +640,17 @@ function setupLogin() {
         return;
       }
 
-      currentUser = {
-        ...result.user,
-        accessToken: result.access_token,
-        loginAt: new Date().toISOString()
-      };
-      sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
-      sessionStorage.setItem("oxyguardAccessToken", result.access_token);
-      password.value = "";
-      error.classList.remove("visible");
-      showApp();
+      if (result.mfa_required) {
+        pendingMfaChallenge = {
+          challenge_id: result.challenge_id,
+          expires_at: result.expires_at,
+          username: username.value.trim()
+        };
+        setMfaLoginMode(true, { submit, mfaField, mfaCode, username, password, backButton, hint }, result.delivery);
+        return;
+      }
+
+      completeLogin(result);
     } catch (authError) {
       error.textContent = authError.message;
       error.classList.add("visible");
@@ -628,6 +658,48 @@ function setupLogin() {
       submit.disabled = false;
     }
   });
+}
+
+function completeLogin(result) {
+  currentUser = {
+    ...result.user,
+    accessToken: result.access_token,
+    loginAt: new Date().toISOString()
+  };
+  sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
+  sessionStorage.setItem("oxyguardAccessToken", result.access_token);
+  const password = document.getElementById("loginPassword");
+  const code = document.getElementById("loginMfaCode");
+  const error = document.getElementById("loginError");
+  if (password) password.value = "";
+  if (code) code.value = "";
+  error?.classList.remove("visible");
+  showApp();
+}
+
+function setMfaLoginMode(enabled, elements, delivery = {}) {
+  const { submit, mfaField, mfaCode, username, password, backButton, hint } = elements;
+  mfaField?.classList.toggle("visible", enabled);
+  backButton?.classList.toggle("visible", enabled);
+  if (submit) submit.textContent = enabled ? "Verify Code" : "Login";
+  if (username) username.disabled = enabled;
+  if (password) password.disabled = enabled;
+  if (hint) {
+    const message = delivery?.message || `Authentication code sent to ${delivery?.masked_email || "your email"}.`;
+    hint.textContent = enabled
+      ? `${message}${delivery?.dev_code ? ` Code: ${delivery.dev_code}` : ""}`
+      : "Admin: admin / admin1 | Facilities Manager: facilities / facilities1 | Nurse: nurse / nurse1 | Executive: executive / executive1";
+  }
+  if (enabled) {
+    if (mfaCode) mfaCode.value = "";
+    mfaCode?.focus();
+  } else {
+    if (username) username.disabled = false;
+    if (password) password.disabled = false;
+    if (password) password.value = "";
+    if (mfaCode) mfaCode.value = "";
+    username?.focus();
+  }
 }
 
 function parseJsonResponse(text) {

@@ -1,14 +1,76 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomInt, randomUUID } from "node:crypto";
 
 export function createAuthService(db) {
   const sessions = new Map();
+  const mfaChallenges = new Map();
+  const MFA_TTL_MS = 10 * 60 * 1000;
 
   function authenticate(username, password) {
+    const user = validateCredentials(username, password);
+
+    if (!user) return null;
+
+    return createSessionForUser(user);
+  }
+
+  function createMfaChallenge(username, password) {
+    const user = validateCredentials(username, password);
+
+    if (!user) return null;
+
+    clearExpiredMfaChallenges();
+    const challengeId = randomUUID();
+    const code = String(randomInt(100000, 1000000));
+    const expiresAt = new Date(Date.now() + MFA_TTL_MS).toISOString();
+
+    mfaChallenges.set(challengeId, {
+      user_id: user.user_id,
+      code_hash: hashMfaCode(code),
+      attempts: 0,
+      expires_at: expiresAt
+    });
+
+    return {
+      challenge_id: challengeId,
+      code,
+      expires_at: expiresAt,
+      expires_in_seconds: Math.floor(MFA_TTL_MS / 1000),
+      user: buildSafeUser(user)
+    };
+  }
+
+  function verifyMfaChallenge(challengeId, code) {
+    clearExpiredMfaChallenges();
+    const challenge = mfaChallenges.get(String(challengeId || ""));
+    if (!challenge) return { ok: false, status: 401, message: "MFA challenge expired. Please log in again." };
+
+    challenge.attempts += 1;
+    if (challenge.attempts > 5) {
+      mfaChallenges.delete(challengeId);
+      return { ok: false, status: 429, message: "Too many MFA attempts. Please log in again." };
+    }
+
+    if (challenge.code_hash !== hashMfaCode(String(code || "").trim())) {
+      return { ok: false, status: 401, message: "Invalid authentication code." };
+    }
+
+    mfaChallenges.delete(challengeId);
+    const user = db.users.find(item => String(item.user_id) === String(challenge.user_id));
+    if (!user) return { ok: false, status: 401, message: "MFA user could not be verified." };
+
+    return { ok: true, ...createSessionForUser(user) };
+  }
+
+  function validateCredentials(username, password) {
     const normalizedUsername = String(username || "").trim();
     const user = findUser(normalizedUsername);
 
     if (!user || !isValidPassword(user, password)) return null;
 
+    return user;
+  }
+
+  function createSessionForUser(user) {
     const role = db.roles.find(item => Number(item.role_id) === Number(user.role_id));
     if (!role) return null;
     const permissions = getPermissionNamesForRole(user.role_id);
@@ -33,6 +95,17 @@ export function createAuthService(db) {
         email: user.email,
         permissions
       }
+    };
+  }
+
+  function buildSafeUser(user) {
+    const role = db.roles.find(item => Number(item.role_id) === Number(user.role_id));
+    return {
+      user_id: user.user_id,
+      username: user.username,
+      email: user.email,
+      role_id: user.role_id,
+      label: role?.role_name || "User"
     };
   }
 
@@ -106,5 +179,18 @@ export function createAuthService(db) {
     return keys[roleLabel] || "viewer";
   }
 
-  return { authenticate, authorizeRequest };
+  function hashMfaCode(code) {
+    return createHash("sha256").update(String(code || "")).digest("hex");
+  }
+
+  function clearExpiredMfaChallenges() {
+    const now = Date.now();
+    for (const [challengeId, challenge] of mfaChallenges.entries()) {
+      if (new Date(challenge.expires_at).getTime() <= now) {
+        mfaChallenges.delete(challengeId);
+      }
+    }
+  }
+
+  return { authenticate, authorizeRequest, createMfaChallenge, verifyMfaChallenge };
 }

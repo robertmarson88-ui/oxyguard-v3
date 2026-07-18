@@ -4,6 +4,7 @@ import { getDatabaseConnectionInfo } from "../database/store.js";
 import { ingestTelemetry, queryTelemetry } from "../services/telemetryService.js";
 import { readNurseStationData } from "../services/nurseStationService.js";
 import { readJson, sendJson } from "../utils/http.js";
+import https from "node:https";
 
 export function createApiHandler({ db, nurseStationDataPath }) {
   const auth = createAuthService(db);
@@ -49,6 +50,11 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
     if (req.method === "POST" && apiPath === "/login") {
       await login(req, res, db, auth, path.startsWith("/api/v1"));
+      return true;
+    }
+
+    if (req.method === "POST" && apiPath === "/mfa/verify") {
+      await verifyMfa(req, res, db, auth, path.startsWith("/api/v1"));
       return true;
     }
 
@@ -164,10 +170,32 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
 async function login(req, res, db, auth, apiV1) {
   const { username, password } = await readJson(req);
-  const result = auth.authenticate(username, password);
+  const challenge = auth.createMfaChallenge(username, password);
 
-  if (!result) {
+  if (!challenge) {
     sendJson(res, 401, { ok: false, message: "Invalid username or password." });
+    return;
+  }
+
+  const delivery = await sendMfaCode(challenge.user.email, challenge.code, challenge.user.username);
+  await addAuditLog(db, challenge.user, "MFA Code Sent", maskEmail(challenge.user.email), getClientIp(req));
+
+  sendJson(res, 200, {
+    ok: true,
+    mfa_required: true,
+    challenge_id: challenge.challenge_id,
+    expires_at: challenge.expires_at,
+    expires_in_seconds: challenge.expires_in_seconds,
+    delivery
+  });
+}
+
+async function verifyMfa(req, res, db, auth, apiV1) {
+  const { challenge_id, code } = await readJson(req);
+  const result = auth.verifyMfaChallenge(challenge_id, code);
+
+  if (!result?.ok) {
+    sendJson(res, result?.status || 401, { ok: false, message: result?.message || "Invalid authentication code." });
     return;
   }
 
@@ -181,6 +209,80 @@ async function login(req, res, db, auth, apiV1) {
   };
 
   sendJson(res, 200, apiV1 ? response : { ok: true, ...response });
+}
+
+async function sendMfaCode(email, code, username) {
+  const safeEmail = maskEmail(email);
+  if (process.env.SENDGRID_API_KEY) {
+    return sendMfaCodeViaSendGrid(email, code, username);
+  }
+
+  console.info(`OxyGuard MFA code for ${username} (${safeEmail}): ${code}`);
+  return {
+    sent: process.env.NODE_ENV === "production" ? false : true,
+    provider: "console",
+    message: process.env.NODE_ENV === "production"
+      ? "Email provider is not configured. Set SENDGRID_API_KEY and MFA_FROM_EMAIL on Render."
+      : `Development code logged for ${safeEmail}.`,
+    masked_email: safeEmail,
+    dev_code: process.env.NODE_ENV === "production" ? undefined : code
+  };
+}
+
+function sendMfaCodeViaSendGrid(email, code, username) {
+  const fromEmail = process.env.MFA_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || "no-reply@oxyguard.local";
+  const payload = JSON.stringify({
+    personalizations: [{ to: [{ email }] }],
+    from: { email: fromEmail, name: "OxyGuard" },
+    subject: "Your OxyGuard authentication code",
+    content: [{
+      type: "text/plain",
+      value: `Hello ${username || "OxyGuard user"},\n\nYour OxyGuard authentication code is ${code}.\n\nThis code expires in 10 minutes.`
+    }]
+  });
+
+  return new Promise(resolve => {
+    const request = https.request({
+      hostname: "api.sendgrid.com",
+      path: "/v3/mail/send",
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${process.env.SENDGRID_API_KEY}`,
+        "content-type": "application/json",
+        "content-length": Buffer.byteLength(payload)
+      }
+    }, response => {
+      response.resume();
+      response.on("end", () => {
+        resolve({
+          sent: response.statusCode >= 200 && response.statusCode < 300,
+          provider: "sendgrid",
+          masked_email: maskEmail(email),
+          message: response.statusCode >= 200 && response.statusCode < 300
+            ? `Authentication code sent to ${maskEmail(email)}.`
+            : `Email provider returned status ${response.statusCode}.`
+        });
+      });
+    });
+
+    request.on("error", error => {
+      resolve({
+        sent: false,
+        provider: "sendgrid",
+        masked_email: maskEmail(email),
+        message: `Email delivery failed: ${String(error?.message || error)}`
+      });
+    });
+    request.write(payload);
+    request.end();
+  });
+}
+
+function maskEmail(email) {
+  const value = String(email || "");
+  const [name, domain] = value.split("@");
+  if (!name || !domain) return "email unavailable";
+  return `${name.slice(0, 2)}***@${domain}`;
 }
 
 async function createTelemetry(req, res, db) {

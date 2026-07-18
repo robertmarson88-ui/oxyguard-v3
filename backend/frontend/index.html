@@ -30,7 +30,12 @@
           Password
           <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter password" />
         </label>
+        <label class="auth-code-field" id="authCodeField">
+          Authentication Code
+          <input id="loginMfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter 6-digit code" />
+        </label>
         <button type="submit" id="loginSubmit">Login</button>
+        <button class="secondary-login-action" id="loginBackButton" type="button">Use a different login</button>
         <span class="login-error" id="loginError">Invalid username or password.</span>
         <span class="login-hint" id="loginHint">Admin: admin / admin1 | Facilities Manager: facilities / facilities1 | Nurse: nurse / nurse1 | Executive: executive / executive1</span>
       </form>
