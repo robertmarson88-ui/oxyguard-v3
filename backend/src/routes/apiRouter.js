@@ -178,6 +178,17 @@ async function login(req, res, db, auth, apiV1) {
   }
 
   const delivery = await sendMfaCode(challenge.user.email, challenge.code, challenge.user.username);
+  if (!delivery.sent) {
+    await addAuditLog(db, challenge.user, "MFA Email Failed", delivery.message || maskEmail(challenge.user.email), getClientIp(req));
+    sendJson(res, 503, {
+      ok: false,
+      mfa_required: false,
+      message: delivery.message || "Authentication email could not be sent.",
+      delivery
+    });
+    return;
+  }
+
   await addAuditLog(db, challenge.user, "MFA Code Sent", maskEmail(challenge.user.email), getClientIp(req));
 
   sendJson(res, 200, {
@@ -218,14 +229,16 @@ async function sendMfaCode(email, code, username) {
   }
 
   console.info(`OxyGuard MFA code for ${username} (${safeEmail}): ${code}`);
+  const isRender = Boolean(process.env.RENDER || process.env.RENDER_SERVICE_ID || process.env.RENDER_EXTERNAL_HOSTNAME);
+  const isLocal = !isRender && String(process.env.NODE_ENV || "development").toLowerCase() !== "production";
   return {
-    sent: process.env.NODE_ENV === "production" ? false : true,
+    sent: isLocal,
     provider: "console",
-    message: process.env.NODE_ENV === "production"
-      ? "Email provider is not configured. Set SENDGRID_API_KEY and MFA_FROM_EMAIL on Render."
-      : `Development code logged for ${safeEmail}.`,
+    message: isLocal
+      ? `Development code logged for ${safeEmail}.`
+      : "Email provider is not configured. Set SENDGRID_API_KEY and MFA_FROM_EMAIL on Render.",
     masked_email: safeEmail,
-    dev_code: process.env.NODE_ENV === "production" ? undefined : code
+    dev_code: isLocal ? code : undefined
   };
 }
 

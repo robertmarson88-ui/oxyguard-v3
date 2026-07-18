@@ -588,6 +588,8 @@ function setupLogin() {
     sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
     showApp();
   } else {
+    pendingMfaChallenge = null;
+    setMfaLoginMode(false, { submit, mfaField, mfaCode, username, password, backButton, hint });
     username.focus();
   }
 
@@ -641,6 +643,9 @@ function setupLogin() {
       }
 
       if (result.mfa_required) {
+        if (result.delivery && result.delivery.sent === false) {
+          throw new Error(result.delivery.message || "Authentication email could not be sent.");
+        }
         pendingMfaChallenge = {
           challenge_id: result.challenge_id,
           expires_at: result.expires_at,
@@ -680,6 +685,7 @@ function completeLogin(result) {
 function setMfaLoginMode(enabled, elements, delivery = {}) {
   const { submit, mfaField, mfaCode, username, password, backButton, hint } = elements;
   mfaField?.classList.toggle("visible", enabled);
+  if (mfaField) mfaField.hidden = !enabled;
   backButton?.classList.toggle("visible", enabled);
   if (submit) submit.textContent = enabled ? "Verify Code" : "Login";
   if (username) username.disabled = enabled;

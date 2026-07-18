@@ -150,11 +150,15 @@ body.login-active .app {
 }
 
 .auth-code-field {
-  display: none;
+  display: none !important;
 }
 
 .auth-code-field.visible {
-  display: grid;
+  display: grid !important;
+}
+
+.auth-code-field[hidden] {
+  display: none !important;
 }
 
 .login-card button {
