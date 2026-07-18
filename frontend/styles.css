@@ -13651,3 +13651,154 @@ body:not(.login-active) #logoutButton {
     min-height: 306px !important;
   }
 }
+/* Analytics visual refresh */
+#analyticsView {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(0, 102, 204, 0.12), transparent 30%),
+    linear-gradient(180deg, #eef6ff 0%, #f6fbff 42%, #edf4fa 100%) !important;
+}
+
+#analyticsView .report-head {
+  border: 1px solid rgba(16, 109, 187, 0.18) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(238, 247, 255, 0.92)),
+    linear-gradient(90deg, rgba(0, 102, 204, 0.08), rgba(16, 163, 127, 0.08)) !important;
+  box-shadow: 0 14px 36px rgba(7, 45, 79, 0.08) !important;
+}
+
+#analyticsView .report-actions span {
+  display: inline-flex !important;
+  align-items: center !important;
+  min-height: 32px !important;
+  padding: 7px 11px !important;
+  border: 1px solid rgba(0, 102, 204, 0.2) !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #ffffff, #eaf5ff) !important;
+  color: #063f73 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 8px 18px rgba(13, 92, 160, 0.08) !important;
+}
+
+#analyticsView .report-actions button {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: linear-gradient(135deg, #0b72e7, #00a0dc) !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  box-shadow: 0 10px 20px rgba(11, 114, 231, 0.22) !important;
+}
+
+#analyticsView .analytics-summary .summary-card {
+  position: relative !important;
+  isolation: isolate !important;
+  border: 1px solid color-mix(in srgb, var(--kpi-accent) 30%, #d5e6f5) !important;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(245, 250, 255, 0.92)),
+    radial-gradient(circle at 90% 12%, color-mix(in srgb, var(--kpi-accent) 20%, transparent), transparent 34%) !important;
+  box-shadow:
+    0 16px 30px rgba(6, 41, 73, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.96) !important;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease !important;
+}
+
+#analyticsView .analytics-summary .summary-card::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 auto 0 0 !important;
+  width: 6px !important;
+  border-radius: 10px 0 0 10px !important;
+  background: linear-gradient(180deg, var(--kpi-accent), color-mix(in srgb, var(--kpi-accent) 50%, #ffffff)) !important;
+  z-index: -1 !important;
+}
+
+#analyticsView .analytics-summary .summary-card::after {
+  content: "" !important;
+  position: absolute !important;
+  right: 14px !important;
+  bottom: 13px !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 50% !important;
+  background: color-mix(in srgb, var(--kpi-accent) 13%, transparent) !important;
+  z-index: -1 !important;
+}
+
+#analyticsView .analytics-summary .summary-card:hover {
+  transform: translateY(-3px) !important;
+  border-color: color-mix(in srgb, var(--kpi-accent) 58%, #b8d3eb) !important;
+  box-shadow:
+    0 22px 42px rgba(6, 41, 73, 0.15),
+    0 0 0 3px color-mix(in srgb, var(--kpi-accent) 10%, transparent) !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy span {
+  color: #36536f !important;
+  text-transform: uppercase !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy strong {
+  color: #062f57 !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.75) !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy small {
+  display: inline-flex !important;
+  align-items: center !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  padding: 4px 8px !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--kpi-accent) 10%, #f8fbff) !important;
+  color: #425f7c !important;
+  font-weight: 850 !important;
+}
+
+#analyticsView .analytics-grid > .report-card,
+#analyticsView .analytics-main-column > .report-card,
+#analyticsView .analytics-side-column > .report-card {
+  border: 1px solid rgba(31, 104, 169, 0.15) !important;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(247, 251, 255, 0.95)) !important;
+  box-shadow:
+    0 14px 32px rgba(6, 41, 73, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92) !important;
+}
+
+#analyticsView .analytics-grid > .report-card h3,
+#analyticsView .analytics-main-column > .report-card h3,
+#analyticsView .analytics-side-column > .report-card h3 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: #072b4d !important;
+  font-weight: 950 !important;
+}
+
+#analyticsView .analytics-grid > .report-card h3::before,
+#analyticsView .analytics-main-column > .report-card h3::before,
+#analyticsView .analytics-side-column > .report-card h3::before {
+  content: "" !important;
+  width: 10px !important;
+  height: 10px !important;
+  flex: 0 0 10px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #0b72e7, #10a37f) !important;
+  box-shadow: 0 0 0 4px rgba(11, 114, 231, 0.10) !important;
+}
+
+#analyticsView .month-card,
+#analyticsView .leakage-compare-row,
+#analyticsView .ward-total-row,
+#analyticsView .cost-exposure-row {
+  border-color: rgba(0, 102, 204, 0.16) !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(239, 248, 255, 0.95)) !important;
+  box-shadow: 0 8px 18px rgba(8, 54, 95, 0.06) !important;
+}
+
+#analyticsView .stacked-bar,
+#analyticsView .compare-track,
+#analyticsView .cost-exposure-bar,
+#analyticsView .analytics-rate-row div {
+  background: #e7f0f8 !important;
+  box-shadow: inset 0 1px 3px rgba(7, 45, 79, 0.10) !important;
+}
