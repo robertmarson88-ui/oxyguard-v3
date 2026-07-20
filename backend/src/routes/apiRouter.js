@@ -63,11 +63,18 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "GET" && apiPath === "/audit-logs") {
+      const session = requireAuthorized(req, res, auth, "view_logs");
+      if (!session) return true;
+      sendJson(res, 200, await queryAuditLogs(db, url));
+      return true;
+    }
+
     const resolveMatch = apiPath.match(/^\/alerts\/(\d+)\/resolve$/);
     if (req.method === "POST" && resolveMatch) {
       const session = requireAuthorized(req, res, auth, "resolve_alert");
       if (!session) return true;
-      resolveAlert(db, res, Number(resolveMatch[1]), session.user);
+      await resolveAlert(db, res, Number(resolveMatch[1]), session.user);
       return true;
     }
 
@@ -134,23 +141,63 @@ function requireAuthorized(req, res, auth, permissionName) {
   return result.session;
 }
 
-function resolveAlert(db, res, alertId, user) {
+async function resolveAlert(db, res, alertId, user) {
   const alert = db.alerts.find(item => item.alert_id === alertId);
   if (!alert) {
     sendJson(res, 404, { ok: false, message: "Alert not found." });
     return;
   }
 
-  alert.is_resolved = true;
-  alert.resolved_by = user.user_id;
-  alert.resolved_at = new Date().toISOString();
-  db.audit_logs.push({
+  const resolvedAt = new Date().toISOString();
+  const auditTarget = `Alert #${alert.alert_id}`;
+  let resolvedAlert = {
+    ...alert,
+    is_resolved: true,
+    resolved_by: user.user_id,
+    resolved_at: resolvedAt
+  };
+  let auditLog = {
     audit_id: db.nextAuditId++,
     user_id: user.user_id,
+    username: user.username,
     action: "Resolve Alert",
-    target: `Alert #${alert.alert_id}`,
-    performed_at: new Date().toISOString()
-  });
+    target: auditTarget,
+    performed_at: resolvedAt
+  };
+
+  if (db.pgPool) {
+    const targetColumn = normalizeAuditTargetColumn(db.audit_target_column);
+    const alertLogIdSelection = db.alerts_has_log_id ? "log_id," : "";
+    const client = await db.pgPool.connect();
+    try {
+      await client.query("begin");
+      const alertResult = await client.query(
+        `update public.alerts
+         set is_resolved = true, resolved_by = $1, resolved_at = $2
+         where alert_id = $3
+         returning alert_id, ${alertLogIdSelection} device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
+        [user.user_id, resolvedAt, alert.alert_id]
+      );
+      if (!alertResult.rows[0]) throw new Error("Alert disappeared before it could be resolved");
+      const auditResult = await client.query(
+        `insert into public.audit_logs (user_id, action, ${targetColumn}, performed_at)
+         values ($1, $2, $3, $4)
+         returning audit_id, user_id, action, ${targetColumn} as target, performed_at`,
+        [user.user_id, "Resolve Alert", auditTarget, resolvedAt]
+      );
+      await client.query("commit");
+      resolvedAlert = alertResult.rows[0];
+      auditLog = { ...auditResult.rows[0], username: user.username };
+    } catch (error) {
+      await client.query("rollback");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  Object.assign(alert, resolvedAlert);
+  db.audit_logs.push(auditLog);
 
   sendJson(res, 200, {
     ok: true,
@@ -158,6 +205,45 @@ function resolveAlert(db, res, alertId, user) {
     message: "Alert resolved successfully.",
     alert
   });
+}
+
+async function queryAuditLogs(db, url) {
+  const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit")) || 100));
+  if (db.pgPool) {
+    const targetColumn = normalizeAuditTargetColumn(db.audit_target_column);
+    const result = await db.pgPool.query(
+      `select a.audit_id, a.user_id, coalesce(u.username, a.user_id) as username,
+              coalesce(r.role_name, 'Unknown') as role_name,
+              a.action, a.${targetColumn} as target, a.performed_at
+       from public.audit_logs a
+       left join public.users u on u.user_id = a.user_id
+       left join public.roles r on r.role_id = u.role_id
+       order by a.performed_at desc, a.audit_id desc
+       limit $1`,
+      [limit]
+    );
+    return result.rows;
+  }
+
+  return [...db.audit_logs]
+    .sort((left, right) => {
+      const timeDifference = new Date(right.performed_at) - new Date(left.performed_at);
+      return timeDifference || Number(right.audit_id) - Number(left.audit_id);
+    })
+    .slice(0, limit)
+    .map(log => {
+      const user = db.users.find(item => item.user_id === log.user_id);
+      const role = db.roles.find(item => item.role_id === user?.role_id);
+      return {
+        ...log,
+        username: log.username || user?.username || log.user_id,
+        role_name: log.role_name || role?.role_name || "Unknown"
+      };
+    });
+}
+
+function normalizeAuditTargetColumn(value) {
+  return value === "target_resource" ? "target_resource" : "target";
 }
 
 function getDeviceInventory(db) {

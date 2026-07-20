@@ -109,18 +109,18 @@ async function loadSupabaseTables(pool) {
     wards,
     devices,
     telemetryLogs,
-    alerts,
-    auditLogs
+    alertResult,
+    auditLogResult
   ] = await Promise.all([
     queryRows(pool, "select role_id, role_name from public.roles order by role_id"),
     loadPermissions(pool),
     queryRows(pool, "select role_id, permission_id from public.role_permissions"),
     queryRows(pool, "select user_id, username, email, email_verified, password_hash, role_id, created_at from public.users order by user_id"),
     queryRows(pool, "select ward_id, ward_name, location from public.wards order by ward_id"),
-    queryRows(pool, "select device_id, ward_id, created_at, device_name, device_status, last_seen, bed_id from public.devices order by device_id"),
+    queryRows(pool, "select device_id, ward_id, created_at from public.devices order by device_id"),
     queryRows(pool, "select log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at from public.telemetry_logs order by log_id"),
-    queryRows(pool, "select alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at from public.alerts order by alert_id"),
-    queryRows(pool, "select audit_id, user_id, action, target_resource, ip_address, performed_at from public.audit_logs order by audit_id")
+    loadAlerts(pool),
+    loadAuditLogs(pool)
   ]);
 
   return {
@@ -135,8 +135,10 @@ async function loadSupabaseTables(pool) {
     wards,
     devices,
     telemetry_logs: telemetryLogs,
-    alerts,
-    audit_logs: auditLogs
+    alerts: alertResult.rows,
+    alerts_has_log_id: alertResult.hasLogId,
+    audit_logs: auditLogResult.rows,
+    audit_target_column: auditLogResult.targetColumn
   };
 }
 
@@ -155,6 +157,52 @@ async function loadPermissions(pool) {
   const columnNames = new Set(columns.map(column => column.column_name));
   const labelColumn = columnNames.has("permission_key") ? "permission_key" : "permission_name";
   return queryRows(pool, `select permission_id, ${labelColumn} as permission_name from public.permissions order by permission_id`);
+}
+
+async function loadAuditLogs(pool) {
+  const columns = await queryRows(
+    pool,
+    `select column_name
+     from information_schema.columns
+     where table_schema = 'public' and table_name = 'audit_logs'`
+  );
+  const columnNames = new Set(columns.map(column => column.column_name));
+  const targetColumn = columnNames.has("target")
+    ? "target"
+    : columnNames.has("target_resource")
+      ? "target_resource"
+      : null;
+
+  if (!targetColumn) {
+    throw new Error("public.audit_logs must contain a target or target_resource column");
+  }
+
+  const rows = await queryRows(
+    pool,
+    `select audit_id, user_id, action, ${targetColumn} as target, performed_at
+     from public.audit_logs
+     order by performed_at desc, audit_id desc`
+  );
+  return { rows, targetColumn };
+}
+
+async function loadAlerts(pool) {
+  const columns = await queryRows(
+    pool,
+    `select column_name
+     from information_schema.columns
+     where table_schema = 'public' and table_name = 'alerts'`
+  );
+  const hasLogId = columns.some(column => column.column_name === "log_id");
+  const logIdSelection = hasLogId ? "log_id," : "";
+  const rows = await queryRows(
+    pool,
+    `select alert_id, ${logIdSelection} device_id, alert_type, severity,
+            is_resolved, resolved_by, resolved_at, created_at
+     from public.alerts
+     order by alert_id`
+  );
+  return { rows, hasLogId };
 }
 
 async function seedSupabaseDemoAlerts(pool, remote) {
@@ -178,13 +226,21 @@ async function seedSupabaseDemoAlerts(pool, remote) {
       [event.device_id, event.ward_id, event.flow_rate, event.operational_status, createdAt]
     );
     const log = logResult.rows[0];
-    const alertResult = await pool.query(
-      `insert into public.alerts
-        (log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
-       values ($1, $2, $3, $4, false, null, null, $5)
-       returning alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
-      [log.log_id, event.device_id, event.alert_type, event.severity, createdAt]
-    );
+    const alertResult = remote.alerts_has_log_id
+      ? await pool.query(
+        `insert into public.alerts
+          (log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
+         values ($1, $2, $3, $4, false, null, null, $5)
+         returning alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
+        [log.log_id, event.device_id, event.alert_type, event.severity, createdAt]
+      )
+      : await pool.query(
+        `insert into public.alerts
+          (device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
+         values ($1, $2, $3, false, null, null, $4)
+         returning alert_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
+        [event.device_id, event.alert_type, event.severity, createdAt]
+      );
     remote.telemetry_logs.push(log);
     remote.alerts.push(alertResult.rows[0]);
   }

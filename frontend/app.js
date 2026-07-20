@@ -203,6 +203,8 @@ let esp32LastFluctuation = 0;
 let acknowledgedAlertSignature = "";
 let databaseAlertRows = [];
 let databaseAlertsLoaded = false;
+let databaseAuditRows = [];
+let databaseAuditStatus = "idle";
 
 const permissionViews = {
   admin: {
@@ -466,6 +468,7 @@ function showApp() {
   updateCurrentUserDisplay();
   updatePageTitle();
   loadDatabaseAlerts();
+  loadDatabaseAuditLogs();
 }
 
 function logout() {
@@ -504,6 +507,27 @@ async function loadDatabaseAlerts() {
   } catch {
     databaseAlertsLoaded = false;
   }
+}
+
+async function loadDatabaseAuditLogs() {
+  if (!currentUser?.accessToken || currentUser.role !== "admin") return;
+  databaseAuditStatus = "loading";
+  if (activeView === "administration") renderAdministration();
+  try {
+    const response = await fetch("/api/audit-logs?limit=100", {
+      cache: "no-store",
+      headers: { authorization: `Bearer ${currentUser.accessToken}` }
+    });
+    if (!response.ok) throw new Error(`Audit request failed with ${response.status}`);
+    const rows = await response.json();
+    databaseAuditRows = Array.isArray(rows) ? rows : [];
+    databaseAuditStatus = "loaded";
+  } catch {
+    databaseAuditRows = [];
+    databaseAuditStatus = "error";
+  }
+  if (activeView === "administration") renderAdministration();
+  renderReportCenterAuditTrail();
 }
 
 function mapDatabaseAlertRow(alert, index) {
@@ -685,7 +709,10 @@ function setView(view) {
     renderMonthlyUsageComparison();
   }
   if (view === "order") renderOrderSummary();
-  if (view === "administration") renderAdministration();
+  if (view === "administration") {
+    renderAdministration();
+    loadDatabaseAuditLogs();
+  }
   if (view === "analytics") renderAnalytics();
   updatePageTitle();
 }
@@ -1811,13 +1838,17 @@ function renderReportCenterSystemHealth() {
 function renderReportCenterAuditTrail() {
   const target = document.getElementById("reportAuditTrail");
   if (!target) return;
-  target.innerHTML = tableHtml(["Date / Time", "User Role", "User ID", "Action", "Details"], [
-    ["19 Jun 09:32", "Nurse", "NUR-07", "Alert Acknowledged", "Ghost Flow at Ward A / Tank A2"],
-    ["19 Jun 09:40", "Facilities", "FAC-03", "Investigation Started", "Inspecting Tank B3"],
-    ["19 Jun 09:44", "Facilities", "FAC-03", "Action Taken", "Valve tightened, flow stopped"],
-    ["19 Jun 09:48", "Nurse", "NUR-07", "Alert Resolved", "Issue resolved"],
-    ["19 Jun 09:50", "Admin", "ADM-01", "Incident Closed", "Closed by Admin"]
+  const rows = databaseAuditRows.slice(0, 5).map(log => [
+    escapeAdminCell(formatAdminAuditTime(log.performed_at)),
+    escapeAdminCell(log.role_name || "Unknown"),
+    escapeAdminCell(log.username || log.user_id || "Unknown user"),
+    escapeAdminCell(log.action || "Unknown action"),
+    escapeAdminCell(log.target || "-")
   ]);
+  if (!rows.length) {
+    rows.push([auditLogEmptyMessage(), "-", "-", "-", "-"]);
+  }
+  target.innerHTML = tableHtml(["Date / Time", "User Role", "User ID", "Action", "Details"], rows);
 }
 
 function renderReportCenterRecommendations() {
@@ -2787,13 +2818,12 @@ function renderAdministration() {
     ["ESP32-D01", "Labour Ward", "Online", "19 Jun 2026 02:15 PM"],
     ["ESP32-E01", "Maternity Ward", "Offline", "19 Jun 2026 01:40 PM"]
   ];
-  const auditRows = [
-    ["19 Jun 2026 02:12 PM", "John Admin", "Updated Alert Rule", "Ghost Flow Threshold changed to 0.5 Litre/Min"],
-    ["19 Jun 2026 02:05 PM", "John Admin", "User Role Updated", "Nurse Station role changed to Nurse"],
-    ["19 Jun 2026 01:58 PM", "Nurse Manager", "User Login", "Successful login"],
-    ["19 Jun 2026 01:45 PM", "John Admin", "Privacy Setting Changed", "Data Retention Period set to 365 days"],
-    ["19 Jun 2026 01:30 PM", "Facilities Team", "Device Registered", "ESP32-E01 registered to Maternity Ward"]
-  ];
+  const auditRows = databaseAuditRows.map(log => [
+    formatAdminAuditTime(log.performed_at),
+    log.username || log.user_id || "Unknown user",
+    log.action || "Unknown action",
+    log.target || "-"
+  ]);
 
   setOrderHtml("adminUsersTable", `
     <table class="admin-table">
@@ -2848,12 +2878,39 @@ function renderAdministration() {
     <table class="admin-table">
       <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
       <tbody>
-        ${auditRows.map(row => `
-          <tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>
-        `).join("")}
+        ${auditRows.length ? auditRows.map(row => `
+          <tr>${row.map(cell => `<td>${escapeAdminCell(cell)}</td>`).join("")}</tr>
+        `).join("") : `<tr><td colspan="4">${auditLogEmptyMessage()}</td></tr>`}
       </tbody>
     </table>
   `);
+}
+
+function auditLogEmptyMessage() {
+  if (databaseAuditStatus === "loading") return "Loading audit logs from database...";
+  if (databaseAuditStatus === "error") return "Audit logs could not be loaded from the database.";
+  return "No audit activity has been recorded yet.";
+}
+
+function formatAdminAuditTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+  return new Intl.DateTimeFormat(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function escapeAdminCell(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function adminRoleBadge(role) {

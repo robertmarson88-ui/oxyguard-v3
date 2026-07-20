@@ -96,13 +96,21 @@ async function insertTelemetryLog(db, log) {
 }
 
 async function insertAlert(db, alert, logId) {
-  const result = await db.pgPool.query(
-    `insert into public.alerts
-      (log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8)
-     returning alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
-    [logId, alert.device_id, alert.alert_type, alert.severity, alert.is_resolved, alert.resolved_by, alert.resolved_at, alert.created_at]
-  );
+  const result = db.alerts_has_log_id
+    ? await db.pgPool.query(
+      `insert into public.alerts
+        (log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
+       values ($1, $2, $3, $4, $5, $6, $7, $8)
+       returning alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
+      [logId, alert.device_id, alert.alert_type, alert.severity, alert.is_resolved, alert.resolved_by, alert.resolved_at, alert.created_at]
+    )
+    : await db.pgPool.query(
+      `insert into public.alerts
+        (device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
+       values ($1, $2, $3, $4, $5, $6, $7)
+       returning alert_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
+      [alert.device_id, alert.alert_type, alert.severity, alert.is_resolved, alert.resolved_by, alert.resolved_at, alert.created_at]
+    );
   return result.rows[0];
 }
 
