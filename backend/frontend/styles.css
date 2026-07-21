@@ -13923,6 +13923,12 @@ body:not(.login-active) table td small {
   .admin-add-button,
   .admin-link-button { min-height: 40px; }
 }
+
+/* Authorization visibility must win over every sidebar and responsive display rule. */
+body:not(.login-active) .sidebar > .side-button.role-hidden,
+body:not(.login-active) .sidebar > .side-button[hidden] {
+  display: none !important;
+}
 @media (max-width: 760px) {
   .admin-setting-row { grid-template-columns: 34px minmax(0, 1fr); padding: 10px 0; }
   .admin-setting-value,
