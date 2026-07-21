@@ -282,11 +282,11 @@ const permissionViews = {
   },
   "facilities-manager": {
     label: "Facilities Manager",
-    allowedViews: ["dashboard", "order"]
+    allowedViews: ["report", "order"]
   },
   "nurse-supervisor": {
     label: "Nurse Manager",
-    allowedViews: ["dashboard"]
+    allowedViews: ["report"]
   },
   nurse: {
     label: "Nurse",
@@ -1013,7 +1013,11 @@ function applyRoleAccess() {
   const access = getActivePermissionView();
 
   document.querySelectorAll(".side-button[data-view]").forEach(button => {
-    button.hidden = !access.allowedViews.includes(button.dataset.view);
+    const allowed = access.allowedViews.includes(button.dataset.view);
+    button.hidden = !allowed;
+    button.classList.toggle("role-hidden", !allowed);
+    button.setAttribute("aria-hidden", String(!allowed));
+    button.tabIndex = allowed ? 0 : -1;
   });
   updateUserCount();
   document.getElementById("sidebarUser").innerHTML = currentUser

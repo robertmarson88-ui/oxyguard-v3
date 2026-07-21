@@ -23,6 +23,10 @@
   display: none !important;
 }
 
+.side-button.role-hidden {
+  display: none !important;
+}
+
 body {
   margin: 0;
   color: var(--text);
