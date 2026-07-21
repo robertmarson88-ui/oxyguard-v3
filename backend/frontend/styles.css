@@ -13858,6 +13858,15 @@ body:not(.login-active) #logoutButton {
   box-shadow: 0 8px 16px rgba(8, 47, 91, 0.14);
 }
 
+/* Table readability update: use black text while preserving semantic badge colors. */
+body:not(.login-active) table th,
+body:not(.login-active) table td,
+body:not(.login-active) table th small,
+body:not(.login-active) table td small {
+  color: #111111 !important;
+}
+
+
 
 /* 2026 application cleanup: keep working controls inside cards and improve responsive reflow. */
 .admin-panel-head {
