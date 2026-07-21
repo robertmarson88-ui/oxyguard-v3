@@ -1371,7 +1371,6 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
     "Ghost Flow": { prescribed: 0, live: 1.2, patient: "OFF", severity: "High" },
     "Unauthorized Usage": { prescribed: 0, live: 2, patient: "OFF", severity: "High" },
     "Residual Gas": { prescribed: 0, live: 0.2, patient: "OFF", severity: "Medium" },
-    "Leak": { prescribed: 3, live: 4.4, patient: "ON", severity: "High" },
     "Device Offline": { prescribed: 0, live: 0, patient: "OFF", severity: "Critical" },
     "Sensor Fault": { prescribed: 0, live: 0, patient: "OFF", severity: "High" },
     "Normal": { prescribed: 3, live: 3.4, patient: "ON", severity: "Low" }
@@ -1489,10 +1488,6 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
     "Residual Gas": {
       headline: "REPLACED cylinder with utilization above 90%",
       detail: "Set cylinder status, capacity, and consumed volume manually. The alert triggers only when status is REPLACED and consumption is greater than 90%."
-    },
-    "Leak": {
-      headline: "Live reading indicates possible leakage",
-      detail: "This marks the selected tank as a leakage event and increases wastage signals."
     },
     "Device Offline": {
       headline: "No telemetry received for at least 10 minutes",
@@ -1901,7 +1896,7 @@ function getSimulatorOperationalStatus(alertType, live) {
   if (alertType === "Device Offline") return "normal";
   if (["Ghost Flow", "Unauthorized Usage", "Residual Gas"].includes(alertType)) return "normal";
   if (alertType === "High Flow" || live >= 30) return "critical";
-  if (["Leak", "Low Flow"].includes(alertType)) return "warning";
+  if (alertType === "Low Flow") return "warning";
   return "normal";
 }
 
@@ -2691,12 +2686,14 @@ function renderReport() {
   const wastageTankLabel = formatTankEquivalent(wastageTankEquivalent);
   const wastageCostLabel = `${currency(wastageCost)}&nbsp;Est.&nbsp;Cost&nbsp;|&nbsp;${wastageTankLabel}`;
   const yesterdayDelta = formatSignedPercent((todayConsumptionLitres - yesterdayConsumptionLitres) / yesterdayConsumptionLitres);
+  const consumptionDirection = todayConsumptionLitres >= yesterdayConsumptionLitres ? "up" : "down";
+  const consumptionTone = todayConsumptionLitres >= yesterdayConsumptionLitres ? "bad" : "good";
   const esp32Status = getEsp32DeviceStatus();
   const criticalOverview = getCriticalAlertOverview(alertRows);
 
   document.getElementById("reportSummary").innerHTML = [
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
-    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, "up", { delta: yesterdayDelta, deltaTone: "bad" }),
+    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, consumptionDirection, { delta: yesterdayDelta, deltaTone: consumptionTone }),
     reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
     reportSummaryCard("Active Patients", ACTIVE_PATIENT_TARGET, "On Oxygen Support", colors.purple, "people"),
     reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),

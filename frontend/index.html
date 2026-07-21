@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260720-rule-boundaries" />
+    <link rel="stylesheet" href="./styles.css?v=20260720-application-cleanup" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -614,7 +614,7 @@
             <div>
               <span>OxyGuard Alert Simulator</span>
               <h2>Trigger controlled oxygen alert events</h2>
-              <p>Push test readings into the live dashboard to validate residual gas, unauthorized usage, ghost flow, leakage, and flow variance behavior.</p>
+              <p>Push test readings into the live dashboard to validate residual gas, unauthorized usage, ghost flow, device offline, and sensor fault rules.</p>
             </div>
             <div class="simulator-status-card">
               <small>Simulation Mode</small>
@@ -636,7 +636,6 @@
                     <option value="Ghost Flow">Ghost Flow</option>
                     <option value="Unauthorized Usage">Unauthorized Usage</option>
                     <option value="Residual Gas">Residual Gas</option>
-                    <option value="Leak">Leak</option>
                     <option value="Device Offline">Device Offline</option>
                     <option value="Sensor Fault">Sensor Fault</option>
                     <option value="Normal">Normal</option>
@@ -745,7 +744,8 @@
                 <button type="button" data-simulator-preset="Ghost Flow">Ghost Flow</button>
                 <button type="button" data-simulator-preset="Unauthorized Usage">Unauthorized Usage</button>
                 <button type="button" data-simulator-preset="Residual Gas">Residual Gas</button>
-                <button type="button" data-simulator-preset="Leak">Leak</button>
+                <button type="button" data-simulator-preset="Device Offline">Device Offline</button>
+                <button type="button" data-simulator-preset="Sensor Fault">Sensor Fault</button>
               </div>
             </article>
 
@@ -897,6 +897,6 @@
       <p class="user-message" id="deviceMessage"></p>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260720-device-sensor-rules-v2"></script>
+    <script type="module" src="./app.js?v=20260720-application-cleanup"></script>
   </body>
 </html>
