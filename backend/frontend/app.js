@@ -5425,17 +5425,10 @@ function renderAnalytics() {
     reportSummaryCard("Wasted Tanks", totalLeakageTanks, "Estimated leakage tanks", colors.red),
     reportSummaryCard("Wastage Cost", currency(totalLeakageCost), "Estimated loss value", colors.red, "dot", {
       hover: `Wastage Cost: ${currency(totalLeakageCost)}. Estimated wasted refill value at ${currency(CYLINDER_REFILL_COST)} per 100 lb cylinder.`
-    }),
-    reportSummaryCard("Highest Usage Ward", topConsumption.ward, currency(topConsumption.usageCost), topConsumption.accent, "dot", {
-      className: "ward-kpi",
-      hover: `Highest Usage Ward: ${topConsumption.ward}. Usage cost ${currency(topConsumption.usageCost)}.`
-    }),
-    reportSummaryCard("Highest Wastage Ward", topWastage.ward, currency(topWastage.leakageCost), colors.red, "dot", {
-      className: "ward-kpi",
-      hover: `Highest Wastage Ward: ${topWastage.ward}. Wastage cost ${currency(topWastage.leakageCost)}.`
     })
   ].join("");
 
+  document.getElementById("monthlyUsageLegend").innerHTML = analyticsLegend(wardTotals);
   renderMonthlyUsageChart(wardTotals);
   renderMonthlyWastageChart(wardTotals);
   renderTopInsight("topConsumption", topConsumption, "consumption", topConsumption.totalTanks, topConsumption.usageCost);

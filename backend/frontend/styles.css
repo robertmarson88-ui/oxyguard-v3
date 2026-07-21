@@ -4302,6 +4302,24 @@ body.login-active .app {
   border-radius: 3px;
 }
 
+.monthly-usage-legend {
+  margin: 2px 0 12px;
+  padding: 8px 10px;
+  border: 1px solid #d9e7f5;
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.monthly-usage-legend .analytics-legend {
+  padding-top: 0;
+}
+
+.monthly-usage-legend .analytics-legend span {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .top-insight {
   display: grid;
   gap: 16px;
