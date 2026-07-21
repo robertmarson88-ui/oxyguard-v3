@@ -13790,24 +13790,88 @@ body:not(.login-active) #logoutButton {
   font-weight: 850 !important;
 }
 
-/* Keep the four primary Analytics KPIs visually centred and aligned. */
+/* Keep the four primary Analytics KPIs centred, uniform and responsive. */
+#analyticsView .analytics-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  width: 100% !important;
+  max-width: 1280px !important;
+  margin-inline: auto !important;
+  align-items: stretch !important;
+}
+
 #analyticsView .analytics-summary .summary-card {
   display: grid !important;
   place-items: center !important;
+  min-width: 0 !important;
+  width: 100% !important;
+  height: 176px !important;
+  min-height: 176px !important;
+  padding: 18px 20px !important;
   text-align: center !important;
 }
 
 #analyticsView .analytics-summary .kpi-copy {
+  display: grid !important;
+  grid-template-rows: 30px 58px 38px !important;
+  gap: 8px !important;
   align-content: center !important;
+  align-items: center !important;
   justify-items: center !important;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: visible !important;
   text-align: center !important;
 }
 
 #analyticsView .analytics-summary .kpi-copy span,
 #analyticsView .analytics-summary .kpi-copy strong,
 #analyticsView .analytics-summary .kpi-copy small {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: fit-content !important;
+  max-width: 100% !important;
   margin-inline: auto !important;
   text-align: center !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy span,
+#analyticsView .analytics-summary .kpi-copy strong {
+  width: 100% !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy span {
+  min-height: 0 !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy strong {
+  align-self: center !important;
+  font-size: clamp(20px, 1.55vw, 27px) !important;
+  line-height: 1.05 !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy small {
+  min-height: 30px !important;
+  line-height: 1.15 !important;
+}
+
+@media (max-width: 1100px) {
+  #analyticsView .analytics-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 620px) {
+  #analyticsView .analytics-summary {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  #analyticsView .analytics-summary .summary-card {
+    height: 164px !important;
+    min-height: 164px !important;
+  }
 }
 
 #analyticsView .analytics-grid > .report-card,
