@@ -1517,6 +1517,7 @@ async function submitSimulatorEvent(event) {
       : `${alertType} shown on dashboard. API response: ${telemetryResult.message || "Telemetry was not accepted."}`,
     telemetryResult.ok ? "success" : "warn"
   );
+  if (telemetryResult.ok) await loadDatabaseAlerts();
   renderAll();
   renderSimulator();
 }
@@ -2918,7 +2919,9 @@ function getCriticalAlertOverview(alertRows) {
 }
 
 function formatAlertImpact(row) {
-  const action = row.recommendedAction ? `<small>${row.recommendedAction}</small>` : "-";
+  const action = row.recommendedAction
+    ? `<small><strong>Recommended Action:</strong> ${row.recommendedAction}</small>`
+    : "-";
   if (row.type !== "Residual Gas Waste" || !Number.isFinite(row.estimatedOxygenWaste)) return action;
   const unusedPercent = Number.isFinite(row.unusedPercentage) ? `${(row.unusedPercentage * 100).toFixed(1)}%` : "-";
   const loss = Number.isFinite(row.estimatedFinancialLoss) ? currency(row.estimatedFinancialLoss) : "-";
