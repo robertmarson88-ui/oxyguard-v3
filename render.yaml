@@ -11,6 +11,10 @@ services:
         sync: false
       - key: DATABASE_SSL
         value: "true"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_ACCESS_TTL_SECONDS
+        value: "900"
   - type: web
     name: oxyguard-v3-api
     runtime: python

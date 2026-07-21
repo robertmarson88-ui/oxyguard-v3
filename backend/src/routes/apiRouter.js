@@ -224,6 +224,7 @@ async function verifyMfa(req, res, db, auth, apiV1) {
   const response = {
     access_token: result.access_token,
     token_type: "bearer",
+    expires_in: result.expires_in,
     role: result.role,
     user: result.user
   };
