@@ -1368,7 +1368,7 @@ function applySimulatorPreset(updateMessage = true) {
   if (isResidualGas) {
     document.getElementById("simulatorCylinderStatus").value = "REPLACED";
     document.getElementById("simulatorCylinderCapacity").value = 1200;
-    document.getElementById("simulatorConsumedVolume").value = 960;
+    document.getElementById("simulatorConsumedVolume").value = 1068;
   }
   renderSimulatorRulePreview();
   if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
