@@ -958,10 +958,11 @@ async function loadDatabaseConnectionStatus() {
 function mapDatabaseAlertRow(alert, index) {
   const ward = getWardLabelFromDevice(alert.device_id);
   const priority = mapAlertPriority(alert.severity);
+  const type = formatAlertType(alert.alert_type);
   return {
     time: formatActivityTime(alert.timestamp || alert.created_at || new Date().toISOString()),
     ward,
-    type: formatAlertType(alert.alert_type),
+    type,
     priority,
     asset: alert.device_id || `Sensor ${index + 1}`,
     status: alert.status === "escalated" ? "Escalated" : alert.status === "acknowledged" ? "Acknowledged" : priority === "Critical" ? "Awaiting Response" : "Investigating",
@@ -971,7 +972,7 @@ function mapDatabaseAlertRow(alert, index) {
     estimatedOxygenWaste: alert.estimated_oxygen_waste == null ? null : Number(alert.estimated_oxygen_waste),
     estimatedFinancialLoss: alert.estimated_financial_loss == null ? null : Number(alert.estimated_financial_loss),
     potentialSavings: alert.potential_savings == null ? null : Number(alert.potential_savings),
-    recommendedAction: alert.recommended_action || "",
+    recommendedAction: alert.recommended_action || getRecommendedAlertAction(type),
     source: "database"
   };
 }
@@ -1958,15 +1959,19 @@ function alertKpiCard(label, value, detail, tone, action = "", iconMode = "text"
 function getAlertIncidentRows() {
   const timedRows = wards.flatMap(ward => ward.tanks
     .filter(t => t.active && (t.leakageAlert || t.highFlowAlert))
-    .map(t => ({
+    .map(t => {
+      const type = t.alertType || (t.highFlowAlert ? "Ghost Flow" : "Leak Detection");
+      return {
       time: formatActivityTime(new Date().toISOString()),
       ward: ward.name,
-      type: t.alertType || (t.highFlowAlert ? "Ghost Flow" : "Leak Detection"),
+      type,
       priority: t.alertType === "Ghost Flow" ? "Critical" : t.alertType === "Unauthorized Bed Usage" ? "High" : "Medium",
       asset: t.occupied ? t.station : t.station.replace("Station", "Bed"),
       status: "Awaiting Response",
-      assigned: t.alertType === "Residual Gas" ? "Nurse Station" : "Facilities"
-    })));
+      assigned: t.alertType === "Residual Gas" ? "Nurse Station" : "Facilities",
+      recommendedAction: getRecommendedAlertAction(type)
+    };
+    }));
   return timedRows.slice(0, 6);
 }
 
@@ -3198,14 +3203,29 @@ function renderResidualGasFinancialImpact(targetId) {
 }
 
 function formatAlertImpact(row) {
-  const action = row.recommendedAction
-    ? `<small><strong>Recommended Action:</strong> ${row.recommendedAction}</small>`
+  const recommendedAction = row.recommendedAction || getRecommendedAlertAction(row.type);
+  const action = recommendedAction
+    ? `<small><strong>Recommended Action:</strong> ${recommendedAction}</small>`
     : "-";
   if (row.type !== "Residual Gas Waste" || !Number.isFinite(row.estimatedOxygenWaste)) return action;
   const unusedPercent = Number.isFinite(row.unusedPercentage) ? `${(row.unusedPercentage * 100).toFixed(1)}%` : "-";
   const loss = Number.isFinite(row.estimatedFinancialLoss) ? currency(row.estimatedFinancialLoss) : "-";
   const savings = Number.isFinite(row.potentialSavings) ? currency(row.potentialSavings) : "-";
   return `<strong>${row.estimatedOxygenWaste.toLocaleString()} L waste (${unusedPercent})</strong><br>Loss ${loss} · Savings ${savings}<br>${action}`;
+}
+
+function getRecommendedAlertAction(type = "") {
+  const normalizedType = String(type).trim().toLowerCase();
+  if (["ghost flow", "ghost_flow"].includes(normalizedType)) {
+    return "Verify patient occupancy and close oxygen supply.";
+  }
+  if (["unauthorized bed detection", "unauthorized bed usage", "unauthorized usage", "unauthorized_bed_usage"].includes(normalizedType)) {
+    return "Verify patient assignment and investigate oxygen usage.";
+  }
+  if (["residual gas detection", "residual gas", "residual gas waste", "residual_gas_waste"].includes(normalizedType)) {
+    return "Review cylinder replacement procedures.";
+  }
+  return "";
 }
 
 function renderCriticalOverview(overview) {
