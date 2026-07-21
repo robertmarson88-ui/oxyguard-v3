@@ -258,6 +258,7 @@ let adminDeviceRows = [
   { device: "ESP32-E01", location: "Maternity Ward", status: "Offline", seen: "19 Jun 2026 01:40 PM" }
 ];
 let simulatorEvents = [];
+let simulatorDeviceSequence = Math.floor(Date.now() / 1000) % 1000;
 let auditLogDialogRows = [];
 let auditLogDialogRequestId = 0;
 let adminAuditRequestId = 0;
@@ -1340,9 +1341,9 @@ function applySimulatorPreset(updateMessage = true) {
   const patientStatus = document.getElementById("simulatorPatientStatus");
   const severity = document.getElementById("simulatorSeverity");
   const presets = {
-    "Ghost Flow": { prescribed: 0, live: 3.2, patient: "OFF", severity: "Critical" },
-    "Unauthorized Usage": { prescribed: 0, live: 4.1, patient: "OFF", severity: "High" },
-    "Residual Gas": { prescribed: 0, live: 1.1, patient: "OFF", severity: "Medium" },
+    "Ghost Flow": { prescribed: 0, live: 1.2, patient: "OFF", severity: "High" },
+    "Unauthorized Usage": { prescribed: 0, live: 2, patient: "OFF", severity: "High" },
+    "Residual Gas": { prescribed: 0, live: 0.2, patient: "OFF", severity: "Medium" },
     "Leak": { prescribed: 3, live: 4.4, patient: "ON", severity: "High" },
     "High Flow": { prescribed: 3, live: 4, patient: "ON", severity: "High" },
     "Low Flow": { prescribed: 4, live: 2.8, patient: "ON", severity: "Medium" },
@@ -1389,16 +1390,16 @@ function renderSimulatorRulePreview() {
 function getSimulatorRuleText(alertType, patientStatus, prescribed, live, variance) {
   const rules = {
     "Ghost Flow": {
-      headline: "Flow detected while patient status is OFF",
-      detail: "This creates a critical ghost flow event and routes it to Facilities."
+      headline: "Flow > 0.5 LPM with breathing variance < 0.01",
+      detail: "Send creates four qualifying readings across 11 minutes and verifies a high-severity Ghost Flow alert."
     },
     "Unauthorized Usage": {
-      headline: "Unassigned bed/tank is showing oxygen flow",
-      detail: "This flags usage outside an approved patient assignment."
+      headline: "EMPTY bed consuming at least 2.0 LPM",
+      detail: "Send creates four qualifying readings across 11 minutes and verifies Unauthorized Bed Usage."
     },
     "Residual Gas": {
-      headline: "Residual flow remains after closure",
-      detail: "This highlights oxygen remaining in the line or tank after it should be inactive."
+      headline: "Cylinder replaced at only 80% utilization",
+      detail: "Sends capacity 1,200 L and consumed volume 960 L, leaving 240 L residual oxygen."
     },
     "Leak": {
       headline: "Live reading indicates possible leakage",
@@ -1441,9 +1442,19 @@ async function submitSimulatorEvent(event) {
   const severity = document.getElementById("simulatorSeverity").value;
   const location = document.getElementById("simulatorLocation").value.trim() || tankItem.station;
   const createdAt = new Date().toISOString();
+  const sendButton = document.getElementById("simulatorSendButton");
 
   applySimulatorEventToTank(tankItem, { alertType, prescribed, live, patientStatus, severity, location });
+  if (sendButton) {
+    sendButton.disabled = true;
+    sendButton.textContent = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? "Sending 4 Readings..." : "Sending...";
+  }
+  updateSimulatorApiStatus(`Running ${alertType} rule against the telemetry API...`, "ready");
   const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt);
+  if (sendButton) {
+    sendButton.disabled = false;
+    sendButton.textContent = "Send Test Reading";
+  }
   simulatorEvents.unshift({
     time: formatActivityTime(createdAt),
     ward: ward.name,
@@ -1459,7 +1470,7 @@ async function submitSimulatorEvent(event) {
 
   updateSimulatorApiStatus(
     telemetryResult.ok
-      ? `${alertType} sent to dashboard and telemetry API.`
+      ? `${alertType} verified: ${telemetryResult.triggeredAlerts.join(", ") || "no alert expected"}.`
       : `${alertType} shown on dashboard. API response: ${telemetryResult.message || "Telemetry was not accepted."}`,
     telemetryResult.ok ? "success" : "warn"
   );
@@ -1495,29 +1506,88 @@ function applySimulatorEventToTank(tankItem, simulation) {
 }
 
 async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt) {
-  const payload = {
-    device_id: getSimulatorDeviceId(ward, tankItem),
-    ward_id: getSimulatorWardId(ward),
-    flow_rate: Number(live),
-    operational_status: getSimulatorOperationalStatus(alertType, live),
-    timestamp: createdAt
-  };
-
+  simulatorDeviceSequence = (simulatorDeviceSequence + 1) % 1000;
+  const deviceId = getSimulatorRunDeviceId(ward, simulatorDeviceSequence);
+  const readings = buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt);
+  const triggeredAlerts = new Set();
   try {
-    const response = await fetch("/api/v1/telemetry", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    const data = await readSimulatorApiResponse(response);
+    for (const [index, payload] of readings.entries()) {
+      updateSimulatorApiStatus(`Sending ${alertType} reading ${index + 1} of ${readings.length}...`, "ready");
+      const response = await fetch("/api/v1/telemetry", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await readSimulatorApiResponse(response);
+      if (!response.ok) {
+        return {
+          ok: false,
+          triggeredAlerts: [...triggeredAlerts],
+          message: data?.message || data?.error || formatSimulatorErrors(data?.errors) || `API returned ${response.status}`
+        };
+      }
+      const alerts = Array.isArray(data?.alerts) ? data.alerts : data?.alert ? [data.alert] : [];
+      alerts.forEach(alert => {
+        if (alert?.alert_type) triggeredAlerts.add(alert.alert_type);
+      });
+    }
+    const expectedAlert = getSimulatorExpectedAlertType(alertType);
+    const verified = !expectedAlert || triggeredAlerts.has(expectedAlert);
     return {
-      ok: response.ok,
-      message: data?.message || data?.error || formatSimulatorErrors(data?.errors) || `API returned ${response.status}`
+      ok: verified,
+      triggeredAlerts: [...triggeredAlerts],
+      message: verified ? "Rule verified." : `Expected ${expectedAlert}, received ${[...triggeredAlerts].join(", ") || "no alert"}.`
     };
   } catch (error) {
-    return { ok: false, message: error?.message || "Telemetry API is not reachable." };
+    return { ok: false, triggeredAlerts: [...triggeredAlerts], message: error?.message || "Telemetry API is not reachable." };
   }
+}
+
+function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt) {
+  const endTime = new Date(createdAt);
+  const offsets = [11, 6, 1, 0];
+  const durationRule = ["Ghost Flow", "Unauthorized Usage"].includes(alertType);
+  const timestamps = durationRule
+    ? offsets.map(minutes => new Date(endTime.getTime() - minutes * 60000).toISOString())
+    : [createdAt];
+  return timestamps.map(timestamp => {
+    const payload = {
+      device_id: deviceId,
+      ward_id: getSimulatorWardId(ward),
+      flow_rate: Number(live),
+      operational_status: getSimulatorOperationalStatus(alertType, live),
+      timestamp
+    };
+    if (alertType === "Residual Gas") {
+      Object.assign(payload, {
+        cylinder_capacity: 1200,
+        consumed_volume: 960,
+        cylinder_status: "REPLACED",
+        breathing_variance: 0.03,
+        emr_status: "OCCUPIED"
+      });
+    } else if (alertType === "Ghost Flow") {
+      Object.assign(payload, { breathing_variance: 0.005, emr_status: "OCCUPIED" });
+    } else if (alertType === "Unauthorized Usage") {
+      Object.assign(payload, { breathing_variance: 0.05, emr_status: "EMPTY" });
+    }
+    return payload;
+  });
+}
+
+function getSimulatorExpectedAlertType(alertType) {
+  const expected = {
+    "Residual Gas": "residual_gas_waste",
+    "Ghost Flow": "ghost_flow",
+    "Unauthorized Usage": "unauthorized_bed_usage"
+  };
+  return expected[alertType] || "";
+}
+
+function getSimulatorRunDeviceId(ward, suffix) {
+  const prefixes = { labour: "LB", ae: "AE", paediatric: "PD", recovery: "RC", nurse: "NS" };
+  const prefix = prefixes[ward.id] || "SM";
+  return `${prefix}${String(suffix).padStart(3, "0")}`;
 }
 
 async function readSimulatorApiResponse(response) {
@@ -1571,8 +1641,9 @@ function getSimulatorDeviceId(ward, tankItem) {
 
 function getSimulatorOperationalStatus(alertType, live) {
   if (["Device Offline", "Sensor Fault"].includes(alertType)) return "hardware_fault";
-  if (["Ghost Flow", "High Flow"].includes(alertType) || live >= 30) return "critical";
-  if (["Unauthorized Usage", "Residual Gas", "Leak", "Low Flow"].includes(alertType)) return "warning";
+  if (["Ghost Flow", "Unauthorized Usage", "Residual Gas"].includes(alertType)) return "normal";
+  if (alertType === "High Flow" || live >= 30) return "critical";
+  if (["Leak", "Low Flow"].includes(alertType)) return "warning";
   return "normal";
 }
 
