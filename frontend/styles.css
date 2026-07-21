@@ -13790,6 +13790,26 @@ body:not(.login-active) #logoutButton {
   font-weight: 850 !important;
 }
 
+/* Keep the four primary Analytics KPIs visually centred and aligned. */
+#analyticsView .analytics-summary .summary-card {
+  display: grid !important;
+  place-items: center !important;
+  text-align: center !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy {
+  align-content: center !important;
+  justify-items: center !important;
+  text-align: center !important;
+}
+
+#analyticsView .analytics-summary .kpi-copy span,
+#analyticsView .analytics-summary .kpi-copy strong,
+#analyticsView .analytics-summary .kpi-copy small {
+  margin-inline: auto !important;
+  text-align: center !important;
+}
+
 #analyticsView .analytics-grid > .report-card,
 #analyticsView .analytics-main-column > .report-card,
 #analyticsView .analytics-side-column > .report-card {
