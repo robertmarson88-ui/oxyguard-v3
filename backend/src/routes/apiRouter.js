@@ -323,7 +323,8 @@ async function createTelemetry(req, res, db) {
     message: "Telemetry logged successfully.",
     telemetry_log: result.telemetry_log,
     alert_created: Boolean(result.alert),
-    alert: result.alert
+    alert: result.alert,
+    alerts: result.alerts
   });
 
   if (result.alert) {

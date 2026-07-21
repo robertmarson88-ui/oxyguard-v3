@@ -96,6 +96,23 @@ export async function createRelationalStore() {
 
 async function ensureOperationalSchema(pool) {
   await pool.query(
+    `alter table public.telemetry_logs
+       add column if not exists cylinder_capacity numeric(12,2),
+       add column if not exists consumed_volume numeric(12,2),
+       add column if not exists cylinder_status varchar(20),
+       add column if not exists breathing_variance numeric(12,6),
+       add column if not exists emr_status varchar(50)`
+  );
+  await pool.query(
+    `alter table public.alerts
+       add column if not exists remaining_volume numeric(12,2),
+       add column if not exists unused_percentage numeric(7,6),
+       add column if not exists estimated_oxygen_waste numeric(12,2),
+       add column if not exists estimated_financial_loss numeric(14,2),
+       add column if not exists potential_savings numeric(14,2),
+       add column if not exists recommended_action varchar(255)`
+  );
+  await pool.query(
     `create table if not exists public.ward_card_statuses (
        ward_key varchar(40) not null,
        asset_key varchar(40) not null,
@@ -254,8 +271,8 @@ async function loadSupabaseTables(pool) {
     users,
     wards,
     devices,
-    telemetryLogs,
-    alerts,
+    telemetryResult,
+    alertResult,
     auditLogs
   ] = await Promise.all([
     queryRows(pool, "select role_id, role_name from public.roles order by role_id"),
@@ -264,8 +281,8 @@ async function loadSupabaseTables(pool) {
     queryRows(pool, "select user_id, username, email, email_verified, password_hash, role_id, created_at from public.users order by user_id"),
     queryRows(pool, "select ward_id, ward_name, location from public.wards order by ward_id"),
     queryRows(pool, "select device_id, ward_id, created_at, device_name, device_status, last_seen, bed_id from public.devices order by device_id"),
-    queryRows(pool, "select log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at from public.telemetry_logs order by log_id"),
-    queryRows(pool, "select alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at from public.alerts order by alert_id"),
+    loadTelemetryLogs(pool),
+    loadAlerts(pool),
     queryRows(pool, `select audit_id, user_id, action, ${auditTargetSelect}, ${auditIpSelect}, performed_at from public.audit_logs order by audit_id`)
   ]);
 
@@ -280,11 +297,57 @@ async function loadSupabaseTables(pool) {
     })),
     wards,
     devices,
-    telemetry_logs: telemetryLogs,
-    alerts,
+    telemetry_logs: telemetryResult.rows,
+    telemetry_has_cylinder_fields: telemetryResult.hasCylinderFields,
+    telemetry_has_breathing_variance: telemetryResult.hasBreathingVariance,
+    telemetry_has_emr_status: telemetryResult.hasEmrStatus,
+    alerts: alertResult.rows,
+    alerts_has_log_id: alertResult.hasLogId,
+    alerts_has_residual_fields: alertResult.hasResidualFields,
+    alerts_has_recommended_action: alertResult.hasRecommendedAction,
     audit_logs: auditLogs,
     audit_log_columns: [...auditLogColumns]
   };
+}
+
+async function loadTelemetryLogs(pool) {
+  const columns = await tableColumns(pool, "telemetry_logs");
+  const cylinderColumns = ["cylinder_capacity", "consumed_volume", "cylinder_status"];
+  const hasCylinderFields = cylinderColumns.every(column => columns.has(column));
+  const hasBreathingVariance = columns.has("breathing_variance");
+  const hasEmrStatus = columns.has("emr_status");
+  const optionalColumns = [
+    ...(hasCylinderFields ? cylinderColumns : []),
+    ...(hasBreathingVariance ? ["breathing_variance"] : []),
+    ...(hasEmrStatus ? ["emr_status"] : [])
+  ];
+  const optionalSelection = optionalColumns.length ? `, ${optionalColumns.join(", ")}` : "";
+  const rows = await queryRows(
+    pool,
+    `select log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at${optionalSelection}
+     from public.telemetry_logs order by log_id`
+  );
+  return { rows, hasCylinderFields, hasBreathingVariance, hasEmrStatus };
+}
+
+async function loadAlerts(pool) {
+  const columns = await tableColumns(pool, "alerts");
+  const hasLogId = columns.has("log_id");
+  const residualColumns = ["remaining_volume", "unused_percentage", "estimated_oxygen_waste", "estimated_financial_loss", "potential_savings"];
+  const hasResidualFields = residualColumns.every(column => columns.has(column));
+  const hasRecommendedAction = columns.has("recommended_action");
+  const selections = [
+    ...(hasLogId ? ["log_id"] : []),
+    ...(hasResidualFields ? residualColumns : []),
+    ...(hasRecommendedAction ? ["recommended_action"] : [])
+  ];
+  const optionalSelection = selections.length ? `, ${selections.join(", ")}` : "";
+  const rows = await queryRows(
+    pool,
+    `select alert_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at${optionalSelection}
+     from public.alerts order by alert_id`
+  );
+  return { rows, hasLogId, hasResidualFields, hasRecommendedAction };
 }
 
 function createDemoAuditLogs({ numericUserIds = false, userIds = [] } = {}) {

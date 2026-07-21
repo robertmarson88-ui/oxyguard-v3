@@ -951,7 +951,13 @@ function mapDatabaseAlertRow(alert, index) {
     priority,
     asset: alert.device_id || `Sensor ${index + 1}`,
     status: priority === "Critical" ? "Awaiting Response" : "Investigating",
-    assigned: priority === "Critical" ? "Facilities" : "Nurse Station",
+    assigned: ["residual_gas_waste", "ghost_flow", "unauthorized_bed_usage"].includes(alert.alert_type) || priority === "Critical" ? "Facilities" : "Nurse Station",
+    remainingVolume: alert.remaining_volume == null ? null : Number(alert.remaining_volume),
+    unusedPercentage: alert.unused_percentage == null ? null : Number(alert.unused_percentage),
+    estimatedOxygenWaste: alert.estimated_oxygen_waste == null ? null : Number(alert.estimated_oxygen_waste),
+    estimatedFinancialLoss: alert.estimated_financial_loss == null ? null : Number(alert.estimated_financial_loss),
+    potentialSavings: alert.potential_savings == null ? null : Number(alert.potential_savings),
+    recommendedAction: alert.recommended_action || "",
     source: "database"
   };
 }
@@ -973,7 +979,9 @@ function formatAlertType(type = "") {
     hardware_fault: "Device Offline",
     warning: "Flow Warning",
     leakage: "Leakage Detected",
-    ghost_flow: "Ghost Flow"
+    ghost_flow: "Ghost Flow",
+    residual_gas_waste: "Residual Gas Waste",
+    unauthorized_bed_usage: "Unauthorized Bed Usage"
   };
   return labels[type] || String(type).replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase()) || "Telemetry Alert";
 }
@@ -1207,7 +1215,7 @@ function renderRealTimeAlert() {
   if (incidentTarget) {
     incidentTarget.innerHTML = `
       <table class="alert-data-table">
-        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Status</th><th>Assigned To</th></tr></thead>
+        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Impact / Action</th><th>Status</th><th>Assigned To</th></tr></thead>
         <tbody>${alertRows.map(row => `
           <tr>
             <td>${row.time}</td>
@@ -1215,6 +1223,7 @@ function renderRealTimeAlert() {
             <td>${row.type}</td>
             <td>${alertPill(row.priority)}</td>
             <td>${row.asset}</td>
+            <td>${formatAlertImpact(row)}</td>
             <td>${alertStatus(row.status)}</td>
             <td>${row.assigned}</td>
           </tr>
@@ -2776,9 +2785,12 @@ function getEsp32DeviceStatus() {
 
 function getCriticalAlertOverview(alertRows) {
   const liveLeaks = alertRows.filter(t => t.leakageAlert && !t.alertType).length;
-  const liveGhostFlow = alertRows.filter(t => t.alertType === "Ghost Flow" || t.highFlowAlert).length;
-  const unauthorized = alertRows.filter(t => t.alertType === "Unauthorized Bed Usage").length;
-  const residualGas = alertRows.filter(t => t.alertType === "Residual Gas").length;
+  const liveGhostFlow = alertRows.filter(t => t.alertType === "Ghost Flow" || t.highFlowAlert).length
+    + databaseAlertRows.filter(row => row.type === "Ghost Flow").length;
+  const unauthorized = alertRows.filter(t => t.alertType === "Unauthorized Bed Usage").length
+    + databaseAlertRows.filter(row => row.type === "Unauthorized Bed Usage").length;
+  const residualGas = alertRows.filter(t => t.alertType === "Residual Gas").length
+    + databaseAlertRows.filter(row => row.type === "Residual Gas Waste").length;
   const cards = [
     ["Leaks", liveLeaks, "LK"],
     ["Ghost Flow", liveGhostFlow, "GF"],
@@ -2789,6 +2801,15 @@ function getCriticalAlertOverview(alertRows) {
     cards,
     total: cards.reduce((sum, [, value]) => sum + value, 0)
   };
+}
+
+function formatAlertImpact(row) {
+  const action = row.recommendedAction ? `<small>${row.recommendedAction}</small>` : "-";
+  if (row.type !== "Residual Gas Waste" || !Number.isFinite(row.estimatedOxygenWaste)) return action;
+  const unusedPercent = Number.isFinite(row.unusedPercentage) ? `${(row.unusedPercentage * 100).toFixed(1)}%` : "-";
+  const loss = Number.isFinite(row.estimatedFinancialLoss) ? currency(row.estimatedFinancialLoss) : "-";
+  const savings = Number.isFinite(row.potentialSavings) ? currency(row.potentialSavings) : "-";
+  return `<strong>${row.estimatedOxygenWaste.toLocaleString()} L waste (${unusedPercent})</strong><br>Loss ${loss} · Savings ${savings}<br>${action}`;
 }
 
 function renderCriticalOverview(overview) {
