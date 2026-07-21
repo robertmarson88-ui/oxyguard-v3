@@ -259,6 +259,7 @@ let adminDeviceRows = [
 ];
 let simulatorEvents = [];
 let simulatorDeviceSequence = Math.floor(Date.now() / 1000) % 1000;
+let simulatorPresetInitialized = false;
 let auditLogDialogRows = [];
 let auditLogDialogRequestId = 0;
 let adminAuditRequestId = 0;
@@ -1102,6 +1103,7 @@ function resetState() {
   pipelineFilter = "";
   esp32OfflineDevices = 1;
   esp32LastFluctuation = 0;
+  simulatorPresetInitialized = false;
 
   renderAll();
   scheduleSimulation();
@@ -1304,7 +1306,8 @@ function renderRealTimeAlert() {
 function renderSimulator() {
   populateSimulatorWards();
   populateSimulatorTanks();
-  applySimulatorPreset(false);
+  applySimulatorPreset(false, !simulatorPresetInitialized);
+  simulatorPresetInitialized = true;
   renderSimulatorLog();
 }
 
@@ -1335,7 +1338,7 @@ function syncSimulatorTankLocation() {
   if (tankItem && location) location.value = tankItem.station;
 }
 
-function applySimulatorPreset(updateMessage = true) {
+function applySimulatorPreset(updateMessage = true, resetValues = true) {
   const alertType = document.getElementById("simulatorAlertType")?.value || "Ghost Flow";
   const prescribed = document.getElementById("simulatorPrescribedFlow");
   const live = document.getElementById("simulatorLiveReading");
@@ -1368,25 +1371,27 @@ function applySimulatorPreset(updateMessage = true) {
     "Sensor Fault": { prescribed: 0, live: 0, patient: "OFF", severity: "High" },
     "Normal": { prescribed: 3, live: 3.4, patient: "ON", severity: "Low" }
   };
-  const preset = presets[alertType] || presets["Ghost Flow"];
-  if (prescribed) prescribed.value = preset.prescribed;
-  if (live) live.value = preset.live;
-  if (patientStatus) patientStatus.value = preset.patient;
-  if (severity) severity.value = preset.severity;
-  if (isResidualGas) {
-    document.getElementById("simulatorCylinderStatus").value = "REPLACED";
-    document.getElementById("simulatorCylinderCapacity").value = 1200;
-    document.getElementById("simulatorConsumedVolume").value = 1092;
-  }
-  if (isGhostFlow) {
-    document.getElementById("simulatorRuleFlowRate").value = 1.2;
-    document.getElementById("simulatorBreathingVariance").value = 0.005;
-    document.getElementById("simulatorDuration").value = 11;
-  }
-  if (isUnauthorized) {
-    document.getElementById("simulatorRuleFlowRate").value = 2;
-    document.getElementById("simulatorDuration").value = 11;
-    document.getElementById("simulatorEmrStatus").value = "EMPTY";
+  if (resetValues) {
+    const preset = presets[alertType] || presets["Ghost Flow"];
+    if (prescribed) prescribed.value = preset.prescribed;
+    if (live) live.value = preset.live;
+    if (patientStatus) patientStatus.value = preset.patient;
+    if (severity) severity.value = preset.severity;
+    if (isResidualGas) {
+      document.getElementById("simulatorCylinderStatus").value = "REPLACED";
+      document.getElementById("simulatorCylinderCapacity").value = 1200;
+      document.getElementById("simulatorConsumedVolume").value = 1092;
+    }
+    if (isGhostFlow) {
+      document.getElementById("simulatorRuleFlowRate").value = 1.2;
+      document.getElementById("simulatorBreathingVariance").value = 0.005;
+      document.getElementById("simulatorDuration").value = 11;
+    }
+    if (isUnauthorized) {
+      document.getElementById("simulatorRuleFlowRate").value = 2;
+      document.getElementById("simulatorDuration").value = 11;
+      document.getElementById("simulatorEmrStatus").value = "EMPTY";
+    }
   }
   renderSimulatorRulePreview();
   if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
