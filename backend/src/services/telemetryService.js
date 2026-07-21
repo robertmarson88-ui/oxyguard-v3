@@ -63,7 +63,7 @@ export function queryTelemetry(db, url) {
 
 function evaluateAlerts(db, log) {
   const alerts = [];
-  if (log.cylinder_status === "REPLACED" && log.consumed_volume < (0.9 * log.cylinder_capacity)) {
+  if (log.cylinder_status === "REPLACED" && log.consumed_volume > (0.9 * log.cylinder_capacity)) {
     const remainingVolume = round(log.cylinder_capacity - log.consumed_volume, 2);
     const unusedPercentage = round(remainingVolume / log.cylinder_capacity, 6);
     const financialLoss = round(remainingVolume * OXYGEN_COST_PER_LITRE, 2);

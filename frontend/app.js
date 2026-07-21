@@ -1368,7 +1368,7 @@ function applySimulatorPreset(updateMessage = true) {
   if (isResidualGas) {
     document.getElementById("simulatorCylinderStatus").value = "REPLACED";
     document.getElementById("simulatorCylinderCapacity").value = 1200;
-    document.getElementById("simulatorConsumedVolume").value = 1068;
+    document.getElementById("simulatorConsumedVolume").value = 1092;
   }
   renderSimulatorRulePreview();
   if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
@@ -1423,8 +1423,8 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
       detail: "Send creates four qualifying readings across 11 minutes and verifies Unauthorized Bed Usage."
     },
     "Residual Gas": {
-      headline: "REPLACED cylinder with utilization below 90%",
-      detail: "Set cylinder status, capacity, and consumed volume manually. The alert triggers only when status is REPLACED and consumption is below 90%."
+      headline: "REPLACED cylinder with utilization above 90%",
+      detail: "Set cylinder status, capacity, and consumed volume manually. The alert triggers only when status is REPLACED and consumption is greater than 90%."
     },
     "Leak": {
       headline: "Live reading indicates possible leakage",
@@ -1481,8 +1481,8 @@ async function submitSimulatorEvent(event) {
       updateSimulatorApiStatus("Residual Gas requires Cylinder Status = REPLACED.", "warn");
       return;
     }
-    if (consumedVolume >= cylinderCapacity * 0.9) {
-      updateSimulatorApiStatus("Consumed volume must be less than 90% of cylinder capacity.", "warn");
+    if (consumedVolume <= cylinderCapacity * 0.9) {
+      updateSimulatorApiStatus("Consumed volume must be greater than 90% of cylinder capacity.", "warn");
       return;
     }
   }
