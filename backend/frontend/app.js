@@ -1393,6 +1393,7 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
       document.getElementById("simulatorEmrStatus").value = "EMPTY";
     }
   }
+  updateSimulatorRuleConstraints(alertType);
   renderSimulatorRulePreview();
   if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
 }
@@ -1402,6 +1403,7 @@ function renderSimulatorRulePreview() {
   const status = document.getElementById("simulatorRuleStatus");
   if (!target) return;
   const alertType = document.getElementById("simulatorAlertType")?.value || "Ghost Flow";
+  updateSimulatorRuleConstraints(alertType);
   const prescribed = Number(document.getElementById("simulatorPrescribedFlow")?.value || 0);
   const live = Number(document.getElementById("simulatorLiveReading")?.value || 0);
   const patientStatus = document.getElementById("simulatorPatientStatus")?.value || "OFF";
@@ -1659,6 +1661,35 @@ async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt
     };
   } catch (error) {
     return { ok: false, triggeredAlerts: [...triggeredAlerts], message: error?.message || "Telemetry API is not reachable." };
+  }
+}
+
+function updateSimulatorRuleConstraints(alertType) {
+  const flowRate = document.getElementById("simulatorRuleFlowRate");
+  const breathingVariance = document.getElementById("simulatorBreathingVariance");
+  const duration = document.getElementById("simulatorDuration");
+  const capacity = document.getElementById("simulatorCylinderCapacity");
+  const consumed = document.getElementById("simulatorConsumedVolume");
+
+  if (flowRate) {
+    flowRate.min = alertType === "Unauthorized Usage" ? "2" : "0.6";
+    flowRate.max = "100";
+    flowRate.step = "0.1";
+  }
+  if (breathingVariance) {
+    breathingVariance.min = "0";
+    breathingVariance.max = "0.009";
+    breathingVariance.step = "0.001";
+  }
+  if (duration) {
+    duration.min = "11";
+    duration.step = "0.1";
+  }
+  const cylinderCapacity = Number(capacity?.value || 0);
+  if (consumed && cylinderCapacity > 0) {
+    consumed.min = String(Number((cylinderCapacity * 0.9 + 0.01).toFixed(2)));
+    consumed.max = String(cylinderCapacity);
+    consumed.step = "0.01";
   }
 }
 

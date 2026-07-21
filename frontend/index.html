@@ -677,8 +677,6 @@
                   Cylinder Status
                   <select id="simulatorCylinderStatus">
                     <option value="REPLACED">REPLACED</option>
-                    <option value="ACTIVE">ACTIVE</option>
-                    <option value="EMPTY">EMPTY</option>
                   </select>
                 </label>
 
@@ -689,7 +687,7 @@
 
                 <label id="simulatorConsumedVolumeField" hidden>
                   Consumed Volume (L)
-                  <input id="simulatorConsumedVolume" type="number" min="0" step="0.1" value="1092" />
+                  <input id="simulatorConsumedVolume" type="number" min="1080.01" max="1200" step="0.01" value="1092" />
                 </label>
 
                 <label id="simulatorLiveReadingField">
@@ -699,12 +697,12 @@
 
                 <label id="simulatorRuleFlowRateField" hidden>
                   Flow Rate (LPM)
-                  <input id="simulatorRuleFlowRate" type="number" min="0" step="0.1" value="1.2" />
+                  <input id="simulatorRuleFlowRate" type="number" min="0.6" max="100" step="0.1" value="1.2" />
                 </label>
 
                 <label id="simulatorBreathingVarianceField" hidden>
                   Breathing Variance
-                  <input id="simulatorBreathingVariance" type="number" min="0" step="0.001" value="0.005" />
+                  <input id="simulatorBreathingVariance" type="number" min="0" max="0.009" step="0.001" value="0.005" />
                 </label>
 
                 <label id="simulatorDurationField" hidden>
@@ -901,6 +899,6 @@
       <p class="user-message" id="deviceMessage"></p>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260720-persistent-simulator-values"></script>
+    <script type="module" src="./app.js?v=20260720-alert-only-input-ranges"></script>
   </body>
 </html>
