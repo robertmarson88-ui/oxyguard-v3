@@ -692,9 +692,34 @@
                   <input id="simulatorConsumedVolume" type="number" min="0" step="0.1" value="1092" />
                 </label>
 
-                <label>
+                <label id="simulatorLiveReadingField">
                   Live Reading
                   <input id="simulatorLiveReading" type="number" min="0" max="100" step="0.1" value="5" />
+                </label>
+
+                <label id="simulatorRuleFlowRateField" hidden>
+                  Flow Rate (LPM)
+                  <input id="simulatorRuleFlowRate" type="number" min="0" step="0.1" value="1.2" />
+                </label>
+
+                <label id="simulatorBreathingVarianceField" hidden>
+                  Breathing Variance
+                  <input id="simulatorBreathingVariance" type="number" min="0" step="0.001" value="0.005" />
+                </label>
+
+                <label id="simulatorDurationField" hidden>
+                  Duration (Minutes)
+                  <input id="simulatorDuration" type="number" min="10.1" step="0.1" value="11" />
+                </label>
+
+                <label id="simulatorEmrStatusField" hidden>
+                  EMR Status
+                  <select id="simulatorEmrStatus">
+                    <option value="EMPTY">EMPTY</option>
+                    <option value="DISCHARGED">DISCHARGED</option>
+                    <option value="TRANSFERRED">TRANSFERRED</option>
+                    <option value="UNASSIGNED">UNASSIGNED</option>
+                  </select>
                 </label>
 
                 <label>

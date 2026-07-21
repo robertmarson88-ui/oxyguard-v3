@@ -354,7 +354,7 @@ function start() {
   document.getElementById("simulatorAlertType")?.addEventListener("change", applySimulatorPreset);
   document.getElementById("simulatorWard")?.addEventListener("change", populateSimulatorTanks);
   document.getElementById("simulatorTank")?.addEventListener("change", syncSimulatorTankLocation);
-  ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume"].forEach(id => {
+  ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume", "simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorEmrStatus"].forEach(id => {
     document.getElementById(id)?.addEventListener("input", renderSimulatorRulePreview);
     document.getElementById(id)?.addEventListener("change", renderSimulatorRulePreview);
   });
@@ -1342,10 +1342,17 @@ function applySimulatorPreset(updateMessage = true) {
   const patientStatus = document.getElementById("simulatorPatientStatus");
   const severity = document.getElementById("simulatorSeverity");
   const isResidualGas = alertType === "Residual Gas";
-  ["simulatorPatientStatusField", "simulatorPrescribedFlowField"].forEach(id => {
+  const isGhostFlow = alertType === "Ghost Flow";
+  const isUnauthorized = alertType === "Unauthorized Usage";
+  const isCustomRule = isResidualGas || isGhostFlow || isUnauthorized;
+  ["simulatorPatientStatusField", "simulatorPrescribedFlowField", "simulatorLiveReadingField"].forEach(id => {
     const field = document.getElementById(id);
-    if (field) field.hidden = isResidualGas;
+    if (field) field.hidden = isCustomRule;
   });
+  document.getElementById("simulatorRuleFlowRateField").hidden = !(isGhostFlow || isUnauthorized);
+  document.getElementById("simulatorDurationField").hidden = !(isGhostFlow || isUnauthorized);
+  document.getElementById("simulatorBreathingVarianceField").hidden = !isGhostFlow;
+  document.getElementById("simulatorEmrStatusField").hidden = !isUnauthorized;
   ["simulatorCylinderStatusField", "simulatorCylinderCapacityField", "simulatorConsumedVolumeField"].forEach(id => {
     const field = document.getElementById(id);
     if (field) field.hidden = !isResidualGas;
@@ -1371,6 +1378,16 @@ function applySimulatorPreset(updateMessage = true) {
     document.getElementById("simulatorCylinderCapacity").value = 1200;
     document.getElementById("simulatorConsumedVolume").value = 1092;
   }
+  if (isGhostFlow) {
+    document.getElementById("simulatorRuleFlowRate").value = 1.2;
+    document.getElementById("simulatorBreathingVariance").value = 0.005;
+    document.getElementById("simulatorDuration").value = 11;
+  }
+  if (isUnauthorized) {
+    document.getElementById("simulatorRuleFlowRate").value = 2;
+    document.getElementById("simulatorDuration").value = 11;
+    document.getElementById("simulatorEmrStatus").value = "EMPTY";
+  }
   renderSimulatorRulePreview();
   if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
 }
@@ -1386,6 +1403,10 @@ function renderSimulatorRulePreview() {
   const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "REPLACED";
   const cylinderCapacity = Number(document.getElementById("simulatorCylinderCapacity")?.value || 0);
   const consumedVolume = Number(document.getElementById("simulatorConsumedVolume")?.value || 0);
+  const ruleFlowRate = Number(document.getElementById("simulatorRuleFlowRate")?.value || 0);
+  const breathingVariance = Number(document.getElementById("simulatorBreathingVariance")?.value || 0);
+  const duration = Number(document.getElementById("simulatorDuration")?.value || 0);
+  const emrStatus = document.getElementById("simulatorEmrStatus")?.value || "EMPTY";
   const flowStatus = evaluatePatientFlowStatus(Math.max(0.1, prescribed), live);
   const variance = prescribed > 0 ? flowStatus.variance : 0;
   const ruleText = getSimulatorRuleText(alertType, patientStatus, prescribed, live, variance);
@@ -1397,6 +1418,20 @@ function renderSimulatorRulePreview() {
         <span><small>Consumed</small><strong>${consumedVolume.toLocaleString()} L</strong></span>
         <span><small>Utilization</small><strong>${cylinderCapacity > 0 ? `${((consumedVolume / cylinderCapacity) * 100).toFixed(1)}%` : "Invalid"}</strong></span>
       </div>`
+    : alertType === "Ghost Flow"
+      ? `<div class="simulator-reading-grid">
+          <span><small>Flow Rate</small><strong>${formatFlow(ruleFlowRate)}</strong></span>
+          <span><small>Breathing Variance</small><strong>${breathingVariance.toFixed(3)}</strong></span>
+          <span><small>Duration</small><strong>${duration} min</strong></span>
+          <span><small>Severity</small><strong>High</strong></span>
+        </div>`
+    : alertType === "Unauthorized Usage"
+      ? `<div class="simulator-reading-grid">
+          <span><small>EMR Status</small><strong>${emrStatus}</strong></span>
+          <span><small>Flow Rate</small><strong>${formatFlow(ruleFlowRate)}</strong></span>
+          <span><small>Duration</small><strong>${duration} min</strong></span>
+          <span><small>Severity</small><strong>High</strong></span>
+        </div>`
     : `<div class="simulator-reading-grid">
         <span><small>Patient</small><strong>${patientStatus}</strong></span>
         <span><small>Set Value</small><strong>${formatFlow(prescribed)}</strong></span>
@@ -1417,11 +1452,11 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
   const rules = {
     "Ghost Flow": {
       headline: "Flow > 0.5 LPM with breathing variance < 0.01",
-      detail: "Send creates four qualifying readings across 11 minutes and verifies a high-severity Ghost Flow alert."
+      detail: "Set flow rate, breathing variance, and duration manually. Duration must be greater than 10 minutes. Recommended Action: Verify patient occupancy and close oxygen supply."
     },
     "Unauthorized Usage": {
-      headline: "EMPTY bed consuming at least 2.0 LPM",
-      detail: "Send creates four qualifying readings across 11 minutes and verifies Unauthorized Bed Usage."
+      headline: "Inactive EMR bed consuming at least 2.0 LPM",
+      detail: "Select EMPTY, DISCHARGED, TRANSFERRED, or UNASSIGNED and set a duration greater than 10 minutes. Recommended Action: Verify patient assignment and investigate oxygen usage."
     },
     "Residual Gas": {
       headline: "REPLACED cylinder with utilization above 90%",
@@ -1469,6 +1504,10 @@ async function submitSimulatorEvent(event) {
   const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "REPLACED";
   const cylinderCapacity = Number(document.getElementById("simulatorCylinderCapacity")?.value || 0);
   const consumedVolume = Number(document.getElementById("simulatorConsumedVolume")?.value || 0);
+  const ruleFlowRate = Number(document.getElementById("simulatorRuleFlowRate")?.value || 0);
+  const breathingVariance = Number(document.getElementById("simulatorBreathingVariance")?.value || 0);
+  const duration = Number(document.getElementById("simulatorDuration")?.value || 0);
+  const emrStatus = document.getElementById("simulatorEmrStatus")?.value || "EMPTY";
   const location = document.getElementById("simulatorLocation").value.trim() || tankItem.station;
   const createdAt = new Date().toISOString();
   const sendButton = document.getElementById("simulatorSendButton");
@@ -1487,14 +1526,44 @@ async function submitSimulatorEvent(event) {
       return;
     }
   }
+  if (alertType === "Ghost Flow") {
+    if (ruleFlowRate <= 0.5) {
+      updateSimulatorApiStatus("Ghost Flow requires a flow rate greater than 0.5 LPM.", "warn");
+      return;
+    }
+    if (breathingVariance < 0 || breathingVariance >= 0.01) {
+      updateSimulatorApiStatus("Ghost Flow requires breathing variance below 0.01.", "warn");
+      return;
+    }
+    if (duration <= 10) {
+      updateSimulatorApiStatus("Ghost Flow duration must be greater than 10 minutes.", "warn");
+      return;
+    }
+  }
+  if (alertType === "Unauthorized Usage") {
+    if (ruleFlowRate < 2) {
+      updateSimulatorApiStatus("Unauthorized Usage requires a flow rate of at least 2.0 LPM.", "warn");
+      return;
+    }
+    if (!["EMPTY", "DISCHARGED", "TRANSFERRED", "UNASSIGNED"].includes(emrStatus)) {
+      updateSimulatorApiStatus("Select a valid inactive EMR status.", "warn");
+      return;
+    }
+    if (duration <= 10) {
+      updateSimulatorApiStatus("Unauthorized Usage duration must be greater than 10 minutes.", "warn");
+      return;
+    }
+  }
 
-  applySimulatorEventToTank(tankItem, { alertType, prescribed, live, patientStatus, severity, location });
+  const effectiveLive = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? ruleFlowRate : live;
+
+  applySimulatorEventToTank(tankItem, { alertType, prescribed, live: effectiveLive, patientStatus, severity, location });
   if (sendButton) {
     sendButton.disabled = true;
     sendButton.textContent = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? "Sending 4 Readings..." : "Sending...";
   }
   updateSimulatorApiStatus(`Running ${alertType} rule against the telemetry API...`, "ready");
-  const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt, { cylinderStatus, cylinderCapacity, consumedVolume });
+  const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, effectiveLive, createdAt, { cylinderStatus, cylinderCapacity, consumedVolume, breathingVariance, duration, emrStatus });
   if (sendButton) {
     sendButton.disabled = false;
     sendButton.textContent = "Send Test Reading";
@@ -1506,7 +1575,7 @@ async function submitSimulatorEvent(event) {
     location,
     alertType,
     severity,
-    live,
+    live: effectiveLive,
     prescribed,
     apiStatus: telemetryResult.ok ? "API logged" : "Screen only"
   });
@@ -1590,7 +1659,9 @@ async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt
 
 function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt, cylinder = {}) {
   const endTime = new Date(createdAt);
-  const offsets = [11, 6, 1, 0];
+  const requestedDuration = Number(cylinder.duration);
+  const duration = Number.isFinite(requestedDuration) && requestedDuration > 10 ? requestedDuration : 11;
+  const offsets = [duration, duration * 0.55, duration * 0.1, 0];
   const durationRule = ["Ghost Flow", "Unauthorized Usage"].includes(alertType);
   const timestamps = durationRule
     ? offsets.map(minutes => new Date(endTime.getTime() - minutes * 60000).toISOString())
@@ -1612,9 +1683,9 @@ function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, create
         emr_status: "OCCUPIED"
       });
     } else if (alertType === "Ghost Flow") {
-      Object.assign(payload, { breathing_variance: 0.005, emr_status: "OCCUPIED" });
+      Object.assign(payload, { breathing_variance: Number(cylinder.breathingVariance), emr_status: "OCCUPIED" });
     } else if (alertType === "Unauthorized Usage") {
-      Object.assign(payload, { breathing_variance: 0.05, emr_status: "EMPTY" });
+      Object.assign(payload, { breathing_variance: 0.05, emr_status: cylinder.emrStatus });
     }
     return payload;
   });
