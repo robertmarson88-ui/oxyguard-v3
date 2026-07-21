@@ -1452,11 +1452,11 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
   const rules = {
     "Ghost Flow": {
       headline: "Flow > 0.5 LPM with breathing variance < 0.01",
-      detail: "Set flow rate, breathing variance, and duration manually. Duration must be greater than 10 minutes. Recommended Action: Verify patient occupancy and close oxygen supply."
+      detail: "Set flow rate, breathing variance, and duration manually. Duration must be at least 11 minutes. Recommended Action: Verify patient occupancy and close oxygen supply."
     },
     "Unauthorized Usage": {
       headline: "Inactive EMR bed consuming at least 2.0 LPM",
-      detail: "Select EMPTY, DISCHARGED, TRANSFERRED, or UNASSIGNED and set a duration greater than 10 minutes. Recommended Action: Verify patient assignment and investigate oxygen usage."
+      detail: "Select EMPTY, DISCHARGED, TRANSFERRED, or UNASSIGNED and set a duration of at least 11 minutes. Recommended Action: Verify patient assignment and investigate oxygen usage."
     },
     "Residual Gas": {
       headline: "REPLACED cylinder with utilization above 90%",
@@ -1535,8 +1535,8 @@ async function submitSimulatorEvent(event) {
       updateSimulatorApiStatus("Ghost Flow requires breathing variance below 0.01.", "warn");
       return;
     }
-    if (duration <= 10) {
-      updateSimulatorApiStatus("Ghost Flow duration must be greater than 10 minutes.", "warn");
+    if (duration < 11) {
+      updateSimulatorApiStatus("Ghost Flow duration must be at least 11 minutes.", "warn");
       return;
     }
   }
@@ -1549,8 +1549,8 @@ async function submitSimulatorEvent(event) {
       updateSimulatorApiStatus("Select a valid inactive EMR status.", "warn");
       return;
     }
-    if (duration <= 10) {
-      updateSimulatorApiStatus("Unauthorized Usage duration must be greater than 10 minutes.", "warn");
+    if (duration < 11) {
+      updateSimulatorApiStatus("Unauthorized Usage duration must be at least 11 minutes.", "warn");
       return;
     }
   }
@@ -1660,7 +1660,7 @@ async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt
 function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt, cylinder = {}) {
   const endTime = new Date(createdAt);
   const requestedDuration = Number(cylinder.duration);
-  const duration = Number.isFinite(requestedDuration) && requestedDuration > 10 ? requestedDuration : 11;
+  const duration = Number.isFinite(requestedDuration) && requestedDuration >= 11 ? requestedDuration : 11;
   const offsets = [duration, duration * 0.55, duration * 0.1, 0];
   const durationRule = ["Ghost Flow", "Unauthorized Usage"].includes(alertType);
   const timestamps = durationRule

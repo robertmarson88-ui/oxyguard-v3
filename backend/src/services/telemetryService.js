@@ -6,7 +6,7 @@ const RESIDUAL_GAS_RECOMMENDATION = "Review cylinder replacement procedures.";
 const GHOST_FLOW_RECOMMENDATION = "Verify patient occupancy and close oxygen supply.";
 const UNAUTHORIZED_BED_RECOMMENDATION = "Verify patient assignment and investigate oxygen usage.";
 const UNAUTHORIZED_EMR_STATUSES = new Set(["EMPTY", "DISCHARGED", "TRANSFERRED", "UNASSIGNED"]);
-const MINIMUM_RULE_DURATION_MINUTES = 10;
+const MINIMUM_RULE_DURATION_MINUTES = 11;
 
 export async function ingestTelemetry(db, payload) {
   const validation = validateTelemetryPayload(payload);
@@ -80,7 +80,7 @@ function evaluateAlerts(db, log) {
   const ghostFlowDuration = continuousQualifyingDuration(db, log, sample => (
     sample.flow_rate > 0.5 && sample.breathing_variance < 0.01
   ));
-  if (ghostFlowDuration > MINIMUM_RULE_DURATION_MINUTES && !hasActiveAlert(db, log.device_id, "ghost_flow")) {
+  if (ghostFlowDuration >= MINIMUM_RULE_DURATION_MINUTES && !hasActiveAlert(db, log.device_id, "ghost_flow")) {
     alerts.push(createAlert(db, log, "ghost_flow", "high", {
       recommended_action: GHOST_FLOW_RECOMMENDATION
     }));
@@ -90,7 +90,7 @@ function evaluateAlerts(db, log) {
     UNAUTHORIZED_EMR_STATUSES.has(String(sample.emr_status || "").toUpperCase())
     && sample.flow_rate >= 2.0
   ));
-  if (unauthorizedBedDuration > MINIMUM_RULE_DURATION_MINUTES && !hasActiveAlert(db, log.device_id, "unauthorized_bed_usage")) {
+  if (unauthorizedBedDuration >= MINIMUM_RULE_DURATION_MINUTES && !hasActiveAlert(db, log.device_id, "unauthorized_bed_usage")) {
     alerts.push(createAlert(db, log, "unauthorized_bed_usage", "high", {
       recommended_action: UNAUTHORIZED_BED_RECOMMENDATION
     }));
