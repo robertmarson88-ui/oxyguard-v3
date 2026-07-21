@@ -241,7 +241,7 @@ let adminGovernanceSettings = [
   { key: "patientAnonymization", title: "Patient Anonymization", description: "Hide patient identifiers in all modules", value: "Enabled", type: "toggle", enabled: true },
   { key: "dataRetention", title: "Data Retention Period", description: "Automatic data deletion after period", value: "365 Days", options: ["180 Days", "365 Days", "730 Days"] },
   { key: "auditLogging", title: "Audit Logging", description: "Record all system and data access", value: "Enabled", type: "toggle", enabled: true },
-  { key: "dataExport", title: "Data Export Restrictions", description: "Restrict data export to authorized roles", value: "Administrator Only", options: ["Administrator Only", "Executive", "Disabled"] }
+  { key: "dataExport", title: "Data Export Restrictions", description: "Restrict data export to authorized roles", value: "Administrator Only", options: ["Administrator Only", "CFO", "Disabled"] }
 ];
 let adminAlertRules = [
   { key: "ghostFlow", title: "Ghost Flow Threshold", description: "Minimum flow when flag is OFF", value: "0.5 Litre/Min", options: ["0.3 Litre/Min", "0.5 Litre/Min", "0.8 Litre/Min"] },
@@ -282,19 +282,19 @@ const permissionViews = {
   },
   "facilities-manager": {
     label: "Facilities Manager",
-    allowedViews: ["report", "alert", "simulator"]
+    allowedViews: ["dashboard", "order"]
   },
   "nurse-supervisor": {
     label: "Nurse Manager",
-    allowedViews: ["report", "alert"]
+    allowedViews: ["dashboard"]
   },
   nurse: {
     label: "Nurse",
     allowedViews: ["report", "alert"]
   },
   maintenance: {
-    label: "Executive",
-    allowedViews: ["report", "analytics"]
+    label: "CFO",
+    allowedViews: ["report", "dashboard", "alert"]
   },
   viewer: {
     label: "Viewer",
@@ -708,7 +708,7 @@ function setMfaLoginMode(enabled, elements, delivery = {}) {
     const message = delivery?.message || `Authentication code sent to ${delivery?.masked_email || "your email"}.`;
     hint.textContent = enabled
       ? `${message}${delivery?.dev_code ? ` Code: ${delivery.dev_code}` : ""}`
-      : "Admin: admin / admin1 | Facilities Manager: facilities / facilities1 | Nurse: nurse / nurse1 | Executive: executive / executive1";
+      : "Admin: admin / admin1 | Facilities Manager: facilities / facilities1 | Nurse: nurse / nurse1 | CFO: executive / executive1";
   }
   if (enabled) {
     if (mfaCode) mfaCode.value = "";
@@ -817,9 +817,9 @@ function getLocalLoginUser(username, password) {
       password: "executive1",
       user_id: "AA009",
       username: "executive",
-      role: "executive",
+      role: "cfo",
       role_id: 2,
-      label: "Executive",
+      label: "CFO",
       email: "executive@monamercy.local",
       permissions: ["view_logs"]
     },
@@ -1031,7 +1031,7 @@ function applyRoleAccess() {
               <button type="button" data-permission-view="admin">Administrator</button>
               <button type="button" data-permission-view="facilities-manager">Facilities Manager</button>
               <button type="button" data-permission-view="nurse-supervisor">Nurse Manager</button>
-              <button type="button" data-permission-view="maintenance">Executive</button>
+              <button type="button" data-permission-view="maintenance">CFO</button>
             </div>
           </div>
         ` : `<span class="user-role">${currentUser.label}</span>`}
@@ -1090,6 +1090,7 @@ function normalizePermissionRole(role = "") {
   if (value.includes("nurse") && value.includes("manager")) return "nurse-supervisor";
   if (value.includes("facilities") && value.includes("manager")) return "facilities-manager";
   if (value.includes("executive")) return "maintenance";
+  if (value === "cfo" || value.includes("chief-financial-officer")) return "maintenance";
   if (value.includes("maintenance")) return "maintenance";
   if (value === "admin" || value.includes("administrator") || value.includes("facilities-admin")) return "admin";
   if (value === "nurse" || value.includes("ward-nurse")) return "nurse";

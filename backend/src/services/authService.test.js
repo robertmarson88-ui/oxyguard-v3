@@ -4,10 +4,13 @@ import test from "node:test";
 import { createAuthService } from "./authService.js";
 
 const db = {
-  users: [{ user_id: 7, username: "jwt-user", password: "secret", role_id: 2, email: "jwt@example.com" }],
-  roles: [{ role_id: 2, role_name: "Nurse" }],
+  users: [
+    { user_id: 7, username: "jwt-user", password: "secret", role_id: 2, email: "jwt@example.com" },
+    { user_id: 8, username: "finance-user", password: "secret", role_id: 3, email: "cfo@example.com" }
+  ],
+  roles: [{ role_id: 2, role_name: "Nurse" }, { role_id: 3, role_name: "CFO" }],
   permissions: [{ permission_id: 11, permission_name: "alerts:view" }],
-  role_permissions: [{ role_id: 2, permission_id: 11 }]
+  role_permissions: [{ role_id: 2, permission_id: 11 }, { role_id: 3, permission_id: 11 }]
 };
 
 test("issues and authorizes a signed JWT after MFA", () => {
@@ -37,4 +40,11 @@ test("rejects tampered JWTs and unauthorized permissions", () => {
   assert.equal(auth.authorizeRequest({
     headers: { authorization: `Bearer ${result.access_token}` }
   }, "telemetry_write").status, 403);
+});
+
+test("returns the CFO role key for finance users", () => {
+  const auth = createAuthService(db);
+  const result = auth.authenticate("finance-user", "secret");
+  assert.equal(result.role, "CFO");
+  assert.equal(result.user.role, "cfo");
 });

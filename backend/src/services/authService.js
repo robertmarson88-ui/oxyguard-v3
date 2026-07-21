@@ -183,8 +183,9 @@ export function createAuthService(db) {
     const keys = {
       administrator: "admin",
       "facilities admin": "admin",
-      executive: "executive",
-      "executive user": "executive",
+      cfo: "cfo",
+      executive: "cfo",
+      "executive user": "cfo",
       "facilities manager": "facilities-manager",
       "nurse manager": "nurse-supervisor",
       "nurse supervisor": "nurse-supervisor",

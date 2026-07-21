@@ -6,7 +6,7 @@ export async function createRelationalStore() {
     source: "demo",
     roles: [
       { role_id: 1, role_name: "Administrator" },
-      { role_id: 2, role_name: "Executive" },
+      { role_id: 2, role_name: "CFO" },
       { role_id: 3, role_name: "Facilities Manager" },
       { role_id: 4, role_name: "Nurse Manager" },
       { role_id: 5, role_name: "Nurse" }
@@ -152,14 +152,24 @@ async function ensureOperationalSchema(pool) {
 
   const roles = await queryRows(pool, "select role_id, lower(role_name) as role_name from public.roles");
   const adminRole = await ensureRole(pool, roles, ["administrator", "facilities admin"], "Administrator");
+  const cfoRole = roles.find(role => role.role_name === "cfo")
+    || await ensureRole(pool, roles, ["executive", "executive user"], "CFO");
+  const facilitiesRole = await ensureRole(pool, roles, ["facilities manager"], "Facilities Manager");
   const nurseManagerRole = await ensureRole(pool, roles, ["nurse manager", "nurse supervisor"], "Nurse Manager");
   const nurseRole = await ensureRole(pool, roles, ["nurse"], "Nurse");
+
+  if (cfoRole.role_name !== "cfo") {
+    await pool.query("update public.roles set role_name = 'CFO' where role_id = $1", [cfoRole.role_id]);
+    cfoRole.role_name = "cfo";
+  }
 
   await ensureOperationalUser(pool, "admin", "admin1", "facilities.admin@monamercy.local", adminRole.role_id);
   await ensureOperationalUser(pool, "martin", "martin1", "robinsonmartin187@gmail.com", adminRole.role_id);
   await ensureOperationalUser(pool, "martinm", "martin1", "robinsonmartin187@gmail.com", adminRole.role_id);
   await ensureOperationalUser(pool, "vernon", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id);
   await ensureOperationalUser(pool, "vernond", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id);
+  await ensureOperationalUser(pool, "executive", "executive1", "executive@monamercy.local", cfoRole.role_id);
+  await ensureOperationalUser(pool, "facilities", "facilities1", "facilities.manager@monamercy.local", facilitiesRole.role_id);
   await ensureOperationalUser(pool, "supervisor", "nurse1", "nurse.supervisor@monamercy.local", nurseManagerRole.role_id);
   await ensureOperationalUser(pool, "nurse", "nurse1", "ward.nurse@monamercy.local", nurseRole.role_id);
 
@@ -172,7 +182,7 @@ async function ensureOperationalSchema(pool) {
     "view_dashboard"
   ].includes(String(permission.permission_name || "").toLowerCase()));
   if (viewPermission) {
-    for (const role of [adminRole, nurseManagerRole, nurseRole]) {
+    for (const role of [adminRole, cfoRole, facilitiesRole, nurseManagerRole, nurseRole]) {
       await pool.query(
         `insert into public.role_permissions (role_id, permission_id)
          values ($1, $2)

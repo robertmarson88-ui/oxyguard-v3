@@ -581,12 +581,22 @@ async function updateUserRole(req, res, db, username, actor) {
 function listUsers(db) {
   return db.users.map(user => {
     const role = findRole(db, user.role_id);
-    const isAdministrator = role?.role_name === "Administrator";
+    const roleName = String(role?.role_name || "").trim().toLowerCase();
+    const roleKeys = {
+      administrator: "admin",
+      "facilities admin": "admin",
+      cfo: "cfo",
+      executive: "cfo",
+      "facilities manager": "facilities-manager",
+      "nurse manager": "nurse-supervisor",
+      "nurse supervisor": "nurse-supervisor",
+      nurse: "nurse"
+    };
     return {
       user_id: user.user_id,
       username: user.username,
       email: user.email,
-      role: isAdministrator ? "admin" : "viewer",
+      role: roleKeys[roleName] || "viewer",
       role_id: user.role_id,
       label: role?.role_name || "Unknown"
     };
