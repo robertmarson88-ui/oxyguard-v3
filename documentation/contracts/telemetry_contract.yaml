@@ -1,0 +1,75 @@
+contract: oxyguard_telemetry
+version: 1.2.0
+content_type: application/json
+
+required_fields:
+  device_id:
+    type: string
+    pattern: "^[A-Z]{2}[0-9]{3}$"
+  ward_id:
+    type: string
+    min_length: 1
+  flow_rate:
+    type: number
+    minimum: 0
+    maximum: 100
+  operational_status:
+    type: string
+    enum: [normal, warning, critical, hardware_fault]
+  timestamp:
+    type: string
+    format: date-time
+
+optional_replacement_event_fields:
+  rule: If any replacement event field is supplied, all three fields are required.
+  cylinder_capacity:
+    type: number
+    exclusive_minimum: 0
+    unit: litre
+  consumed_volume:
+    type: number
+    minimum: 0
+    maximum: cylinder_capacity
+    unit: litre
+  cylinder_status:
+    type: string
+    enum: [IN_USE, REPLACED]
+
+optional_detection_fields:
+  breathing_variance:
+    type: number
+    minimum: 0
+    description: Variance in the detected patient breathing waveform.
+  emr_status:
+    type: string
+    min_length: 1
+    description: Current bed or patient assignment status supplied by the EMR.
+
+residual_gas_detection:
+  condition: cylinder_status == REPLACED and consumed_volume < (0.90 * cylinder_capacity)
+  alert_type: residual_gas_waste
+  label: Residual Gas Waste
+  severity: medium
+  recommended_action: Review cylinder replacement procedures.
+  calculations:
+    remaining_volume: cylinder_capacity - consumed_volume
+    unused_percentage: remaining_volume / cylinder_capacity
+    estimated_oxygen_waste: remaining_volume
+    estimated_financial_loss: remaining_volume * 1.51
+    potential_savings: estimated_financial_loss
+
+ghost_flow_detection:
+  condition: flow_rate > 0.5 and breathing_variance < 0.01 continuously for more than 10 minutes
+  duration_scope: Consecutive qualifying telemetry for the same device; a non-qualifying reading resets the timer.
+  alert_type: ghost_flow
+  label: Ghost Flow
+  severity: high
+  recommended_action: Verify patient occupancy and close oxygen supply.
+
+unauthorized_bed_detection:
+  condition: emr_status in [EMPTY, DISCHARGED, TRANSFERRED, UNASSIGNED] and flow_rate >= 2.0 continuously for more than 10 minutes
+  duration_scope: Consecutive qualifying telemetry for the same device; a non-qualifying reading resets the timer.
+  alert_type: unauthorized_bed_usage
+  label: Unauthorized Bed Usage
+  severity: high
+  recommended_action: Verify patient assignment and investigate oxygen usage.

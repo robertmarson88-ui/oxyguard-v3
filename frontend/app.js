@@ -540,7 +540,13 @@ function mapDatabaseAlertRow(alert, index) {
     priority,
     asset: alert.device_id || `Sensor ${index + 1}`,
     status: priority === "Critical" ? "Awaiting Response" : "Investigating",
-    assigned: priority === "Critical" ? "Facilities" : "Nurse Station",
+    assigned: alert.alert_type === "residual_gas_waste" || priority === "Critical" ? "Facilities" : "Nurse Station",
+    remainingVolume: alert.remaining_volume == null ? null : Number(alert.remaining_volume),
+    unusedPercentage: alert.unused_percentage == null ? null : Number(alert.unused_percentage),
+    estimatedOxygenWaste: alert.estimated_oxygen_waste == null ? null : Number(alert.estimated_oxygen_waste),
+    estimatedFinancialLoss: alert.estimated_financial_loss == null ? null : Number(alert.estimated_financial_loss),
+    potentialSavings: alert.potential_savings == null ? null : Number(alert.potential_savings),
+    recommendedAction: alert.recommended_action || "",
     source: "database"
   };
 }
@@ -562,7 +568,9 @@ function formatAlertType(type = "") {
     hardware_fault: "Device Offline",
     warning: "Flow Warning",
     leakage: "Leakage Detected",
-    ghost_flow: "Ghost Flow"
+    ghost_flow: "Ghost Flow",
+    residual_gas_waste: "Residual Gas Waste",
+    unauthorized_bed_usage: "Unauthorized Bed Usage"
   };
   return labels[type] || String(type).replace(/_/g, " ").replace(/\b\w/g, char => char.toUpperCase()) || "Telemetry Alert";
 }
@@ -771,7 +779,7 @@ function renderRealTimeAlert() {
   if (incidentTarget) {
     incidentTarget.innerHTML = `
       <table class="alert-data-table">
-        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Status</th><th>Assigned To</th></tr></thead>
+        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Impact</th><th>Status</th><th>Assigned To</th></tr></thead>
         <tbody>${alertRows.map(row => `
           <tr>
             <td>${row.time}</td>
@@ -779,6 +787,7 @@ function renderRealTimeAlert() {
             <td>${row.type}</td>
             <td>${alertPill(row.priority)}</td>
             <td>${row.asset}</td>
+            <td>${formatAlertImpact(row)}</td>
             <td>${alertStatus(row.status)}</td>
             <td>${row.assigned}</td>
           </tr>
@@ -1439,12 +1448,13 @@ function getEsp32DeviceStatus() {
 
 function getCriticalAlertOverview(alertRows) {
   const liveLeaks = alertRows.filter(t => t.leakageAlert).length;
-  const liveGhostFlow = alertRows.filter(t => t.highFlowAlert).length;
+  const liveGhostFlow = alertRows.filter(t => t.highFlowAlert).length
+    + databaseAlertRows.filter(row => row.type === "Ghost Flow").length;
   const cards = [
     ["Leaks", liveLeaks || 2, "LK"],
     ["Ghost Flow", liveGhostFlow || 1, "GF"],
-    ["Unauthorized", 1, "ID"],
-    ["Residual Gas", 0, "O2"]
+    ["Unauthorized", databaseAlertRows.filter(row => row.type === "Unauthorized Bed Usage").length, "ID"],
+    ["Residual Gas", databaseAlertRows.filter(row => row.type === "Residual Gas Waste").length, "O2"]
   ];
   return {
     cards,
@@ -1849,6 +1859,15 @@ function renderReportCenterAuditTrail() {
     rows.push([auditLogEmptyMessage(), "-", "-", "-", "-"]);
   }
   target.innerHTML = tableHtml(["Date / Time", "User Role", "User ID", "Action", "Details"], rows);
+}
+
+function formatAlertImpact(row) {
+  const action = row.recommendedAction ? `<small>${row.recommendedAction}</small>` : "-";
+  if (row.type !== "Residual Gas Waste" || !Number.isFinite(row.estimatedOxygenWaste)) return action;
+  const unusedPercent = Number.isFinite(row.unusedPercentage) ? `${(row.unusedPercentage * 100).toFixed(1)}%` : "-";
+  const loss = Number.isFinite(row.estimatedFinancialLoss) ? currency(row.estimatedFinancialLoss) : "-";
+  const savings = Number.isFinite(row.potentialSavings) ? currency(row.potentialSavings) : "-";
+  return `<strong>${row.estimatedOxygenWaste.toLocaleString()} L waste (${unusedPercent})</strong><br>Loss ${loss} · Savings ${savings}<br>${action}`;
 }
 
 function renderReportCenterRecommendations() {

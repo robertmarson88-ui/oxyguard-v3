@@ -40,11 +40,38 @@ Publish approved test payload:
 & "C:\Program Files\mosquitto\mosquitto_pub.exe" -h 127.0.0.1 -p 1883 -t "oxyguard/telemetry" -f ".\approved-telemetry-payload.json"
 ```
 
-Or use the temporary simulated telemetry publisher:
+Run every simulator scenario against the local API. Duration-based scenarios use readings timestamped at 0, 5, 10, and 11 minutes, so the exact `> 10 minutes` rules can be verified immediately without waiting:
 
 ```powershell
 python .\simulate_telemetry_publisher.py
 ```
+
+Run one scenario:
+
+```powershell
+python .\simulate_telemetry_publisher.py --scenario residual_gas
+python .\simulate_telemetry_publisher.py --scenario ghost_flow
+python .\simulate_telemetry_publisher.py --scenario unauthorized_bed
+```
+
+The HTTP simulator checks the API response and exits with an error if the expected alert does not appear. Use a different API endpoint when required:
+
+```powershell
+python .\simulate_telemetry_publisher.py --api-url https://your-render-service.onrender.com/api/v1/telemetry
+```
+
+MQTT publish-only compatibility remains available, but it cannot verify the resulting alerts:
+
+```powershell
+python .\simulate_telemetry_publisher.py --transport mqtt --scenario all
+```
+
+Scenario triggers:
+
+- `normal`: boundary-safe values; no alert expected.
+- `residual_gas`: a 1,200 L cylinder is replaced after consuming 960 L (80% utilization).
+- `ghost_flow`: 1.2 LPM with breathing variance 0.005 for 11 minutes.
+- `unauthorized_bed`: an `EMPTY` bed consuming exactly 2.0 LPM for 11 minutes.
 
 Subscribe and confirm receipt:
 

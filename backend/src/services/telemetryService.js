@@ -1,13 +1,19 @@
 import { validateTelemetryPayload } from "../schemas/telemetryContract.js";
 
 const alertSeverities = new Set(["high", "medium", "low", "critical"]);
+const OXYGEN_COST_PER_LITRE = 1.51;
+const RESIDUAL_GAS_RECOMMENDATION = "Review cylinder replacement procedures.";
+const GHOST_FLOW_RECOMMENDATION = "Verify patient occupancy and close oxygen supply.";
+const UNAUTHORIZED_BED_RECOMMENDATION = "Verify patient assignment and investigate oxygen usage.";
+const UNAUTHORIZED_EMR_STATUSES = new Set(["EMPTY", "DISCHARGED", "TRANSFERRED", "UNASSIGNED"]);
+const MINIMUM_RULE_DURATION_MINUTES = 10;
 
 export async function ingestTelemetry(db, payload) {
   const validation = validateTelemetryPayload(payload);
   if (!validation.ok) return validation;
 
-  ensureWard(db, payload.ward_id);
-  ensureDevice(db, payload.device_id, payload.ward_id);
+  await ensureWard(db, payload.ward_id);
+  await ensureDevice(db, payload.device_id, payload.ward_id);
 
   let telemetry_log = {
     log_id: db.nextLogId++,
@@ -16,7 +22,18 @@ export async function ingestTelemetry(db, payload) {
     flow_rate: Number(payload.flow_rate.toFixed(2)),
     operational_status: payload.operational_status,
     device_timestamp: payload.timestamp,
-    received_at: new Date().toISOString()
+    received_at: new Date().toISOString(),
+    ...(payload.cylinder_capacity !== undefined ? {
+      cylinder_capacity: Number(payload.cylinder_capacity.toFixed(2)),
+      consumed_volume: Number(payload.consumed_volume.toFixed(2)),
+      cylinder_status: payload.cylinder_status
+    } : {}),
+    ...(payload.breathing_variance !== undefined ? {
+      breathing_variance: Number(payload.breathing_variance.toFixed(6))
+    } : {}),
+    ...(payload.emr_status !== undefined ? {
+      emr_status: payload.emr_status.trim().toUpperCase()
+    } : {})
   };
 
   if (db.pgPool) {
@@ -25,13 +42,15 @@ export async function ingestTelemetry(db, payload) {
 
   db.telemetry_logs.push(telemetry_log);
 
-  const alert = evaluateAlert(db, telemetry_log);
-  if (alert) {
-    const persistedAlert = db.pgPool ? await insertAlert(db, alert, telemetry_log.log_id) : alert;
-    db.alerts.push(persistedAlert);
+  const generatedAlerts = evaluateAlerts(db, telemetry_log);
+  const alerts = [];
+  for (const generatedAlert of generatedAlerts) {
+    const alert = db.pgPool ? await insertAlert(db, generatedAlert, telemetry_log.log_id) : generatedAlert;
+    db.alerts.push(alert);
+    alerts.push(alert);
   }
 
-  return { ok: true, telemetry_log, alert };
+  return { ok: true, telemetry_log, alert: alerts[0] || null, alerts };
 }
 
 export function queryTelemetry(db, url) {
@@ -45,73 +64,175 @@ export function queryTelemetry(db, url) {
     .reverse();
 }
 
-function evaluateAlert(db, log) {
-  let alert_type = "";
-  let severity = "low";
-
-  if (log.operational_status === "hardware_fault") {
-    alert_type = "hardware_fault";
-    severity = "high";
-  } else if (log.operational_status === "critical") {
-    alert_type = "critical_flow";
-    severity = "critical";
-  } else if (log.operational_status === "warning" || log.flow_rate >= 30) {
-    alert_type = log.flow_rate >= 30 ? "high_flow" : "warning";
-    severity = log.flow_rate >= 50 ? "high" : "medium";
+function evaluateAlerts(db, log) {
+  const alerts = [];
+  if (
+    log.cylinder_status === "REPLACED"
+    && log.consumed_volume < (0.9 * log.cylinder_capacity)
+  ) {
+    const remainingVolume = round(log.cylinder_capacity - log.consumed_volume, 2);
+    const unusedPercentage = round(remainingVolume / log.cylinder_capacity, 6);
+    const financialLoss = round(remainingVolume * OXYGEN_COST_PER_LITRE, 2);
+    alerts.push(createAlert(db, log, "residual_gas_waste", "medium", {
+      remaining_volume: remainingVolume,
+      unused_percentage: unusedPercentage,
+      estimated_oxygen_waste: remainingVolume,
+      estimated_financial_loss: financialLoss,
+      potential_savings: financialLoss,
+      recommended_action: RESIDUAL_GAS_RECOMMENDATION
+    }));
   }
 
-  if (!alert_type || !alertSeverities.has(severity)) return null;
+  const ghostFlowDuration = continuousQualifyingDuration(db, log, sample => (
+    sample.flow_rate > 0.5 && sample.breathing_variance < 0.01
+  ));
+  if (
+    ghostFlowDuration > MINIMUM_RULE_DURATION_MINUTES
+    && !hasActiveAlert(db, log.device_id, "ghost_flow")
+  ) {
+    alerts.push(createAlert(db, log, "ghost_flow", "high", {
+      recommended_action: GHOST_FLOW_RECOMMENDATION
+    }));
+  }
+
+  const unauthorizedBedDuration = continuousQualifyingDuration(db, log, sample => (
+    UNAUTHORIZED_EMR_STATUSES.has(String(sample.emr_status || "").toUpperCase())
+    && sample.flow_rate >= 2.0
+  ));
+  if (
+    unauthorizedBedDuration > MINIMUM_RULE_DURATION_MINUTES
+    && !hasActiveAlert(db, log.device_id, "unauthorized_bed_usage")
+  ) {
+    alerts.push(createAlert(db, log, "unauthorized_bed_usage", "high", {
+      recommended_action: UNAUTHORIZED_BED_RECOMMENDATION
+    }));
+  }
+
+  if (log.operational_status === "hardware_fault") {
+    alerts.push(createAlert(db, log, "hardware_fault", "high"));
+  } else if (log.operational_status === "critical") {
+    alerts.push(createAlert(db, log, "critical_flow", "critical"));
+  } else if (log.operational_status === "warning" || log.flow_rate >= 30) {
+    const alertType = log.flow_rate >= 30 ? "high_flow" : "warning";
+    const severity = log.flow_rate >= 50 ? "high" : "medium";
+    alerts.push(createAlert(db, log, alertType, severity));
+  }
+
+  return alerts;
+}
+
+function createAlert(db, log, alertType, severity, details = {}) {
+  if (!alertType || !alertSeverities.has(severity)) return null;
 
   return {
     alert_id: db.nextAlertId++,
     device_id: log.device_id,
-    alert_type,
+    alert_type: alertType,
     severity,
     is_resolved: false,
     resolved_by: null,
     resolved_at: null,
-    created_at: new Date().toISOString()
+    created_at: new Date().toISOString(),
+    ...details
   };
 }
 
-function ensureWard(db, wardId) {
+function continuousQualifyingDuration(db, log, qualifies) {
+  const currentTime = Date.parse(log.device_timestamp);
+  if (!Number.isFinite(currentTime) || !qualifies(log)) return 0;
+
+  const samples = db.telemetry_logs
+    .filter(sample => sample.device_id === log.device_id && Date.parse(sample.device_timestamp) <= currentTime)
+    .sort((left, right) => Date.parse(right.device_timestamp) - Date.parse(left.device_timestamp));
+
+  let earliestQualifyingTime = currentTime;
+  for (const sample of samples) {
+    const sampleTime = Date.parse(sample.device_timestamp);
+    if (!Number.isFinite(sampleTime) || !qualifies(sample)) break;
+    earliestQualifyingTime = sampleTime;
+  }
+  return (currentTime - earliestQualifyingTime) / 60000;
+}
+
+function hasActiveAlert(db, deviceId, alertType) {
+  return db.alerts.some(alert => (
+    alert.device_id === deviceId
+    && alert.alert_type === alertType
+    && !alert.is_resolved
+  ));
+}
+
+async function ensureWard(db, wardId) {
   if (db.wards.some(ward => ward.ward_id === wardId)) return;
+  if (db.pgPool) {
+    await db.pgPool.query(
+      `insert into public.wards (ward_id, ward_name, location)
+       values ($1, $1, null)
+       on conflict (ward_id) do nothing`,
+      [wardId]
+    );
+  }
   db.wards.push({ ward_id: wardId, ward_name: wardId, location: null });
 }
 
-function ensureDevice(db, deviceId, wardId) {
+async function ensureDevice(db, deviceId, wardId) {
   if (db.devices.some(device => device.device_id === deviceId)) return;
-  db.devices.push({ device_id: deviceId, ward_id: wardId, created_at: new Date().toISOString() });
+  const createdAt = new Date().toISOString();
+  if (db.pgPool) {
+    await db.pgPool.query(
+      `insert into public.devices (device_id, ward_id, created_at)
+       values ($1, $2, $3)
+       on conflict (device_id) do nothing`,
+      [deviceId, wardId, createdAt]
+    );
+  }
+  db.devices.push({ device_id: deviceId, ward_id: wardId, created_at: createdAt });
 }
 
 async function insertTelemetryLog(db, log) {
+  const cylinderColumns = db.telemetry_has_cylinder_fields && log.cylinder_capacity !== undefined
+    ? ["cylinder_capacity", "consumed_volume", "cylinder_status"]
+    : [];
+  const detectionColumns = [
+    ...(db.telemetry_has_breathing_variance && log.breathing_variance !== undefined ? ["breathing_variance"] : []),
+    ...(db.telemetry_has_emr_status && log.emr_status !== undefined ? ["emr_status"] : [])
+  ];
+  const columns = ["device_id", "ward_id", "flow_rate", "operational_status", "device_timestamp", "received_at", ...cylinderColumns, ...detectionColumns];
+  const values = columns.map(column => log[column]);
+  const placeholders = values.map((_, index) => `$${index + 1}`).join(", ");
   const result = await db.pgPool.query(
-    `insert into public.telemetry_logs
-      (device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at)
-     values ($1, $2, $3, $4, $5, $6)
-     returning log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at`,
-    [log.device_id, log.ward_id, log.flow_rate, log.operational_status, log.device_timestamp, log.received_at]
+    `insert into public.telemetry_logs (${columns.join(", ")})
+     values (${placeholders})
+     returning log_id, ${columns.join(", ")}`,
+    values
   );
-  return result.rows[0];
+  return { ...log, ...result.rows[0] };
 }
 
 async function insertAlert(db, alert, logId) {
-  const result = db.alerts_has_log_id
-    ? await db.pgPool.query(
-      `insert into public.alerts
-        (log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
-       returning alert_id, log_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
-      [logId, alert.device_id, alert.alert_type, alert.severity, alert.is_resolved, alert.resolved_by, alert.resolved_at, alert.created_at]
-    )
-    : await db.pgPool.query(
-      `insert into public.alerts
-        (device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at)
-       values ($1, $2, $3, $4, $5, $6, $7)
-       returning alert_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at`,
-      [alert.device_id, alert.alert_type, alert.severity, alert.is_resolved, alert.resolved_by, alert.resolved_at, alert.created_at]
-    );
-  return result.rows[0];
+  const baseColumns = ["device_id", "alert_type", "severity", "is_resolved", "resolved_by", "resolved_at", "created_at"];
+  const residualColumns = db.alerts_has_residual_fields && alert.alert_type === "residual_gas_waste"
+    ? ["remaining_volume", "unused_percentage", "estimated_oxygen_waste", "estimated_financial_loss", "potential_savings"]
+    : [];
+  const recommendationColumn = db.alerts_has_recommended_action && alert.recommended_action
+    ? ["recommended_action"]
+    : [];
+  const columns = [...(db.alerts_has_log_id ? ["log_id"] : []), ...baseColumns, ...residualColumns, ...recommendationColumn];
+  const row = { log_id: logId, ...alert };
+  const values = columns.map(column => row[column]);
+  const placeholders = values.map((_, index) => `$${index + 1}`).join(", ");
+  const result = await db.pgPool.query(
+    `insert into public.alerts (${columns.join(", ")})
+     values (${placeholders})
+     returning alert_id, ${columns.join(", ")}`,
+    values
+  );
+  return { ...alert, ...result.rows[0] };
+}
+
+function round(value, decimalPlaces) {
+  const factor = 10 ** decimalPlaces;
+  return Math.round((value + Number.EPSILON) * factor) / factor;
 }
 
 function clampNumber(value, min, max) {

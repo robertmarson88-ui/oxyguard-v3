@@ -108,7 +108,7 @@ async function loadSupabaseTables(pool) {
     users,
     wards,
     devices,
-    telemetryLogs,
+    telemetryResult,
     alertResult,
     auditLogResult
   ] = await Promise.all([
@@ -118,7 +118,7 @@ async function loadSupabaseTables(pool) {
     queryRows(pool, "select user_id, username, email, email_verified, password_hash, role_id, created_at from public.users order by user_id"),
     queryRows(pool, "select ward_id, ward_name, location from public.wards order by ward_id"),
     queryRows(pool, "select device_id, ward_id, created_at from public.devices order by device_id"),
-    queryRows(pool, "select log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at from public.telemetry_logs order by log_id"),
+    loadTelemetryLogs(pool),
     loadAlerts(pool),
     loadAuditLogs(pool)
   ]);
@@ -134,9 +134,14 @@ async function loadSupabaseTables(pool) {
     })),
     wards,
     devices,
-    telemetry_logs: telemetryLogs,
+    telemetry_logs: telemetryResult.rows,
+    telemetry_has_cylinder_fields: telemetryResult.hasCylinderFields,
+    telemetry_has_breathing_variance: telemetryResult.hasBreathingVariance,
+    telemetry_has_emr_status: telemetryResult.hasEmrStatus,
     alerts: alertResult.rows,
     alerts_has_log_id: alertResult.hasLogId,
+    alerts_has_residual_fields: alertResult.hasResidualFields,
+    alerts_has_recommended_action: alertResult.hasRecommendedAction,
     audit_logs: auditLogResult.rows,
     audit_target_column: auditLogResult.targetColumn
   };
@@ -193,16 +198,49 @@ async function loadAlerts(pool) {
      from information_schema.columns
      where table_schema = 'public' and table_name = 'alerts'`
   );
-  const hasLogId = columns.some(column => column.column_name === "log_id");
+  const columnNames = new Set(columns.map(column => column.column_name));
+  const hasLogId = columnNames.has("log_id");
+  const residualColumns = ["remaining_volume", "unused_percentage", "estimated_oxygen_waste", "estimated_financial_loss", "potential_savings"];
+  const hasResidualFields = residualColumns.every(column => columnNames.has(column));
+  const hasRecommendedAction = columnNames.has("recommended_action");
   const logIdSelection = hasLogId ? "log_id," : "";
+  const residualSelection = hasResidualFields ? `, ${residualColumns.join(", ")}` : "";
+  const recommendationSelection = hasRecommendedAction ? ", recommended_action" : "";
   const rows = await queryRows(
     pool,
     `select alert_id, ${logIdSelection} device_id, alert_type, severity,
-            is_resolved, resolved_by, resolved_at, created_at
+            is_resolved, resolved_by, resolved_at, created_at${residualSelection}${recommendationSelection}
      from public.alerts
      order by alert_id`
   );
-  return { rows, hasLogId };
+  return { rows, hasLogId, hasResidualFields, hasRecommendedAction };
+}
+
+async function loadTelemetryLogs(pool) {
+  const columns = await queryRows(
+    pool,
+    `select column_name
+     from information_schema.columns
+     where table_schema = 'public' and table_name = 'telemetry_logs'`
+  );
+  const columnNames = new Set(columns.map(column => column.column_name));
+  const cylinderColumns = ["cylinder_capacity", "consumed_volume", "cylinder_status"];
+  const hasCylinderFields = cylinderColumns.every(column => columnNames.has(column));
+  const hasBreathingVariance = columnNames.has("breathing_variance");
+  const hasEmrStatus = columnNames.has("emr_status");
+  const optionalColumns = [
+    ...(hasCylinderFields ? cylinderColumns : []),
+    ...(hasBreathingVariance ? ["breathing_variance"] : []),
+    ...(hasEmrStatus ? ["emr_status"] : [])
+  ];
+  const optionalSelection = optionalColumns.length ? `, ${optionalColumns.join(", ")}` : "";
+  const rows = await queryRows(
+    pool,
+    `select log_id, device_id, ward_id, flow_rate, operational_status, device_timestamp, received_at${optionalSelection}
+     from public.telemetry_logs
+     order by log_id`
+  );
+  return { rows, hasCylinderFields, hasBreathingVariance, hasEmrStatus };
 }
 
 async function seedSupabaseDemoAlerts(pool, remote) {

@@ -46,11 +46,27 @@ CREATE TABLE telemetry_logs (
   ward_id VARCHAR(50) NOT NULL REFERENCES wards(ward_id),
   flow_rate NUMERIC(5,2) NOT NULL,
   operational_status VARCHAR(20) NOT NULL,
+  cylinder_capacity NUMERIC(12,2),
+  consumed_volume NUMERIC(12,2),
+  cylinder_status VARCHAR(20),
+  breathing_variance NUMERIC(12,6),
+  emr_status VARCHAR(50),
   device_timestamp TIMESTAMP NOT NULL,
   received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
   CONSTRAINT telemetry_logs_flow_rate_range CHECK (flow_rate >= 0.0 AND flow_rate <= 100.0),
   CONSTRAINT telemetry_logs_operational_status_check CHECK (
     operational_status IN ('normal', 'warning', 'critical', 'hardware_fault')
+  ),
+  CONSTRAINT telemetry_logs_cylinder_status_check CHECK (
+    cylinder_status IS NULL OR cylinder_status IN ('IN_USE', 'REPLACED')
+  ),
+  CONSTRAINT telemetry_logs_cylinder_volume_check CHECK (
+    (cylinder_capacity IS NULL AND consumed_volume IS NULL AND cylinder_status IS NULL)
+    OR
+    (cylinder_capacity > 0 AND consumed_volume >= 0 AND consumed_volume <= cylinder_capacity AND cylinder_status IS NOT NULL)
+  ),
+  CONSTRAINT telemetry_logs_breathing_variance_check CHECK (
+    breathing_variance IS NULL OR breathing_variance >= 0
   )
 );
 
@@ -63,7 +79,13 @@ CREATE TABLE alerts (
   resolved_by VARCHAR(10) REFERENCES users(user_id),
   resolved_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
-  CONSTRAINT alerts_severity_check CHECK (severity IN ('High', 'Medium', 'Low'))
+  remaining_volume NUMERIC(12,2),
+  unused_percentage NUMERIC(7,6),
+  estimated_oxygen_waste NUMERIC(12,2),
+  estimated_financial_loss NUMERIC(14,2),
+  potential_savings NUMERIC(14,2),
+  recommended_action VARCHAR(255),
+  CONSTRAINT alerts_severity_check CHECK (severity IN ('high', 'medium', 'low', 'critical'))
 );
 
 CREATE TABLE audit_logs (

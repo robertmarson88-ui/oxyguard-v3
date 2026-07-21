@@ -1,1 +1,12 @@
-{"device_id":"ESP32-WARD1-ICU","ward_id":"ICU-A","flow_rate":14.75,"operational_status":"normal","timestamp":"2026-06-08T21:45:00Z"}
+{
+  "device_id": "TK001",
+  "ward_id": "X001",
+  "flow_rate": 0.5,
+  "operational_status": "normal",
+  "timestamp": "2026-07-20T12:00:00Z",
+  "cylinder_capacity": 1200,
+  "consumed_volume": 300,
+  "cylinder_status": "IN_USE",
+  "breathing_variance": 0.01,
+  "emr_status": "OCCUPIED"
+}
