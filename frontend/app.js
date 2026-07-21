@@ -1803,7 +1803,7 @@ function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, create
   const timestamps = durationRule
     ? offsets.map(minutes => new Date(endTime.getTime() - minutes * 60000).toISOString())
     : alertType === "Device Offline"
-      ? [new Date(endTime.getTime() - duration * 60000).toISOString()]
+      ? [new Date(endTime.getTime() - (duration + 2) * 60000).toISOString()]
       : [createdAt];
   return timestamps.map(timestamp => {
     const payload = {
