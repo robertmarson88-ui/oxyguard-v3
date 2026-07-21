@@ -356,8 +356,13 @@ function start() {
   document.getElementById("simulatorWard")?.addEventListener("change", populateSimulatorTanks);
   document.getElementById("simulatorTank")?.addEventListener("change", syncSimulatorTankLocation);
   ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume", "simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorEmrStatus"].forEach(id => {
-    document.getElementById(id)?.addEventListener("input", renderSimulatorRulePreview);
-    document.getElementById(id)?.addEventListener("change", renderSimulatorRulePreview);
+    const input = document.getElementById(id);
+    const handleChange = () => {
+      renderSimulatorRulePreview();
+      updateSimulatorCriteriaFeedback();
+    };
+    input?.addEventListener("input", handleChange);
+    input?.addEventListener("change", handleChange);
   });
   document.getElementById("simulatorApplyPreset")?.addEventListener("click", applySimulatorPreset);
   document.querySelectorAll("[data-simulator-preset]").forEach(button => {
@@ -1395,6 +1400,7 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
   }
   updateSimulatorRuleConstraints(alertType);
   renderSimulatorRulePreview();
+  updateSimulatorCriteriaFeedback(alertType);
   if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
 }
 
@@ -1672,7 +1678,7 @@ function updateSimulatorRuleConstraints(alertType) {
   const consumed = document.getElementById("simulatorConsumedVolume");
 
   if (flowRate) {
-    flowRate.min = alertType === "Unauthorized Usage" ? "2" : "0.6";
+    flowRate.min = alertType === "Unauthorized Usage" ? "2" : "0.5";
     flowRate.max = "100";
     flowRate.step = "0.1";
   }
@@ -1691,6 +1697,85 @@ function updateSimulatorRuleConstraints(alertType) {
     consumed.max = String(cylinderCapacity);
     consumed.step = "0.01";
   }
+}
+
+function updateSimulatorCriteriaFeedback(selectedAlertType) {
+  const alertType = selectedAlertType || document.getElementById("simulatorAlertType")?.value || "";
+  const outstanding = [];
+  const setValidity = (id, message) => {
+    const input = document.getElementById(id);
+    if (input) input.setCustomValidity(message || "");
+  };
+  ["simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume", "simulatorEmrStatus"].forEach(id => setValidity(id, ""));
+
+  const flowRate = Number(document.getElementById("simulatorRuleFlowRate")?.value);
+  const breathingVariance = Number(document.getElementById("simulatorBreathingVariance")?.value);
+  const duration = Number(document.getElementById("simulatorDuration")?.value);
+  if (alertType === "Ghost Flow") {
+    if (!Number.isFinite(flowRate) || flowRate <= 0.5) {
+      const message = "Flow rate must be greater than 0.5 LPM.";
+      outstanding.push(message);
+      setValidity("simulatorRuleFlowRate", message);
+    }
+    if (!Number.isFinite(breathingVariance) || breathingVariance < 0 || breathingVariance >= 0.01) {
+      const message = "Breathing variance must be between 0 and 0.009.";
+      outstanding.push(message);
+      setValidity("simulatorBreathingVariance", message);
+    }
+    if (!Number.isFinite(duration) || duration < 11) {
+      const message = "Duration must be at least 11 minutes.";
+      outstanding.push(message);
+      setValidity("simulatorDuration", message);
+    }
+  } else if (alertType === "Unauthorized Usage") {
+    const emrStatus = document.getElementById("simulatorEmrStatus")?.value || "";
+    if (!Number.isFinite(flowRate) || flowRate < 2) {
+      const message = "Flow rate must be at least 2.0 LPM.";
+      outstanding.push(message);
+      setValidity("simulatorRuleFlowRate", message);
+    }
+    if (!["EMPTY", "DISCHARGED", "TRANSFERRED", "UNASSIGNED"].includes(emrStatus)) {
+      const message = "EMR status must be EMPTY, DISCHARGED, TRANSFERRED, or UNASSIGNED.";
+      outstanding.push(message);
+      setValidity("simulatorEmrStatus", message);
+    }
+    if (!Number.isFinite(duration) || duration < 11) {
+      const message = "Duration must be at least 11 minutes.";
+      outstanding.push(message);
+      setValidity("simulatorDuration", message);
+    }
+  } else if (alertType === "Residual Gas") {
+    const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "";
+    const capacity = Number(document.getElementById("simulatorCylinderCapacity")?.value);
+    const consumed = Number(document.getElementById("simulatorConsumedVolume")?.value);
+    if (cylinderStatus !== "REPLACED") {
+      const message = "Cylinder status must be REPLACED.";
+      outstanding.push(message);
+      setValidity("simulatorCylinderStatus", message);
+    }
+    if (!Number.isFinite(capacity) || capacity <= 0) {
+      const message = "Cylinder capacity must be greater than 0.";
+      outstanding.push(message);
+      setValidity("simulatorCylinderCapacity", message);
+    }
+    if (!Number.isFinite(consumed) || !Number.isFinite(capacity) || consumed <= capacity * 0.9) {
+      const message = "Consumed volume must be greater than 90% of cylinder capacity.";
+      outstanding.push(message);
+      setValidity("simulatorConsumedVolume", message);
+    } else if (consumed > capacity) {
+      const message = "Consumed volume cannot exceed cylinder capacity.";
+      outstanding.push(message);
+      setValidity("simulatorConsumedVolume", message);
+    }
+  }
+
+  updateSimulatorApiStatus(
+    outstanding.length
+      ? `Alert criteria not met: ${outstanding.join(" ")}`
+      : "All alert criteria met. Ready to send.",
+    outstanding.length ? "warn" : "success"
+  );
+  return outstanding;
 }
 
 function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt, cylinder = {}) {
