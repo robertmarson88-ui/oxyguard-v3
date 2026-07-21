@@ -1,7 +1,7 @@
 import { createAuthService } from "../services/authService.js";
 import { buildReportSummary } from "../services/reportService.js";
 import { getDatabaseConnectionInfo } from "../database/store.js";
-import { ingestTelemetry, queryTelemetry } from "../services/telemetryService.js";
+import { detectOfflineDevices, ingestTelemetry, queryTelemetry } from "../services/telemetryService.js";
 import { readNurseStationData } from "../services/nurseStationService.js";
 import { readJson, sendJson } from "../utils/http.js";
 import https from "node:https";
@@ -102,6 +102,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     if (req.method === "GET" && apiPath === "/alerts") {
       const session = requireAuthorized(req, res, auth, "view_logs");
       if (!session) return true;
+      await detectOfflineDevices(db);
       sendJson(res, 200, queryAlerts(db, url));
       return true;
     }
@@ -142,6 +143,14 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       const session = requireAuthorized(req, res, auth, "resolve_alert");
       if (!session) return true;
       await resolveAlert(db, res, Number(resolveMatch[1]), session.user);
+      return true;
+    }
+
+    const acknowledgeMatch = apiPath.match(/^\/alerts\/(\d+)\/acknowledge$/);
+    if (req.method === "POST" && acknowledgeMatch) {
+      const session = requireAuthorized(req, res, auth, "resolve_alert");
+      if (!session) return true;
+      await acknowledgeAlert(db, res, Number(acknowledgeMatch[1]), session.user);
       return true;
     }
 
@@ -657,6 +666,16 @@ async function resolveAlert(db, res, alertId, user) {
   alert.is_resolved = true;
   alert.resolved_by = user.user_id;
   alert.resolved_at = new Date().toISOString();
+  alert.acknowledged_at = alert.acknowledged_at || alert.resolved_at;
+  alert.status = "resolved";
+  if (db.pgPool) {
+    await db.pgPool.query(
+      `update public.alerts set is_resolved = true, resolved_by = $1, resolved_at = $2,
+         acknowledged_at = coalesce(acknowledged_at, $2), status = 'resolved'
+       where alert_id = $3`,
+      [user.user_id, alert.resolved_at, alertId]
+    );
+  }
   await addAuditLog(db, user, "Resolve Alert", `Alert #${alert.alert_id}`);
 
   sendJson(res, 200, {
@@ -689,12 +708,65 @@ function getDeviceInventory(db) {
 }
 
 function queryAlerts(db, url) {
+  escalateUnacknowledgedAlerts(db);
   const isResolved = parseBooleanQuery(url.searchParams.get("is_resolved"));
   const severity = url.searchParams.get("severity");
   return db.alerts.filter(alert => {
     const resolvedMatches = isResolved === null || alert.is_resolved === isResolved;
     const severityMatches = !severity || alert.severity === severity;
     return resolvedMatches && severityMatches;
+  }).map(alert => {
+    const log = alert.log_id
+      ? db.telemetry_logs.find(item => item.log_id === alert.log_id)
+      : [...db.telemetry_logs].reverse().find(item => item.device_id === alert.device_id);
+    return {
+      ...alert,
+      timestamp: alert.timestamp || alert.created_at,
+      ward_id: alert.ward_id || log?.ward_id || "unknown",
+      bed_id: alert.bed_id || log?.bed_id || alert.device_id,
+      status: alert.status || (alert.is_resolved ? "resolved" : "active"),
+      recommended_action: alert.recommended_action || "Review alert and investigate the affected device."
+    };
+  });
+}
+
+async function acknowledgeAlert(db, res, alertId, user) {
+  const alert = db.alerts.find(item => item.alert_id === alertId);
+  if (!alert) {
+    sendJson(res, 404, { ok: false, message: "Alert not found." });
+    return;
+  }
+  alert.acknowledged_at = new Date().toISOString();
+  alert.status = "acknowledged";
+  if (db.pgPool) {
+    await db.pgPool.query(
+      `update public.alerts set acknowledged_at = $1, status = 'acknowledged' where alert_id = $2`,
+      [alert.acknowledged_at, alertId]
+    );
+  }
+  await addAuditLog(db, user, "Acknowledge Alert", `Alert #${alert.alert_id}`);
+  sendJson(res, 200, { ok: true, status: "success", alert });
+}
+
+export function escalateUnacknowledgedAlerts(db) {
+  const now = Date.now();
+  const severityOrder = ["low", "medium", "high", "critical"];
+  db.alerts.forEach(alert => {
+    if (alert.is_resolved || alert.acknowledged_at || alert.escalated_at) return;
+    const createdAt = Date.parse(alert.timestamp || alert.created_at);
+    if (!Number.isFinite(createdAt) || now - createdAt < 10 * 60000) return;
+    const currentIndex = severityOrder.indexOf(String(alert.severity || "").toLowerCase());
+    alert.severity = severityOrder[Math.min(severityOrder.length - 1, Math.max(0, currentIndex) + 1)];
+    alert.status = "escalated";
+    alert.escalated_at = new Date(now).toISOString();
+    alert.supervisor_notified = true;
+    if (db.pgPool) {
+      db.pgPool.query(
+        `update public.alerts set severity = $1, status = 'escalated', escalated_at = $2, supervisor_notified = true
+         where alert_id = $3`,
+        [alert.severity, alert.escalated_at, alert.alert_id]
+      ).catch(error => console.warn(`Alert escalation persistence failed: ${String(error?.message || error)}`));
+    }
   });
 }
 

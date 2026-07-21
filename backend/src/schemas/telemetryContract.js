@@ -31,8 +31,8 @@ export function validateTelemetryPayload(payload) {
     errors.push("ward_id must be a non-empty string");
   }
 
-  if (typeof data.flow_rate !== "number" || !Number.isFinite(data.flow_rate) || data.flow_rate < 0 || data.flow_rate > 100) {
-    errors.push("flow_rate must be a number from 0.0 to 100.0");
+  if (data.flow_rate !== null && (typeof data.flow_rate !== "number" || !Number.isFinite(data.flow_rate) || data.flow_rate > 100)) {
+    errors.push("flow_rate must be null or a finite number no greater than 100.0");
   }
 
   if (typeof data.operational_status !== "string" || !operationalStatuses.has(data.operational_status)) {

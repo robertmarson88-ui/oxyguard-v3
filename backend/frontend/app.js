@@ -953,13 +953,13 @@ function mapDatabaseAlertRow(alert, index) {
   const ward = getWardLabelFromDevice(alert.device_id);
   const priority = mapAlertPriority(alert.severity);
   return {
-    time: formatActivityTime(alert.created_at || new Date().toISOString()),
+    time: formatActivityTime(alert.timestamp || alert.created_at || new Date().toISOString()),
     ward,
     type: formatAlertType(alert.alert_type),
     priority,
     asset: alert.device_id || `Sensor ${index + 1}`,
-    status: priority === "Critical" ? "Awaiting Response" : "Investigating",
-    assigned: ["residual_gas_waste", "ghost_flow", "unauthorized_bed_usage"].includes(alert.alert_type) || priority === "Critical" ? "Facilities" : "Nurse Station",
+    status: alert.status === "escalated" ? "Escalated" : alert.status === "acknowledged" ? "Acknowledged" : priority === "Critical" ? "Awaiting Response" : "Investigating",
+    assigned: alert.supervisor_notified ? "Supervisor" : ["residual_gas_waste", "ghost_flow", "unauthorized_bed_usage", "device_offline", "sensor_fault"].includes(alert.alert_type) || priority === "Critical" ? "Facilities" : "Nurse Station",
     remainingVolume: alert.remaining_volume == null ? null : Number(alert.remaining_volume),
     unusedPercentage: alert.unused_percentage == null ? null : Number(alert.unused_percentage),
     estimatedOxygenWaste: alert.estimated_oxygen_waste == null ? null : Number(alert.estimated_oxygen_waste),
@@ -982,9 +982,9 @@ function getWardLabelFromDevice(deviceId = "") {
 
 function formatAlertType(type = "") {
   const labels = {
-    critical_flow: "Critical Flow",
-    high_flow: "High Abnormal Flow",
-    hardware_fault: "Device Offline",
+    device_offline: "Device Offline",
+    sensor_fault: "Sensor Fault",
+    hardware_fault: "Sensor Fault",
     warning: "Flow Warning",
     leakage: "Leakage Detected",
     ghost_flow: "Ghost Flow",
@@ -1352,13 +1352,15 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
   const isResidualGas = alertType === "Residual Gas";
   const isGhostFlow = alertType === "Ghost Flow";
   const isUnauthorized = alertType === "Unauthorized Usage";
-  const isCustomRule = isResidualGas || isGhostFlow || isUnauthorized;
+  const isDeviceOffline = alertType === "Device Offline";
+  const isSensorFault = alertType === "Sensor Fault";
+  const isCustomRule = isResidualGas || isGhostFlow || isUnauthorized || isDeviceOffline || isSensorFault;
   ["simulatorPatientStatusField", "simulatorPrescribedFlowField", "simulatorLiveReadingField"].forEach(id => {
     const field = document.getElementById(id);
     if (field) field.hidden = isCustomRule;
   });
   document.getElementById("simulatorRuleFlowRateField").hidden = !(isGhostFlow || isUnauthorized);
-  document.getElementById("simulatorDurationField").hidden = !(isGhostFlow || isUnauthorized);
+  document.getElementById("simulatorDurationField").hidden = !(isGhostFlow || isUnauthorized || isDeviceOffline);
   document.getElementById("simulatorBreathingVarianceField").hidden = !isGhostFlow;
   document.getElementById("simulatorEmrStatusField").hidden = !isUnauthorized;
   ["simulatorCylinderStatusField", "simulatorCylinderCapacityField", "simulatorConsumedVolumeField"].forEach(id => {
@@ -1370,9 +1372,7 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
     "Unauthorized Usage": { prescribed: 0, live: 2, patient: "OFF", severity: "High" },
     "Residual Gas": { prescribed: 0, live: 0.2, patient: "OFF", severity: "Medium" },
     "Leak": { prescribed: 3, live: 4.4, patient: "ON", severity: "High" },
-    "High Flow": { prescribed: 3, live: 4, patient: "ON", severity: "High" },
-    "Low Flow": { prescribed: 4, live: 2.8, patient: "ON", severity: "Medium" },
-    "Device Offline": { prescribed: 0, live: 0, patient: "OFF", severity: "High" },
+    "Device Offline": { prescribed: 0, live: 0, patient: "OFF", severity: "Critical" },
     "Sensor Fault": { prescribed: 0, live: 0, patient: "OFF", severity: "High" },
     "Normal": { prescribed: 3, live: 3.4, patient: "ON", severity: "Low" }
   };
@@ -1397,6 +1397,7 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
       document.getElementById("simulatorDuration").value = 11;
       document.getElementById("simulatorEmrStatus").value = "EMPTY";
     }
+    if (isDeviceOffline) document.getElementById("simulatorDuration").value = 10;
   }
   updateSimulatorRuleConstraints(alertType);
   renderSimulatorRulePreview();
@@ -1445,6 +1446,20 @@ function renderSimulatorRulePreview() {
           <span><small>Duration</small><strong>${duration} min</strong></span>
           <span><small>Severity</small><strong>High</strong></span>
         </div>`
+    : alertType === "Device Offline"
+      ? `<div class="simulator-reading-grid">
+          <span><small>Last Telemetry</small><strong>${duration} min ago</strong></span>
+          <span><small>Required Gap</small><strong>10 min</strong></span>
+          <span><small>Severity</small><strong>Critical</strong></span>
+          <span><small>Status</small><strong>Active</strong></span>
+        </div>`
+    : alertType === "Sensor Fault"
+      ? `<div class="simulator-reading-grid">
+          <span><small>Operational Status</small><strong>hardware_fault</strong></span>
+          <span><small>Severity</small><strong>High</strong></span>
+          <span><small>Status</small><strong>Active</strong></span>
+          <span><small>Action</small><strong>Inspect sensor</strong></span>
+        </div>`
     : `<div class="simulator-reading-grid">
         <span><small>Patient</small><strong>${patientStatus}</strong></span>
         <span><small>Set Value</small><strong>${formatFlow(prescribed)}</strong></span>
@@ -1479,21 +1494,13 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
       headline: "Live reading indicates possible leakage",
       detail: "This marks the selected tank as a leakage event and increases wastage signals."
     },
-    "High Flow": {
-      headline: "Live reading is 29% to 40% above SetValue",
-      detail: `Current calculated variance is ${formatVariance(variance)}.`
-    },
-    "Low Flow": {
-      headline: "Live reading is below prescribed SetValue",
-      detail: "This marks the patient flow status as low flow."
-    },
     "Device Offline": {
-      headline: "Device stopped transmitting telemetry",
-      detail: "This sends a hardware fault telemetry event and isolates the selected point."
+      headline: "No telemetry received for at least 10 minutes",
+      detail: "Severity: Critical. Recommended Action: Inspect device power and network connection."
     },
     "Sensor Fault": {
       headline: "Sensor reading is invalid or missing",
-      detail: "This sends a hardware fault telemetry event for the selected device."
+      detail: "Operational status is hardware_fault. Severity: High. Recommended Action: Inspect, calibrate or replace sensor."
     },
     "Normal": {
       headline: "Reading is equal to SetValue or 1% to 28% above it",
@@ -1566,6 +1573,10 @@ async function submitSimulatorEvent(event) {
       updateSimulatorApiStatus("Unauthorized Usage duration must be at least 11 minutes.", "warn");
       return;
     }
+  }
+  if (alertType === "Device Offline" && duration < 10) {
+    updateSimulatorApiStatus("Device Offline requires at least 10 minutes without telemetry.", "warn");
+    return;
   }
 
   const effectiveLive = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? ruleFlowRate : live;
@@ -1688,7 +1699,7 @@ function updateSimulatorRuleConstraints(alertType) {
     breathingVariance.step = "0.001";
   }
   if (duration) {
-    duration.min = "11";
+    duration.min = alertType === "Device Offline" ? "10" : "11";
     duration.step = "0.1";
   }
   const cylinderCapacity = Number(capacity?.value || 0);
@@ -1767,6 +1778,10 @@ function updateSimulatorCriteriaFeedback(selectedAlertType) {
       outstanding.push(message);
       setValidity("simulatorConsumedVolume", message);
     }
+  } else if (alertType === "Device Offline" && (!Number.isFinite(duration) || duration < 10)) {
+    const message = "No-telemetry duration must be at least 10 minutes.";
+    outstanding.push(message);
+    setValidity("simulatorDuration", message);
   }
 
   updateSimulatorApiStatus(
@@ -1781,12 +1796,15 @@ function updateSimulatorCriteriaFeedback(selectedAlertType) {
 function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt, cylinder = {}) {
   const endTime = new Date(createdAt);
   const requestedDuration = Number(cylinder.duration);
-  const duration = Number.isFinite(requestedDuration) && requestedDuration >= 11 ? requestedDuration : 11;
+  const minimumDuration = alertType === "Device Offline" ? 10 : 11;
+  const duration = Number.isFinite(requestedDuration) && requestedDuration >= minimumDuration ? requestedDuration : minimumDuration;
   const offsets = [duration, duration * 0.55, duration * 0.1, 0];
   const durationRule = ["Ghost Flow", "Unauthorized Usage"].includes(alertType);
   const timestamps = durationRule
     ? offsets.map(minutes => new Date(endTime.getTime() - minutes * 60000).toISOString())
-    : [createdAt];
+    : alertType === "Device Offline"
+      ? [new Date(endTime.getTime() - duration * 60000).toISOString()]
+      : [createdAt];
   return timestamps.map(timestamp => {
     const payload = {
       device_id: deviceId,
@@ -1817,6 +1835,8 @@ function getSimulatorExpectedAlertType(alertType) {
     "Residual Gas": "residual_gas_waste",
     "Ghost Flow": "ghost_flow",
     "Unauthorized Usage": "unauthorized_bed_usage"
+    , "Device Offline": "device_offline"
+    , "Sensor Fault": "sensor_fault"
   };
   return expected[alertType] || "";
 }
@@ -1877,7 +1897,8 @@ function getSimulatorDeviceId(ward, tankItem) {
 }
 
 function getSimulatorOperationalStatus(alertType, live) {
-  if (["Device Offline", "Sensor Fault"].includes(alertType)) return "hardware_fault";
+  if (alertType === "Sensor Fault") return "hardware_fault";
+  if (alertType === "Device Offline") return "normal";
   if (["Ghost Flow", "Unauthorized Usage", "Residual Gas"].includes(alertType)) return "normal";
   if (alertType === "High Flow" || live >= 30) return "critical";
   if (["Leak", "Low Flow"].includes(alertType)) return "warning";

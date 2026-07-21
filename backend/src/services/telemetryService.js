@@ -5,6 +5,8 @@ const OXYGEN_COST_PER_LITRE = 1.51;
 const RESIDUAL_GAS_RECOMMENDATION = "Review cylinder replacement procedures.";
 const GHOST_FLOW_RECOMMENDATION = "Verify patient occupancy and close oxygen supply.";
 const UNAUTHORIZED_BED_RECOMMENDATION = "Verify patient assignment and investigate oxygen usage.";
+const DEVICE_OFFLINE_RECOMMENDATION = "Inspect device power and network connection.";
+const SENSOR_FAULT_RECOMMENDATION = "Inspect, calibrate or replace sensor.";
 const UNAUTHORIZED_EMR_STATUSES = new Set(["EMPTY", "DISCHARGED", "TRANSFERRED", "UNASSIGNED"]);
 const MINIMUM_RULE_DURATION_MINUTES = 11;
 
@@ -19,7 +21,7 @@ export async function ingestTelemetry(db, payload) {
     log_id: db.nextLogId++,
     device_id: payload.device_id,
     ward_id: payload.ward_id,
-    flow_rate: Number(payload.flow_rate.toFixed(2)),
+    flow_rate: payload.flow_rate === null ? null : Number(payload.flow_rate.toFixed(2)),
     operational_status: payload.operational_status,
     device_timestamp: payload.timestamp,
     received_at: new Date().toISOString(),
@@ -61,6 +63,31 @@ export function queryTelemetry(db, url) {
     .reverse();
 }
 
+export async function detectOfflineDevices(db, now = new Date()) {
+  const generated = [];
+  for (const device of db.devices) {
+    const latest = db.telemetry_logs
+      .filter(log => log.device_id === device.device_id)
+      .sort((left, right) => Date.parse(right.device_timestamp) - Date.parse(left.device_timestamp))[0];
+    const lastTelemetryAt = Date.parse(latest?.device_timestamp || device.created_at);
+    if (!Number.isFinite(lastTelemetryAt) || now.getTime() - lastTelemetryAt < 10 * 60000) continue;
+    if (hasActiveAlert(db, device.device_id, "device_offline")) continue;
+    const log = latest || {
+      log_id: null,
+      device_id: device.device_id,
+      ward_id: device.ward_id,
+      bed_id: device.bed_id || device.device_id
+    };
+    const generatedAlert = createAlert(db, log, "device_offline", "critical", {
+      recommended_action: DEVICE_OFFLINE_RECOMMENDATION
+    });
+    const alert = db.pgPool ? await insertAlert(db, generatedAlert, log.log_id) : generatedAlert;
+    db.alerts.push(alert);
+    generated.push(alert);
+  }
+  return generated;
+}
+
 function evaluateAlerts(db, log) {
   const alerts = [];
   if (log.cylinder_status === "REPLACED" && log.consumed_volume > (0.9 * log.cylinder_capacity)) {
@@ -96,14 +123,19 @@ function evaluateAlerts(db, log) {
     }));
   }
 
-  if (log.operational_status === "hardware_fault") {
-    alerts.push(createAlert(db, log, "hardware_fault", "high"));
-  } else if (log.operational_status === "critical") {
-    alerts.push(createAlert(db, log, "critical_flow", "critical"));
-  } else if (log.operational_status === "warning" || log.flow_rate >= 30) {
-    const alertType = log.flow_rate >= 30 ? "high_flow" : "warning";
-    const severity = log.flow_rate >= 50 ? "high" : "medium";
-    alerts.push(createAlert(db, log, alertType, severity));
+  if (log.operational_status === "hardware_fault" || log.flow_rate === null || log.flow_rate < 0) {
+    if (!hasActiveAlert(db, log.device_id, "sensor_fault")) {
+      alerts.push(createAlert(db, log, "sensor_fault", "high", {
+        recommended_action: SENSOR_FAULT_RECOMMENDATION
+      }));
+    }
+  }
+
+  const telemetryAgeMinutes = (Date.now() - Date.parse(log.device_timestamp)) / 60000;
+  if (telemetryAgeMinutes >= 10 && !hasActiveAlert(db, log.device_id, "device_offline")) {
+    alerts.push(createAlert(db, log, "device_offline", "critical", {
+      recommended_action: DEVICE_OFFLINE_RECOMMENDATION
+    }));
   }
   return alerts;
 }
@@ -112,13 +144,20 @@ function createAlert(db, log, alertType, severity, details = {}) {
   if (!alertType || !alertSeverities.has(severity)) return null;
   return {
     alert_id: db.nextAlertId++,
+    timestamp: new Date().toISOString(),
+    ward_id: log.ward_id,
+    bed_id: log.bed_id || log.device_id,
     device_id: log.device_id,
     alert_type: alertType,
     severity,
+    status: "active",
     is_resolved: false,
     resolved_by: null,
     resolved_at: null,
     created_at: new Date().toISOString(),
+    acknowledged_at: null,
+    escalated_at: null,
+    supervisor_notified: false,
     ...details
   };
 }
@@ -193,11 +232,17 @@ async function insertTelemetryLog(db, log) {
 
 async function insertAlert(db, alert, logId) {
   const baseColumns = ["device_id", "alert_type", "severity", "is_resolved", "resolved_by", "resolved_at", "created_at"];
+  const requiredColumns = db.alerts_has_required_fields
+    ? ["timestamp", "ward_id", "bed_id", "status"]
+    : [];
+  const escalationColumns = db.alerts_has_escalation_fields
+    ? ["acknowledged_at", "escalated_at", "supervisor_notified"]
+    : [];
   const residualColumns = db.alerts_has_residual_fields && alert.alert_type === "residual_gas_waste"
     ? ["remaining_volume", "unused_percentage", "estimated_oxygen_waste", "estimated_financial_loss", "potential_savings"]
     : [];
   const recommendationColumn = db.alerts_has_recommended_action && alert.recommended_action ? ["recommended_action"] : [];
-  const columns = [...(db.alerts_has_log_id ? ["log_id"] : []), ...baseColumns, ...residualColumns, ...recommendationColumn];
+  const columns = [...(db.alerts_has_log_id ? ["log_id"] : []), ...baseColumns, ...requiredColumns, ...escalationColumns, ...residualColumns, ...recommendationColumn];
   const row = { log_id: logId, ...alert };
   const values = columns.map(column => row[column]);
   const placeholders = values.map((_, index) => `$${index + 1}`).join(", ");

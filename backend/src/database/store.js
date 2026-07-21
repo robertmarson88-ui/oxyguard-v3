@@ -110,7 +110,14 @@ async function ensureOperationalSchema(pool) {
        add column if not exists estimated_oxygen_waste numeric(12,2),
        add column if not exists estimated_financial_loss numeric(14,2),
        add column if not exists potential_savings numeric(14,2),
-       add column if not exists recommended_action varchar(255)`
+       add column if not exists recommended_action varchar(255),
+       add column if not exists timestamp timestamptz,
+       add column if not exists ward_id varchar(50),
+       add column if not exists bed_id varchar(80),
+       add column if not exists status varchar(30) not null default 'active',
+       add column if not exists acknowledged_at timestamptz,
+       add column if not exists escalated_at timestamptz,
+       add column if not exists supervisor_notified boolean not null default false`
   );
   await pool.query(
     `create table if not exists public.ward_card_statuses (
@@ -305,6 +312,8 @@ async function loadSupabaseTables(pool) {
     alerts_has_log_id: alertResult.hasLogId,
     alerts_has_residual_fields: alertResult.hasResidualFields,
     alerts_has_recommended_action: alertResult.hasRecommendedAction,
+    alerts_has_required_fields: alertResult.hasRequiredFields,
+    alerts_has_escalation_fields: alertResult.hasEscalationFields,
     audit_logs: auditLogs,
     audit_log_columns: [...auditLogColumns]
   };
@@ -336,10 +345,16 @@ async function loadAlerts(pool) {
   const residualColumns = ["remaining_volume", "unused_percentage", "estimated_oxygen_waste", "estimated_financial_loss", "potential_savings"];
   const hasResidualFields = residualColumns.every(column => columns.has(column));
   const hasRecommendedAction = columns.has("recommended_action");
+  const requiredFields = ["timestamp", "ward_id", "bed_id", "status"];
+  const escalationFields = ["acknowledged_at", "escalated_at", "supervisor_notified"];
+  const hasRequiredFields = requiredFields.every(column => columns.has(column));
+  const hasEscalationFields = escalationFields.every(column => columns.has(column));
   const selections = [
     ...(hasLogId ? ["log_id"] : []),
     ...(hasResidualFields ? residualColumns : []),
-    ...(hasRecommendedAction ? ["recommended_action"] : [])
+    ...(hasRecommendedAction ? ["recommended_action"] : []),
+    ...(hasRequiredFields ? requiredFields : []),
+    ...(hasEscalationFields ? escalationFields : [])
   ];
   const optionalSelection = selections.length ? `, ${selections.join(", ")}` : "";
   const rows = await queryRows(
@@ -347,7 +362,7 @@ async function loadAlerts(pool) {
     `select alert_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at${optionalSelection}
      from public.alerts order by alert_id`
   );
-  return { rows, hasLogId, hasResidualFields, hasRecommendedAction };
+  return { rows, hasLogId, hasResidualFields, hasRecommendedAction, hasRequiredFields, hasEscalationFields };
 }
 
 function createDemoAuditLogs({ numericUserIds = false, userIds = [] } = {}) {
