@@ -263,6 +263,8 @@ let simulatorPresetInitialized = false;
 let auditLogDialogRows = [];
 let auditLogDialogRequestId = 0;
 let adminAuditRequestId = 0;
+let adminAuditLoading = false;
+let lastAdminAuditFetchAt = 0;
 let selectedAuditLogDay = "";
 let wardCardStatusOverrides = new Map();
 let activeWardAlertKey = "";
@@ -335,6 +337,7 @@ function start() {
   });
   document.getElementById("downloadOrderSummary")?.addEventListener("click", () => {
     window.alert("Order summary downloaded.");
+    void recordAuditEvent("Report Download", "Order summary download");
   });
   document.getElementById("rejectOrder")?.addEventListener("click", () => {
     window.alert("Automated order was rejected and marked for review.");
@@ -504,6 +507,7 @@ function exportGeneratedReport() {
     downloadGeneratedReportCsv();
     return;
   }
+  void recordAuditEvent("Report Download", `${selectedReportType} report; format=pdf`);
   window.print();
 }
 
@@ -533,6 +537,7 @@ function downloadGeneratedReportCsv() {
   link.download = `oxyguard-${selectedReportType}-report-${stamp}.csv`;
   document.body.appendChild(link);
   link.click();
+  void recordAuditEvent("Report Download", `${selectedReportType} report; format=csv`);
   link.remove();
   URL.revokeObjectURL(url);
 }
@@ -865,8 +870,9 @@ function showApp() {
   loadWardCardStatuses();
 }
 
-function logout() {
+async function logout() {
   if (!window.confirm("Are you sure you want to logout?")) return;
+  await recordAuditEvent("User Logout", "Session ended by user", { endpoint: "/api/logout", keepalive: true });
   currentUser = null;
   permissionPreview = "admin";
   sessionStorage.removeItem("oxyguardUser");
@@ -1139,7 +1145,7 @@ function renderAll() {
   renderReportLiveInsights();
   renderMonthlyUsageComparison();
   renderOrderSummary();
-  renderAdministration();
+  if (activeView === "administration") renderAdministration();
   renderAnalytics();
   if (activeView === "simulator") renderSimulator();
   updateNotifications();
@@ -2410,6 +2416,23 @@ function authHeaders(includeContentType = true) {
     headers.authorization = `Bearer ${token}`;
   }
   return headers;
+}
+
+async function recordAuditEvent(action, details, options = {}) {
+  if (!hasServerToken()) return false;
+  const endpoint = options.endpoint || "/api/audit-events";
+  const body = endpoint === "/api/logout" ? {} : { action, details };
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify(body),
+      keepalive: Boolean(options.keepalive)
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 function hasServerToken() {
@@ -4997,8 +5020,13 @@ function renderAdministration() {
     </table>
   `);
 
-  renderAdminAuditTable([], "Loading today's activity...");
-  loadAdminAuditLogs();
+  const auditTable = document.getElementById("adminAuditTable");
+  if (auditTable && !auditTable.hasChildNodes()) {
+    renderAdminAuditTable([], "Loading today's activity...");
+  }
+  if (!adminAuditLoading && Date.now() - lastAdminAuditFetchAt >= 10_000) {
+    void loadAdminAuditLogs();
+  }
 }
 
 function renderAdminAuditTable(rows, emptyMessage = "No audit activity recorded for today.") {
@@ -5009,7 +5037,7 @@ function renderAdminAuditTable(rows, emptyMessage = "No audit activity recorded 
   }
   setOrderHtml("adminAuditTable", `
     <table class="admin-table">
-      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th></tr></thead>
+      <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th><th>Details</th></tr></thead>
       <tbody>
         ${visibleRows.map(row => `
           <tr>${row.map(cell => `<td>${cell}</td>`).join("")}</tr>
@@ -5020,10 +5048,14 @@ function renderAdminAuditTable(rows, emptyMessage = "No audit activity recorded 
 }
 
 async function loadAdminAuditLogs() {
+  if (adminAuditLoading) return;
+  adminAuditLoading = true;
+  lastAdminAuditFetchAt = Date.now();
   const requestId = ++adminAuditRequestId;
   const today = localDateInputValue(new Date());
   if (!hasServerToken()) {
     renderAdminAuditTable(buildLiveAuditFallbackRows(), "Live audit activity is available after login.");
+    adminAuditLoading = false;
     return;
   }
   try {
@@ -5044,6 +5076,7 @@ async function loadAdminAuditLogs() {
     const rows = result.audit_logs.map(log => [
       formatAdminAuditTime(log.performed_at),
       escapeHtml(log.username || log.user_id || "System"),
+      escapeHtml(log.role || "Unknown"),
       escapeHtml(log.action || "Activity"),
       escapeHtml(log.target_resource || log.ip_address || "Recorded")
     ]);
@@ -5051,6 +5084,8 @@ async function loadAdminAuditLogs() {
   } catch (error) {
     if (requestId !== adminAuditRequestId) return;
     renderAdminAuditTable([], error.message || "Today's audit activity could not be loaded.");
+  } finally {
+    if (requestId === adminAuditRequestId) adminAuditLoading = false;
   }
 }
 
@@ -5059,11 +5094,11 @@ function buildLiveAuditFallbackRows() {
   const active = activeAlerts();
   const latestAlert = active[0] || "No active alert";
   return [
-    [formatAdminAuditTime(now.toISOString()), currentUser?.username || "Current Session", "User Login", "Live session active"],
-    [formatAdminAuditTime(minutesFromNow(1)), "System", "Telemetry Check", `${totalFlowAllWards().toFixed(1)} Litre/Min live hospital flow`],
-    [formatAdminAuditTime(minutesFromNow(2)), "System", active.length ? "Alert Review" : "System Normal", latestAlert],
-    [formatAdminAuditTime(minutesFromNow(3)), "System", "Database Sync", databaseConnectionStatus.label || "Checking connection"],
-    [formatAdminAuditTime(minutesFromNow(4)), "System", "Heat Map Refresh", "Ward oxygen usage status updated"]
+    [formatAdminAuditTime(now.toISOString()), currentUser?.username || "Current Session", currentUser?.label || "Unknown", "User Login", "Live session active"],
+    [formatAdminAuditTime(minutesFromNow(1)), "System", "System", "Telemetry Check", `${totalFlowAllWards().toFixed(1)} Litre/Min live hospital flow`],
+    [formatAdminAuditTime(minutesFromNow(2)), "System", "System", active.length ? "Alert Review" : "System Normal", latestAlert],
+    [formatAdminAuditTime(minutesFromNow(3)), "System", "System", "Database Sync", databaseConnectionStatus.label || "Checking connection"],
+    [formatAdminAuditTime(minutesFromNow(4)), "System", "System", "Heat Map Refresh", "Ward oxygen usage status updated"]
   ];
 }
 
@@ -5100,8 +5135,9 @@ async function loadAuditLogDialogRows() {
       audit_id: `live-${index + 1}`,
       performed_at: new Date().toISOString(),
       username: row[1],
-      action: row[2],
-      target_resource: row[3]
+      role: row[2],
+      action: row[3],
+      target_resource: row[4]
     }));
     renderAuditLogDialogRows(auditLogDialogRows);
     if (status) status.textContent = "Showing live session activity. Log in through the server to load Supabase history.";
@@ -5119,8 +5155,9 @@ async function loadAuditLogDialogRows() {
         audit_id: `live-${index + 1}`,
         performed_at: new Date().toISOString(),
         username: row[1],
-        action: row[2],
-        target_resource: row[3]
+        role: row[2],
+        action: row[3],
+        target_resource: row[4]
       }));
       renderAuditLogDialogRows(auditLogDialogRows);
       if (status) status.textContent = "Showing live session activity. Please log in again to load Supabase history.";
@@ -5162,12 +5199,13 @@ function renderAuditLogDialogRows(rows) {
   }
   table.innerHTML = `
     <table class="admin-table">
-      <thead><tr><th>Time</th><th>User</th><th>Action</th><th>Details</th><th>IP</th></tr></thead>
+      <thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th><th>Details</th><th>IP</th></tr></thead>
       <tbody>
         ${rows.map(log => `
           <tr>
             <td>${formatAdminAuditTime(log.performed_at)}</td>
             <td>${escapeHtml(log.username || log.user_id || "System")}</td>
+            <td>${escapeHtml(log.role || "Unknown")}</td>
             <td>${escapeHtml(log.action || "Activity")}</td>
             <td>${escapeHtml(log.target_resource || "Recorded")}</td>
             <td>${escapeHtml(log.ip_address || "-")}</td>
@@ -5190,6 +5228,7 @@ function emailAuditLogRows() {
     ? auditLogDialogRows.map(log => [
         formatAdminAuditTime(log.performed_at),
         log.username || log.user_id || "System",
+        log.role || "Unknown",
         log.action || "Activity",
         log.target_resource || "Recorded",
         log.ip_address || "-"
@@ -5290,7 +5329,8 @@ function updateAdminSetting(group, key, action, selectedValue = "") {
   if (selectedValue) {
     setting.value = selectedValue;
   }
-  renderAdministration();
+  void recordAuditEvent("Configuration Change", `${setting.title}: ${setting.value}`);
+  if (activeView === "administration") renderAdministration();
 }
 
 function updateAdminDevice(action, deviceId) {
@@ -5303,6 +5343,7 @@ function updateAdminDevice(action, deviceId) {
     device.status = "Online";
   }
   device.seen = new Date().toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  void recordAuditEvent("Configuration Change", `Device ${deviceId}: ${action}; status=${device.status}`);
   renderAdministration();
 }
 
@@ -5334,6 +5375,7 @@ function addAdminDevice(event) {
     status: "Online",
     seen: new Date().toLocaleString([], { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
   });
+  void recordAuditEvent("Configuration Change", `Device added: ${deviceId}; location=${location}`);
   renderAdministration();
   document.getElementById("deviceDialog")?.close();
 }

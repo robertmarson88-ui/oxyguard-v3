@@ -58,6 +58,21 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "POST" && apiPath === "/logout") {
+      const session = requireSession(req, res, auth);
+      if (!session) return true;
+      await addAuditLog(db, session.user, "User Logout", "Session ended by user", getClientIp(req));
+      sendJson(res, 200, { ok: true, message: "Logout recorded." });
+      return true;
+    }
+
+    if (req.method === "POST" && apiPath === "/audit-events") {
+      const session = requireSession(req, res, auth);
+      if (!session) return true;
+      await recordClientAuditEvent(req, res, db, session.user);
+      return true;
+    }
+
     if (req.method === "GET" && apiPath === "/users") {
       const session = requireAdmin(req, res, auth);
       if (!session) return true;
@@ -150,7 +165,7 @@ export function createApiHandler({ db, nurseStationDataPath }) {
     if (req.method === "POST" && acknowledgeMatch) {
       const session = requireAuthorized(req, res, auth, "resolve_alert");
       if (!session) return true;
-      await acknowledgeAlert(db, res, Number(acknowledgeMatch[1]), session.user);
+      await acknowledgeAlert(db, res, Number(acknowledgeMatch[1]), session.user, getClientIp(req));
       return true;
     }
 
@@ -595,9 +610,11 @@ function nextUserId(db) {
 }
 
 async function addAuditLog(db, actor, action, target, ipAddress = null) {
+  const actorRole = db.roles.find(role => Number(role.role_id) === Number(actor.role_id));
   const auditLog = {
     audit_id: db.nextAuditId++,
     user_id: actor.user_id,
+    role: actorRole?.role_name || actor.role_name || actor.label || "Unknown",
     action,
     target_resource: truncateAuditDetail(target),
     target: truncateAuditDetail(target),
@@ -645,6 +662,7 @@ function buildAuditInsert(db, auditLog) {
   const hasColumn = column => !hasKnownColumns || availableColumns.has(column);
   const entries = [
     ["user_id", auditLog.user_id],
+    ["role", auditLog.role],
     ["action", auditLog.action],
     [hasColumn("target_resource") ? "target_resource" : "target", auditLog.target_resource],
     ["ip_address", auditLog.ip_address],
@@ -731,7 +749,27 @@ function queryAlerts(db, url) {
   });
 }
 
-async function acknowledgeAlert(db, res, alertId, user) {
+async function recordClientAuditEvent(req, res, db, actor) {
+  const payload = await readJson(req);
+  const action = String(payload.action || "").trim();
+  const details = truncateAuditDetail(payload.details || "Recorded");
+  const allowedActions = new Set(["Report Download", "Configuration Change"]);
+
+  if (!allowedActions.has(action)) {
+    sendJson(res, 400, { ok: false, message: "Unsupported audit action." });
+    return;
+  }
+
+  if (action === "Configuration Change" && Number(actor.role_id) !== 1) {
+    sendJson(res, 403, { ok: false, message: "Administrator permission required." });
+    return;
+  }
+
+  const auditLog = await addAuditLog(db, actor, action, details, getClientIp(req));
+  sendJson(res, 201, { ok: true, audit_id: auditLog.audit_id });
+}
+
+async function acknowledgeAlert(db, res, alertId, user, ipAddress = null) {
   const alert = db.alerts.find(item => item.alert_id === alertId);
   if (!alert) {
     sendJson(res, 404, { ok: false, message: "Alert not found." });
@@ -745,7 +783,7 @@ async function acknowledgeAlert(db, res, alertId, user) {
       [alert.acknowledged_at, alertId]
     );
   }
-  await addAuditLog(db, user, "Acknowledge Alert", `Alert #${alert.alert_id}`);
+  await addAuditLog(db, user, "Acknowledge Alert", `Alert #${alert.alert_id}`, ipAddress);
   sendJson(res, 200, { ok: true, status: "success", alert });
 }
 
@@ -926,15 +964,20 @@ async function listAuditLogs(db, url) {
     const ipSelect = availableColumns.has("ip_address")
       ? "a.ip_address::text as ip_address"
       : "null::text as ip_address";
+    const roleSelect = availableColumns.has("role")
+      ? "coalesce(a.role, r.role_name, 'Unknown') as role"
+      : "coalesce(r.role_name, 'Unknown') as role";
     const params = day ? [day] : [];
     const dayFilter = day
       ? "where (a.performed_at at time zone 'America/Jamaica')::date = $1::date"
       : "";
     const result = await db.pgPool.query(
       `select a.audit_id, a.user_id, coalesce(u.username, a.user_id::text) as username,
+              ${roleSelect},
               ${targetSelect}, ${ipSelect}, a.action, a.performed_at
        from public.audit_logs a
        left join public.users u on u.user_id = a.user_id
+       left join public.roles r on r.role_id = u.role_id
        ${dayFilter}
        order by a.performed_at desc
        limit ${limit}`,
@@ -951,11 +994,13 @@ async function listAuditLogs(db, url) {
     .slice(0, limit)
     .map(log => {
       const user = usersById.get(String(log.user_id));
+      const role = db.roles.find(item => Number(item.role_id) === Number(user?.role_id));
       return {
         audit_id: log.audit_id,
         user_id: log.user_id,
         username: user?.username || log.user_id,
         user_label: user?.email || user?.username || log.user_id,
+        role: log.role || role?.role_name || "Unknown",
         action: log.action,
         target_resource: log.target_resource || log.target || "",
         ip_address: log.ip_address || null,

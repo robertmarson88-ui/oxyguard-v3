@@ -96,6 +96,10 @@ export async function createRelationalStore() {
 
 async function ensureOperationalSchema(pool) {
   await pool.query(
+    `alter table public.audit_logs
+       add column if not exists role varchar(80)`
+  );
+  await pool.query(
     `alter table public.telemetry_logs
        add column if not exists cylinder_capacity numeric(12,2),
        add column if not exists consumed_volume numeric(12,2),
@@ -271,6 +275,9 @@ async function loadSupabaseTables(pool) {
   const auditIpSelect = auditLogColumns.has("ip_address")
     ? "ip_address::text as ip_address"
     : "null::text as ip_address";
+  const auditRoleSelect = auditLogColumns.has("role")
+    ? "role"
+    : "null::text as role";
   const [
     roles,
     permissions,
@@ -290,7 +297,7 @@ async function loadSupabaseTables(pool) {
     queryRows(pool, "select device_id, ward_id, created_at, device_name, device_status, last_seen, bed_id from public.devices order by device_id"),
     loadTelemetryLogs(pool),
     loadAlerts(pool),
-    queryRows(pool, `select audit_id, user_id, action, ${auditTargetSelect}, ${auditIpSelect}, performed_at from public.audit_logs order by audit_id`)
+    queryRows(pool, `select audit_id, user_id, action, ${auditRoleSelect}, ${auditTargetSelect}, ${auditIpSelect}, performed_at from public.audit_logs order by audit_id`)
   ]);
 
   return {
