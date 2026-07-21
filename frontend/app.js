@@ -282,7 +282,7 @@ const permissionViews = {
   },
   "facilities-manager": {
     label: "Facilities Manager",
-    allowedViews: ["report", "order"]
+    allowedViews: ["report"]
   },
   "nurse-supervisor": {
     label: "Nurse Manager",
@@ -294,7 +294,7 @@ const permissionViews = {
   },
   maintenance: {
     label: "CFO",
-    allowedViews: ["report", "dashboard", "alert"]
+    allowedViews: ["report", "analytics", "dashboard"]
   },
   viewer: {
     label: "Viewer",
