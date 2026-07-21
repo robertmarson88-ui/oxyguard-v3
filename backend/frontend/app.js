@@ -354,7 +354,7 @@ function start() {
   document.getElementById("simulatorAlertType")?.addEventListener("change", applySimulatorPreset);
   document.getElementById("simulatorWard")?.addEventListener("change", populateSimulatorTanks);
   document.getElementById("simulatorTank")?.addEventListener("change", syncSimulatorTankLocation);
-  ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading"].forEach(id => {
+  ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume"].forEach(id => {
     document.getElementById(id)?.addEventListener("input", renderSimulatorRulePreview);
     document.getElementById(id)?.addEventListener("change", renderSimulatorRulePreview);
   });
@@ -1340,6 +1340,15 @@ function applySimulatorPreset(updateMessage = true) {
   const live = document.getElementById("simulatorLiveReading");
   const patientStatus = document.getElementById("simulatorPatientStatus");
   const severity = document.getElementById("simulatorSeverity");
+  const isResidualGas = alertType === "Residual Gas";
+  ["simulatorPatientStatusField", "simulatorPrescribedFlowField"].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) field.hidden = isResidualGas;
+  });
+  ["simulatorCylinderStatusField", "simulatorCylinderCapacityField", "simulatorConsumedVolumeField"].forEach(id => {
+    const field = document.getElementById(id);
+    if (field) field.hidden = !isResidualGas;
+  });
   const presets = {
     "Ghost Flow": { prescribed: 0, live: 1.2, patient: "OFF", severity: "High" },
     "Unauthorized Usage": { prescribed: 0, live: 2, patient: "OFF", severity: "High" },
@@ -1356,6 +1365,11 @@ function applySimulatorPreset(updateMessage = true) {
   if (live) live.value = preset.live;
   if (patientStatus) patientStatus.value = preset.patient;
   if (severity) severity.value = preset.severity;
+  if (isResidualGas) {
+    document.getElementById("simulatorCylinderStatus").value = "REPLACED";
+    document.getElementById("simulatorCylinderCapacity").value = 1200;
+    document.getElementById("simulatorConsumedVolume").value = 960;
+  }
   renderSimulatorRulePreview();
   if (updateMessage) updateSimulatorApiStatus(`${alertType} rule loaded. Review and send when ready.`, "ready");
 }
@@ -1368,22 +1382,33 @@ function renderSimulatorRulePreview() {
   const prescribed = Number(document.getElementById("simulatorPrescribedFlow")?.value || 0);
   const live = Number(document.getElementById("simulatorLiveReading")?.value || 0);
   const patientStatus = document.getElementById("simulatorPatientStatus")?.value || "OFF";
+  const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "REPLACED";
+  const cylinderCapacity = Number(document.getElementById("simulatorCylinderCapacity")?.value || 0);
+  const consumedVolume = Number(document.getElementById("simulatorConsumedVolume")?.value || 0);
   const flowStatus = evaluatePatientFlowStatus(Math.max(0.1, prescribed), live);
   const variance = prescribed > 0 ? flowStatus.variance : 0;
   const ruleText = getSimulatorRuleText(alertType, patientStatus, prescribed, live, variance);
   if (status) status.textContent = `${alertType} selected`;
+  const readingSummary = alertType === "Residual Gas"
+    ? `<div class="simulator-reading-grid">
+        <span><small>Status</small><strong>${cylinderStatus}</strong></span>
+        <span><small>Capacity</small><strong>${cylinderCapacity.toLocaleString()} L</strong></span>
+        <span><small>Consumed</small><strong>${consumedVolume.toLocaleString()} L</strong></span>
+        <span><small>Utilization</small><strong>${cylinderCapacity > 0 ? `${((consumedVolume / cylinderCapacity) * 100).toFixed(1)}%` : "Invalid"}</strong></span>
+      </div>`
+    : `<div class="simulator-reading-grid">
+        <span><small>Patient</small><strong>${patientStatus}</strong></span>
+        <span><small>Set Value</small><strong>${formatFlow(prescribed)}</strong></span>
+        <span><small>Live Reading</small><strong>${formatFlow(live)}</strong></span>
+        <span><small>Variance</small><strong>${prescribed > 0 ? formatVariance(variance) : "N/A"}</strong></span>
+      </div>`;
   target.innerHTML = `
     <div class="simulator-rule-card ${alertType === "Normal" ? "normal" : "alert"}">
       <span>${alertType}</span>
       <strong>${ruleText.headline}</strong>
       <p>${ruleText.detail}</p>
     </div>
-    <div class="simulator-reading-grid">
-      <span><small>Patient</small><strong>${patientStatus}</strong></span>
-      <span><small>Set Value</small><strong>${formatFlow(prescribed)}</strong></span>
-      <span><small>Live Reading</small><strong>${formatFlow(live)}</strong></span>
-      <span><small>Variance</small><strong>${prescribed > 0 ? formatVariance(variance) : "N/A"}</strong></span>
-    </div>
+    ${readingSummary}
   `;
 }
 
@@ -1398,8 +1423,8 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
       detail: "Send creates four qualifying readings across 11 minutes and verifies Unauthorized Bed Usage."
     },
     "Residual Gas": {
-      headline: "Cylinder replaced at only 80% utilization",
-      detail: "Sends capacity 1,200 L and consumed volume 960 L, leaving 240 L residual oxygen."
+      headline: "REPLACED cylinder with utilization below 90%",
+      detail: "Set cylinder status, capacity, and consumed volume manually. The alert triggers only when status is REPLACED and consumption is below 90%."
     },
     "Leak": {
       headline: "Live reading indicates possible leakage",
@@ -1440,9 +1465,27 @@ async function submitSimulatorEvent(event) {
   const live = Number(document.getElementById("simulatorLiveReading").value || 0);
   const patientStatus = document.getElementById("simulatorPatientStatus").value;
   const severity = document.getElementById("simulatorSeverity").value;
+  const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "REPLACED";
+  const cylinderCapacity = Number(document.getElementById("simulatorCylinderCapacity")?.value || 0);
+  const consumedVolume = Number(document.getElementById("simulatorConsumedVolume")?.value || 0);
   const location = document.getElementById("simulatorLocation").value.trim() || tankItem.station;
   const createdAt = new Date().toISOString();
   const sendButton = document.getElementById("simulatorSendButton");
+
+  if (alertType === "Residual Gas") {
+    if (cylinderCapacity <= 0 || consumedVolume < 0) {
+      updateSimulatorApiStatus("Enter a valid cylinder capacity and consumed volume.", "warn");
+      return;
+    }
+    if (cylinderStatus !== "REPLACED") {
+      updateSimulatorApiStatus("Residual Gas requires Cylinder Status = REPLACED.", "warn");
+      return;
+    }
+    if (consumedVolume >= cylinderCapacity * 0.9) {
+      updateSimulatorApiStatus("Consumed volume must be less than 90% of cylinder capacity.", "warn");
+      return;
+    }
+  }
 
   applySimulatorEventToTank(tankItem, { alertType, prescribed, live, patientStatus, severity, location });
   if (sendButton) {
@@ -1450,7 +1493,7 @@ async function submitSimulatorEvent(event) {
     sendButton.textContent = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? "Sending 4 Readings..." : "Sending...";
   }
   updateSimulatorApiStatus(`Running ${alertType} rule against the telemetry API...`, "ready");
-  const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt);
+  const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt, { cylinderStatus, cylinderCapacity, consumedVolume });
   if (sendButton) {
     sendButton.disabled = false;
     sendButton.textContent = "Send Test Reading";
@@ -1505,10 +1548,10 @@ function applySimulatorEventToTank(tankItem, simulation) {
   }
 }
 
-async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt) {
+async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt, cylinder = {}) {
   simulatorDeviceSequence = (simulatorDeviceSequence + 1) % 1000;
   const deviceId = getSimulatorRunDeviceId(ward, simulatorDeviceSequence);
-  const readings = buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt);
+  const readings = buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt, cylinder);
   const triggeredAlerts = new Set();
   try {
     for (const [index, payload] of readings.entries()) {
@@ -1543,7 +1586,7 @@ async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt
   }
 }
 
-function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt) {
+function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt, cylinder = {}) {
   const endTime = new Date(createdAt);
   const offsets = [11, 6, 1, 0];
   const durationRule = ["Ghost Flow", "Unauthorized Usage"].includes(alertType);
@@ -1560,9 +1603,9 @@ function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, create
     };
     if (alertType === "Residual Gas") {
       Object.assign(payload, {
-        cylinder_capacity: 1200,
-        consumed_volume: 960,
-        cylinder_status: "REPLACED",
+        cylinder_capacity: Number(cylinder.cylinderCapacity),
+        consumed_volume: Number(cylinder.consumedVolume),
+        cylinder_status: cylinder.cylinderStatus,
         breathing_variance: 0.03,
         emr_status: "OCCUPIED"
       });

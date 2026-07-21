@@ -644,7 +644,7 @@
                   <input id="simulatorLocation" type="text" placeholder="Bed 07 / Station 1" />
                 </label>
 
-                <label>
+                <label id="simulatorPatientStatusField">
                   Patient Status
                   <select id="simulatorPatientStatus">
                     <option value="ON">ON</option>
@@ -652,9 +652,28 @@
                   </select>
                 </label>
 
-                <label>
+                <label id="simulatorPrescribedFlowField">
                   Prescribed Flow
                   <input id="simulatorPrescribedFlow" type="number" min="0" max="100" step="0.1" value="3" />
+                </label>
+
+                <label id="simulatorCylinderStatusField" hidden>
+                  Cylinder Status
+                  <select id="simulatorCylinderStatus">
+                    <option value="REPLACED">REPLACED</option>
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="EMPTY">EMPTY</option>
+                  </select>
+                </label>
+
+                <label id="simulatorCylinderCapacityField" hidden>
+                  Cylinder Capacity (L)
+                  <input id="simulatorCylinderCapacity" type="number" min="0.1" step="0.1" value="1200" />
+                </label>
+
+                <label id="simulatorConsumedVolumeField" hidden>
+                  Consumed Volume (L)
+                  <input id="simulatorConsumedVolume" type="number" min="0" step="0.1" value="960" />
                 </label>
 
                 <label>
