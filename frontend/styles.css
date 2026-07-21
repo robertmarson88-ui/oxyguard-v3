@@ -5794,6 +5794,20 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   min-height: 240px;
 }
 
+.facilities-residual-impact-card {
+  grid-column: span 2;
+  min-height: 270px;
+}
+
+.facilities-residual-impact-card[hidden] {
+  display: none;
+}
+
+.executive-residual-impact-card {
+  min-height: 270px;
+  overflow: hidden;
+}
+
 .executive-table-card .report-table {
   max-height: 220px;
   overflow: auto;

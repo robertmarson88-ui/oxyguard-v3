@@ -891,6 +891,7 @@ async function loadDatabaseAlerts() {
     databaseAlertRows = Array.isArray(alerts) ? alerts.map(mapDatabaseAlertRow) : [];
     databaseAlertsLoaded = true;
     if (activeView === "alert") renderRealTimeAlert();
+    if (activeView === "report") renderReport();
     updateNotifications(activeAlerts());
   } catch {
     databaseAlertsLoaded = false;
@@ -2491,9 +2492,13 @@ function renderReport() {
 
   const nurseDashboard = isNurseSupervisorDashboard();
   const maintenanceDashboard = isMaintenanceExecutiveDashboard();
+  const facilitiesDashboard = getActivePermissionKey() === "facilities-manager";
   document.getElementById("operationsDashboardGrid")?.toggleAttribute("hidden", nurseDashboard || maintenanceDashboard);
   document.getElementById("nurseSupervisorDashboard")?.toggleAttribute("hidden", !nurseDashboard);
   document.getElementById("executiveMaintenanceDashboard")?.toggleAttribute("hidden", !maintenanceDashboard);
+  document.getElementById("facilitiesResidualImpactCard")?.toggleAttribute("hidden", !facilitiesDashboard);
+
+  if (facilitiesDashboard) renderResidualGasFinancialImpact("facilitiesResidualImpact");
 
   if (nurseDashboard) {
     renderNurseSupervisorDashboard(allTanks, activeTanks, alertRows);
@@ -2657,6 +2662,7 @@ function renderMaintenanceExecutiveDashboard(summary) {
       ["Cost per litre", executiveMoney(OXYGEN_COST_PER_LITRE)]
     ]
   });
+  renderResidualGasFinancialImpact("executiveResidualImpact");
 
   renderExecutiveMonthlyUsage(monthlyUsage);
   renderExecutiveTrendAnalysis(monthlyUsage, usageDelta, summary);
@@ -2916,6 +2922,41 @@ function getCriticalAlertOverview(alertRows) {
     cards,
     total: cards.reduce((sum, [, value]) => sum + value, 0)
   };
+}
+
+function getResidualGasFinancialImpact() {
+  const rows = databaseAlertRows.filter(row => row.type === "Residual Gas Waste");
+  const sum = key => rows.reduce((total, row) => {
+    const value = Number(row[key]);
+    return total + (Number.isFinite(value) ? value : 0);
+  }, 0);
+  const percentageRows = rows.filter(row => Number.isFinite(row.unusedPercentage));
+  return {
+    alertCount: rows.length,
+    remainingVolume: sum("remainingVolume"),
+    unusedPercentage: percentageRows.length
+      ? percentageRows.reduce((total, row) => total + row.unusedPercentage, 0) / percentageRows.length
+      : 0,
+    estimatedOxygenWaste: sum("estimatedOxygenWaste"),
+    estimatedFinancialLoss: sum("estimatedFinancialLoss"),
+    potentialSavings: sum("potentialSavings")
+  };
+}
+
+function renderResidualGasFinancialImpact(targetId) {
+  const impact = getResidualGasFinancialImpact();
+  renderExecutiveMetricPanel(targetId, {
+    value: `${impact.estimatedOxygenWaste.toLocaleString(undefined, { maximumFractionDigits: 2 })} L`,
+    label: "Estimated oxygen waste",
+    detail: `${impact.alertCount} unresolved residual gas alert${impact.alertCount === 1 ? "" : "s"}`,
+    tone: impact.alertCount ? "warn" : "good",
+    items: [
+      ["Remaining volume", `${impact.remainingVolume.toLocaleString(undefined, { maximumFractionDigits: 2 })} L`],
+      ["Unused percentage", `${(impact.unusedPercentage * 100).toFixed(1)}%`],
+      ["Estimated financial loss", currency(impact.estimatedFinancialLoss)],
+      ["Potential savings", currency(impact.potentialSavings)]
+    ]
+  });
 }
 
 function formatAlertImpact(row) {
