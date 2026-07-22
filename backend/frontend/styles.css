@@ -13885,10 +13885,15 @@ body:not(.login-active) .topbar .datetime .clock-date {
 }
 
 .incident-response-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  gap: 7px;
+  min-width: 210px;
 }
+
+.incident-note-label { color: #344054; font-size: 10px; font-weight: 800; letter-spacing: .02em; }
+.incident-response-input { width: 100%; min-height: 48px; resize: vertical; border: 1px solid #d5deea; border-radius: 9px; padding: 8px 9px; color: #102a43; background: #fbfdff; font: inherit; font-size: 11px; line-height: 1.35; box-sizing: border-box; }
+.incident-response-input:focus { outline: 2px solid rgba(28, 119, 220, .2); border-color: #4a90e2; background: #fff; }
+.incident-response-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
 
 .incident-response-button {
   border: 0;
@@ -13904,6 +13909,12 @@ body:not(.login-active) .topbar .datetime .clock-date {
 .incident-response-button.clear { background: #e4f8ec; color: #08783c; }
 .incident-response-button:hover { filter: brightness(0.96); }
 .incident-response-note { color: #64748b; font-size: 11px; }
+.nurse-ward-cards-card { grid-column: 1 / -1; overflow: hidden; }
+.nurse-ward-cards { display: grid; grid-template-columns: repeat(4, minmax(230px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
+.nurse-ward-cards .ward-card { min-width: 230px; cursor: default; }
+.nurse-ward-cards .ward-card:hover { transform: none; box-shadow: none; }
+@media (max-width: 900px) { .nurse-ward-cards { grid-template-columns: repeat(2, minmax(230px, 1fr)); } }
+@media (max-width: 620px) { .nurse-ward-cards { grid-template-columns: 1fr; } .incident-response-actions { min-width: 180px; } }
 
 #analyticsView .analytics-summary .summary-card > .kpi-icon {
   display: none !important;

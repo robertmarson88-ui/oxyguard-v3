@@ -1254,7 +1254,10 @@ function renderRealTimeAlert() {
       </table>
     `;
     incidentTarget.querySelectorAll("[data-incident-response]").forEach(button => {
-      button.addEventListener("click", () => respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse));
+      button.addEventListener("click", () => {
+        const note = button.closest("[data-incident-form]")?.querySelector(".incident-response-input")?.value || "";
+        respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
+      });
     });
   }
 
@@ -1998,20 +2001,21 @@ function canRespondToIncident() {
 function incidentResponseControls(row) {
   if (!Number.isFinite(Number(row.id))) return '<span class="incident-response-note">Syncing</span>';
   return `
-    <div class="incident-response-actions">
-      <button type="button" class="incident-response-button acknowledge" data-incident-response="acknowledge" data-alert-id="${row.id}">Acknowledge</button>
-      <button type="button" class="incident-response-button clear" data-incident-response="resolve" data-alert-id="${row.id}">Clear</button>
+    <div class="incident-response-actions" data-incident-form="${row.id}">
+      <label class="incident-note-label" for="incident-note-${row.id}">Response note</label>
+      <textarea id="incident-note-${row.id}" class="incident-response-input" maxlength="50" rows="2" placeholder="Add acknowledgement note (50 characters)" aria-label="Acknowledgement note"></textarea>
+      <div class="incident-response-buttons">
+        <button type="button" class="incident-response-button acknowledge" data-incident-response="acknowledge" data-alert-id="${row.id}">Acknowledge</button>
+        <button type="button" class="incident-response-button clear" data-incident-response="resolve" data-alert-id="${row.id}">Clear alert</button>
+      </div>
     </div>
   `;
 }
 
-async function respondToIncident(alertId, action) {
+async function respondToIncident(alertId, action, note = "") {
   if (!Number.isFinite(alertId) || !canRespondToIncident()) return;
-  let note = "";
   if (action === "acknowledge") {
-    const enteredNote = window.prompt("Acknowledgement note (up to 50 characters):", "");
-    if (enteredNote === null) return;
-    note = enteredNote.trim();
+    note = String(note || "").trim();
     if (!note) {
       window.alert("An acknowledgement note is required.");
       return;
@@ -2884,6 +2888,7 @@ function renderNurseSupervisorDashboard(allTanks, activeTanks, alertRows) {
   renderNurseActiveAlerts(incidentRows);
   renderNurseCurrentUsage(assignedFlow, avgPressure, activeAssignedTanks, occupiedBeds);
   renderNurseBedStatus(assignedTanks);
+  renderNurseWardCards();
 }
 
 function renderNurseAssignedWard(ward, assignedTanks, activeTanks, occupiedBeds, alertCount) {
@@ -2920,9 +2925,18 @@ function renderNurseActiveAlerts(alertRows) {
     ? tableHtml(["Ward / Bed", "Alert", "Priority", "Recommended Action", "Response"], rows)
     : `<div class="nurse-empty-state">No active incidents. New alerts will appear here for nurse response.</div>`;
   target.querySelectorAll("[data-incident-response]").forEach(button => {
-    button.addEventListener("click", () => respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse));
+    button.addEventListener("click", () => {
+      const note = button.closest("[data-incident-form]")?.querySelector(".incident-response-input")?.value || "";
+      respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
+    });
   });
   if (count) count.textContent = `${rows.length} active`;
+}
+
+function renderNurseWardCards() {
+  const target = document.getElementById("nurseWardCards");
+  if (!target) return;
+  target.innerHTML = wards.map(ward => renderWardCard(ward)).join("");
 }
 
 function renderNurseCurrentUsage(totalFlowValue, avgPressure, activeTanks, occupiedBeds) {
