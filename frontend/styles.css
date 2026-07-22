@@ -13944,6 +13944,8 @@ body:not(.login-active) .topbar .datetime .clock-date {
 .incident-response-button.clear { background: #e4f8ec; color: #08783c; }
 .incident-response-button:hover { filter: brightness(0.96); }
 .incident-response-note { color: #64748b; font-size: 11px; }
+.recommended-action-text { min-width: 190px; color: #17324d; font-size: 13px; font-weight: 500; line-height: 1.5; }
+.recommended-action-text strong { display: block; margin-bottom: 3px; color: #0b4e86; font-size: 12px; letter-spacing: .01em; }
 .nurse-ward-cards-card { grid-column: 1 / -1; overflow: hidden; }
 .nurse-ward-cards { display: grid; grid-template-columns: repeat(4, minmax(230px, 1fr)); gap: 12px; overflow-x: auto; padding-bottom: 4px; }
 .nurse-ward-cards .ward-card { min-width: 230px; cursor: default; }

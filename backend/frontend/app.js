@@ -3356,7 +3356,7 @@ function renderResidualGasFinancialImpact(targetId) {
 function formatAlertImpact(row) {
   const recommendedAction = row.recommendedAction || getRecommendedAlertAction(row.type);
   const action = recommendedAction
-    ? `<small><strong>Recommended Action:</strong> ${recommendedAction}</small>`
+    ? `<div class="recommended-action-text"><strong>Recommended Action:</strong> ${recommendedAction}</div>`
     : "-";
   if (row.type !== "Residual Gas Waste" || !Number.isFinite(row.estimatedOxygenWaste)) return action;
   const unusedPercent = Number.isFinite(row.unusedPercentage) ? `${(row.unusedPercentage * 100).toFixed(1)}%` : "-";
