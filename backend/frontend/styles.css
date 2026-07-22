@@ -13884,6 +13884,27 @@ body:not(.login-active) .topbar .datetime .clock-date {
   text-transform: uppercase;
 }
 
+.incident-response-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.incident-response-button {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.incident-response-button.acknowledge { background: #fff1db; color: #b45309; }
+.incident-response-button.clear { background: #e4f8ec; color: #08783c; }
+.incident-response-button:hover { filter: brightness(0.96); }
+.incident-response-note { color: #64748b; font-size: 11px; }
+
 #analyticsView .analytics-summary .summary-card > .kpi-icon {
   display: none !important;
 }

@@ -811,7 +811,7 @@ function getLocalLoginUser(username, password) {
       role_id: 5,
       label: "Nurse",
       email: "ward.nurse@monamercy.local",
-      permissions: ["view_logs"]
+      permissions: ["resolve_alert", "view_logs"]
     },
     executive: {
       password: "executive1",
@@ -961,6 +961,7 @@ function mapDatabaseAlertRow(alert, index) {
   const type = formatAlertType(alert.alert_type);
   return {
     time: formatActivityTime(alert.timestamp || alert.created_at || new Date().toISOString()),
+    id: alert.alert_id,
     ward,
     type,
     priority,
@@ -1103,7 +1104,7 @@ function normalizePermissionRole(role = "") {
 }
 
 function isNurseSupervisorDashboard() {
-  return getActivePermissionKey() === "nurse-supervisor";
+  return ["nurse-supervisor", "nurse"].includes(getActivePermissionKey());
 }
 
 function isMaintenanceExecutiveDashboard() {
@@ -1233,9 +1234,10 @@ function renderRealTimeAlert() {
 
   const incidentTarget = document.getElementById("alertIncidentsTable");
   if (incidentTarget) {
+    const canRespond = canRespondToIncident();
     incidentTarget.innerHTML = `
       <table class="alert-data-table">
-        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Impact / Action</th><th>Status</th><th>Assigned To</th></tr></thead>
+        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Impact / Action</th><th>Status</th><th>Assigned To</th>${canRespond ? "<th>Response</th>" : ""}</tr></thead>
         <tbody>${alertRows.map(row => `
           <tr>
             <td>${row.time}</td>
@@ -1246,10 +1248,14 @@ function renderRealTimeAlert() {
             <td>${formatAlertImpact(row)}</td>
             <td>${alertStatus(row.status)}</td>
             <td>${row.assigned}</td>
+            ${canRespond ? `<td>${incidentResponseControls(row)}</td>` : ""}
           </tr>
         `).join("")}</tbody>
       </table>
     `;
+    incidentTarget.querySelectorAll("[data-incident-response]").forEach(button => {
+      button.addEventListener("click", () => respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse));
+    });
   }
 
   const mapTarget = document.getElementById("alertPipelineMap");
@@ -1982,6 +1988,35 @@ function getAlertIncidentRows() {
     .filter((row, index, rows) => rows.findIndex(candidate => (
     candidate.type === row.type && candidate.ward === row.ward && candidate.asset === row.asset
   )) === index).slice(0, 6);
+}
+
+function canRespondToIncident() {
+  return ["admin", "nurse-supervisor", "nurse"].includes(getActivePermissionKey())
+    && Boolean(currentUser?.permissions?.includes("resolve_alert") || currentUser?.accessToken);
+}
+
+function incidentResponseControls(row) {
+  if (!Number.isFinite(Number(row.id))) return '<span class="incident-response-note">Syncing</span>';
+  return `
+    <div class="incident-response-actions">
+      <button type="button" class="incident-response-button acknowledge" data-incident-response="acknowledge" data-alert-id="${row.id}">Acknowledge</button>
+      <button type="button" class="incident-response-button clear" data-incident-response="resolve" data-alert-id="${row.id}">Clear</button>
+    </div>
+  `;
+}
+
+async function respondToIncident(alertId, action) {
+  if (!Number.isFinite(alertId) || !canRespondToIncident()) return;
+  const endpoint = `/api/alerts/${alertId}/${action}`;
+  try {
+    const response = await fetch(endpoint, { method: "POST", headers: authHeaders(true), body: "{}" });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result?.message || "Incident response could not be saved.");
+    await loadDatabaseAlerts();
+    renderAll();
+  } catch (error) {
+    window.alert(error.message || "Incident response could not be saved.");
+  }
 }
 
 function alertPill(priority) {
@@ -2825,14 +2860,14 @@ function renderNurseSupervisorDashboard(allTanks, activeTanks, alertRows) {
   const assignedWard = wards.find(ward => ward.id === "nurse") || wards[0];
   const assignedTanks = allTanks.filter(t => t.wardId === assignedWard.id);
   const activeAssignedTanks = assignedTanks.filter(t => t.active);
-  const assignedAlerts = alertRows.filter(t => t.wardId === assignedWard.id);
+  const incidentRows = getAlertIncidentRows();
   const occupiedBeds = assignedTanks.filter(t => t.occupied).length;
   const assignedFlow = activeAssignedTanks.reduce((sum, t) => sum + t.flowRate, 0);
   const avgPressure = Math.round(activeAssignedTanks.reduce((sum, t) => sum + t.pressure, 0) / Math.max(1, activeAssignedTanks.length));
   const lowVolumeCount = activeAssignedTanks.filter(t => getReportVolumePercent(t) < 30).length;
 
-  renderNurseAssignedWard(assignedWard, assignedTanks, activeAssignedTanks, occupiedBeds, assignedAlerts.length);
-  renderNurseActiveAlerts(assignedAlerts, lowVolumeCount);
+  renderNurseAssignedWard(assignedWard, assignedTanks, activeAssignedTanks, occupiedBeds, incidentRows.length);
+  renderNurseActiveAlerts(incidentRows);
   renderNurseCurrentUsage(assignedFlow, avgPressure, activeAssignedTanks, occupiedBeds);
   renderNurseBedStatus(assignedTanks);
 }
@@ -2856,22 +2891,23 @@ function renderNurseAssignedWard(ward, assignedTanks, activeTanks, occupiedBeds,
   if (shift) shift.textContent = "Live ward view";
 }
 
-function renderNurseActiveAlerts(alertRows, lowVolumeCount) {
+function renderNurseActiveAlerts(alertRows) {
   const target = document.getElementById("nurseActiveAlerts");
   const count = document.getElementById("nurseActiveAlertCount");
   if (!target) return;
-  const rows = alertRows.map(t => [
-    t.station,
-    t.leakageAlert ? "Leak Detection" : "High Flow",
-    t.leakageAlert ? badge("Critical", "bad") : badge("Warning", "warn"),
-    t.alertMessage || "Review oxygen flow reading."
+  const rows = alertRows.map(row => [
+    `${row.ward} / ${row.asset}`,
+    row.type,
+    alertPill(row.priority),
+    formatAlertImpact(row),
+    canRespondToIncident() ? incidentResponseControls(row) : ""
   ]);
-  if (lowVolumeCount && !rows.length) {
-    rows.push(["Ward supply", "Low Capacity", badge("Warning", "warn"), `${lowVolumeCount} bed point${lowVolumeCount === 1 ? "" : "s"} below 30% volume.`]);
-  }
   target.innerHTML = rows.length
-    ? tableHtml(["Bed", "Alert", "Priority", "Action"], rows)
-    : `<div class="nurse-empty-state">No active alerts for the assigned ward.</div>`;
+    ? tableHtml(["Ward / Bed", "Alert", "Priority", "Recommended Action", "Response"], rows)
+    : `<div class="nurse-empty-state">No active incidents. New alerts will appear here for nurse response.</div>`;
+  target.querySelectorAll("[data-incident-response]").forEach(button => {
+    button.addEventListener("click", () => respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse));
+  });
   if (count) count.textContent = `${rows.length} active`;
 }
 

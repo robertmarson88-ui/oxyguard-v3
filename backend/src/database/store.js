@@ -21,6 +21,8 @@ export async function createRelationalStore() {
       { role_id: 2, permission_id: 2 },
       { role_id: 3, permission_id: 2 },
       { role_id: 4, permission_id: 2 },
+      { role_id: 4, permission_id: 1 },
+      { role_id: 5, permission_id: 1 },
       { role_id: 5, permission_id: 2 }
     ],
     users: [
@@ -188,6 +190,17 @@ async function ensureOperationalSchema(pool) {
          values ($1, $2)
          on conflict do nothing`,
         [role.role_id, viewPermission.permission_id]
+      );
+    }
+  }
+  const resolveAlertPermission = permissions.find(permission => String(permission.permission_name || "").toLowerCase() === "resolve_alert");
+  if (resolveAlertPermission) {
+    for (const role of [adminRole, nurseManagerRole, nurseRole]) {
+      await pool.query(
+        `insert into public.role_permissions (role_id, permission_id)
+         values ($1, $2)
+         on conflict do nothing`,
+        [role.role_id, resolveAlertPermission.permission_id]
       );
     }
   }
