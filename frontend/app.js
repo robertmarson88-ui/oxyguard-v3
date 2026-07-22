@@ -1990,16 +1990,16 @@ function assignmentFlag(value) {
 }
 
 function assignmentResult(value) {
-  const tone = value === "Normal" ? "normal" : value === "Supply Failure" ? "failure" : value === "Flow Anomaly" ? "warning" : "danger";
+  const tone = value === "Normal" ? "normal" : value === "Residual Gas" ? "warning" : "danger";
   return `<span class="assignment-result ${tone}">${value}</span>`;
 }
 
 function getAlertWardCards() {
   return [
     { key: "ae", ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [wardAlertRow("bed-05", "Bed 05", "PT-0005", "On", "4.0", "4.0", "Normal"), wardAlertRow("bed-06", "Bed 06", "PT-0006", "On", "3.5", "3.8", "Normal"), wardAlertRow("bed-07", "Bed 07", "PT-0007", "Off", "0.0", "2.8", "Ghost Flow")] },
-    { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "2.5", "2.5", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "3.0", "0.0", "Supply Failure"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "4.0", "5.2", "Flow Anomaly")] },
-    { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "4.0", "4.1", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "0.0", "0.0", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "0.0", "-", "Leakage")] },
-    { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "4.0", "3.9", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "3.0", "0.0", "Supply Failure"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "0.0", "0.0", "Normal")] }
+    { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "2.5", "2.5", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "4.0", "5.2", "Unauthorized Bed Usage")] },
+    { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "4.0", "4.1", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "0.0", "0.0", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "0.0", "-", "Residual Gas")] },
+    { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "4.0", "3.9", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "0.0", "0.0", "Normal")] }
   ];
 }
 
@@ -2012,7 +2012,31 @@ function wardStatusKey(wardKey, assetKey) {
 }
 
 function getWardRowStatus(card, row) {
-  return wardCardStatusOverrides.get(wardStatusKey(card.key, row.assetKey)) || row.defaultStatus;
+  return getLiveWardIncidentStatus(card, row) || normalizeWardIncidentStatus(row.defaultStatus) || "Normal";
+}
+
+function normalizeWardIncidentStatus(status = "") {
+  const value = String(status).trim().toLowerCase();
+  if (value === "ghost flow") return "Ghost Flow";
+  if (["unauthorized usage", "unauthorized bed usage", "unauthorized bed detection"].includes(value)) return "Unauthorized Bed Usage";
+  if (["residual gas", "residual gas waste", "residual gas detection"].includes(value)) return "Residual Gas";
+  return "";
+}
+
+function getLiveWardIncidentStatus(card, row) {
+  const rowIdentifiers = [row.assetKey, row.asset, row.patientId]
+    .map(value => String(value).toLowerCase().replace(/[^a-z0-9]/g, ""));
+  const apiIncident = databaseAlertRows.find(alert => {
+    const alertAsset = String(alert.asset || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    return alert.ward === card.ward
+      && normalizeWardIncidentStatus(alert.type)
+      && rowIdentifiers.some(identifier => identifier && (alertAsset.includes(identifier) || identifier.includes(alertAsset)));
+  });
+  if (apiIncident) return normalizeWardIncidentStatus(apiIncident.type);
+
+  const ward = wards.find(item => item.name === card.ward);
+  const tank = ward?.tanks.find(item => item.name === row.asset || item.station === row.asset);
+  return normalizeWardIncidentStatus(tank?.alertType);
 }
 
 function canEditWardStatus() {
@@ -2022,12 +2046,7 @@ function canEditWardStatus() {
 
 function renderWardStatusControl(card, row, editable = false) {
   const status = getWardRowStatus(card, row);
-  if (!editable || !canEditWardStatus()) return assignmentResult(status);
-  return `
-    <select class="ward-status-select" data-ward-key="${card.key}" data-asset-key="${row.assetKey}" aria-label="Status for ${row.asset}, ${card.ward}">
-      ${WARD_STATUS_OPTIONS.map(option => `<option value="${option}"${option === status ? " selected" : ""}>${option}</option>`).join("")}
-    </select>
-  `;
+  return assignmentResult(status);
 }
 
 function renderAlertWardCard(card) {
