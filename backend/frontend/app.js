@@ -1123,7 +1123,6 @@ function resetState() {
   simulatorPresetInitialized = false;
 
   renderAll();
-  scheduleSimulation();
   loadNurseStationData();
   loadDatabaseConnectionStatus();
   timers.push(setInterval(updateClock, 1000));
@@ -1957,10 +1956,14 @@ function alertKpiCard(label, value, detail, tone, action = "", iconMode = "text"
 }
 
 function getAlertIncidentRows() {
+  const databaseRows = databaseAlertRows
+    .map(row => ({ ...row, type: normalizeWardIncidentStatus(row.type) }))
+    .filter(row => row.type);
   const timedRows = wards.flatMap(ward => ward.tanks
     .filter(t => t.active && (t.leakageAlert || t.highFlowAlert))
     .map(t => {
-      const type = t.alertType || (t.highFlowAlert ? "Ghost Flow" : "Leak Detection");
+      const type = normalizeWardIncidentStatus(t.alertType);
+      if (!type) return null;
       return {
       time: formatActivityTime(new Date().toISOString()),
       ward: ward.name,
@@ -1971,8 +1974,11 @@ function getAlertIncidentRows() {
       assigned: t.alertType === "Residual Gas" ? "Nurse Station" : "Facilities",
       recommendedAction: getRecommendedAlertAction(type)
     };
-    }));
-  return timedRows.slice(0, 6);
+    }).filter(Boolean));
+  const incidents = [...databaseRows, ...timedRows];
+  return incidents.filter((row, index) => incidents.findIndex(candidate => (
+    candidate.type === row.type && candidate.ward === row.ward && candidate.asset === row.asset
+  )) === index).slice(0, 6);
 }
 
 function alertPill(priority) {
@@ -1996,9 +2002,9 @@ function assignmentResult(value) {
 
 function getAlertWardCards() {
   return [
-    { key: "ae", ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [wardAlertRow("bed-05", "Bed 05", "PT-0005", "On", "4.0", "4.0", "Normal"), wardAlertRow("bed-06", "Bed 06", "PT-0006", "On", "3.5", "3.8", "Normal"), wardAlertRow("bed-07", "Bed 07", "PT-0007", "Off", "0.0", "2.8", "Ghost Flow")] },
-    { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "2.5", "2.5", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "4.0", "5.2", "Unauthorized Bed Usage")] },
-    { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "4.0", "4.1", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "0.0", "0.0", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "0.0", "-", "Residual Gas")] },
+    { key: "ae", ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [wardAlertRow("bed-05", "Bed 05", "PT-0005", "On", "4.0", "4.0", "Normal"), wardAlertRow("bed-06", "Bed 06", "PT-0006", "On", "3.5", "3.8", "Normal"), wardAlertRow("bed-07", "Bed 07", "PT-0007", "Off", "0.0", "2.8", "Normal")] },
+    { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "2.5", "2.5", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "4.0", "5.2", "Normal")] },
+    { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "4.0", "4.1", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "0.0", "0.0", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "0.0", "-", "Normal")] },
     { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "4.0", "3.9", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "0.0", "0.0", "Normal")] }
   ];
 }
@@ -2023,18 +2029,22 @@ function normalizeWardIncidentStatus(status = "") {
   return "";
 }
 
+function normalizeWardLabel(value = "") {
+  return String(value).toLowerCase().replace("paediatrics", "paediatric").replace(/[^a-z0-9]/g, "");
+}
+
 function getLiveWardIncidentStatus(card, row) {
   const rowIdentifiers = [row.assetKey, row.asset, row.patientId]
     .map(value => String(value).toLowerCase().replace(/[^a-z0-9]/g, ""));
   const apiIncident = databaseAlertRows.find(alert => {
     const alertAsset = String(alert.asset || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    return alert.ward === card.ward
+    return normalizeWardLabel(alert.ward) === normalizeWardLabel(card.ward)
       && normalizeWardIncidentStatus(alert.type)
       && rowIdentifiers.some(identifier => identifier && (alertAsset.includes(identifier) || identifier.includes(alertAsset)));
   });
   if (apiIncident) return normalizeWardIncidentStatus(apiIncident.type);
 
-  const ward = wards.find(item => item.name === card.ward);
+  const ward = wards.find(item => normalizeWardLabel(item.name) === normalizeWardLabel(card.ward));
   const tank = ward?.tanks.find(item => item.name === row.asset || item.station === row.asset);
   return normalizeWardIncidentStatus(tank?.alertType);
 }
