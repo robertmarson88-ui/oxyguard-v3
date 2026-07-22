@@ -1615,13 +1615,23 @@ async function submitSimulatorEvent(event) {
     void recordAuditEvent("Simulator Alert Sent", `${alertType} sent for ${ward.name} / ${tankItem.name}`);
   }
 
+  if (telemetryResult.alerts.length) {
+    const receivedRows = telemetryResult.alerts.map(mapDatabaseAlertRow);
+    const receivedIds = new Set(receivedRows.map(row => String(row.id || row.asset)));
+    databaseAlertRows = [
+      ...receivedRows,
+      ...databaseAlertRows.filter(row => !receivedIds.has(String(row.id || row.asset)))
+    ];
+    databaseAlertsLoaded = true;
+  }
+
   updateSimulatorApiStatus(
     telemetryResult.ok
       ? `${alertType} verified: ${telemetryResult.triggeredAlerts.join(", ") || "no alert expected"}.`
       : `${alertType} shown on dashboard. API response: ${telemetryResult.message || "Telemetry was not accepted."}`,
     telemetryResult.ok ? "success" : "warn"
   );
-  if (telemetryResult.ok) await loadDatabaseAlerts();
+  if (telemetryResult.ok) void loadDatabaseAlerts();
   renderAll();
   renderSimulator();
 }
@@ -1658,6 +1668,7 @@ async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt
   const deviceId = getSimulatorRunDeviceId(ward, simulatorDeviceSequence);
   const readings = buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, createdAt, cylinder);
   const triggeredAlerts = new Set();
+  const generatedAlerts = [];
   try {
     for (const [index, payload] of readings.entries()) {
       updateSimulatorApiStatus(`Sending ${alertType} reading ${index + 1} of ${readings.length}...`, "ready");
@@ -1671,12 +1682,16 @@ async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt
         return {
           ok: false,
           triggeredAlerts: [...triggeredAlerts],
+          alerts: generatedAlerts,
           message: data?.message || data?.error || formatSimulatorErrors(data?.errors) || `API returned ${response.status}`
         };
       }
       const alerts = Array.isArray(data?.alerts) ? data.alerts : data?.alert ? [data.alert] : [];
       alerts.forEach(alert => {
-        if (alert?.alert_type) triggeredAlerts.add(alert.alert_type);
+        if (alert?.alert_type) {
+          triggeredAlerts.add(alert.alert_type);
+          generatedAlerts.push(alert);
+        }
       });
     }
     const expectedAlert = getSimulatorExpectedAlertType(alertType);
@@ -1684,10 +1699,11 @@ async function postSimulatorTelemetry(ward, tankItem, alertType, live, createdAt
     return {
       ok: verified,
       triggeredAlerts: [...triggeredAlerts],
+      alerts: generatedAlerts,
       message: verified ? "Rule verified." : `Expected ${expectedAlert}, received ${[...triggeredAlerts].join(", ") || "no alert"}.`
     };
   } catch (error) {
-    return { ok: false, triggeredAlerts: [...triggeredAlerts], message: error?.message || "Telemetry API is not reachable." };
+    return { ok: false, triggeredAlerts: [...triggeredAlerts], alerts: generatedAlerts, message: error?.message || "Telemetry API is not reachable." };
   }
 }
 
