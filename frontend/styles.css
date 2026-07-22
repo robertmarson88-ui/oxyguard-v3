@@ -5707,6 +5707,15 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   overflow: hidden;
 }
 
+.nurse-active-alerts-card {
+  grid-column: 1 / -1;
+  min-height: 300px;
+}
+
+.nurse-active-alerts-card .report-table {
+  overflow-x: auto;
+}
+
 .nurse-ward-hero {
   display: grid;
   gap: 8px;

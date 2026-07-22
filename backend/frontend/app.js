@@ -1234,7 +1234,7 @@ function renderRealTimeAlert() {
   if (incidentCount) incidentCount.textContent = String(alertRows.length);
 
   const incidentTarget = document.getElementById("alertIncidentsTable");
-  if (incidentTarget) {
+  if (incidentTarget && !isEditingIncidentResponse()) {
     const canRespond = canRespondToIncident();
     incidentTarget.innerHTML = `
       <table class="alert-data-table">
@@ -2000,6 +2000,10 @@ function getAlertIncidentRows() {
 function canRespondToIncident() {
   return getActivePermissionKey() === "nurse-supervisor"
     && Boolean(currentUser?.permissions?.includes("resolve_alert") || currentUser?.accessToken);
+}
+
+function isEditingIncidentResponse() {
+  return document.activeElement?.classList?.contains("incident-response-input");
 }
 
 function incidentResponseControls(row) {
@@ -2951,7 +2955,7 @@ function renderNurseActiveAlerts(alertRows) {
 
 function renderNurseWardCards() {
   const target = document.getElementById("nurseWardCards");
-  if (!target) return;
+  if (!target || isEditingIncidentResponse()) return;
   target.innerHTML = getAlertWardCards().map(renderAlertWardCard).join("");
   target.querySelectorAll(".alert-ward-panel").forEach(card => {
     card.addEventListener("click", event => {
