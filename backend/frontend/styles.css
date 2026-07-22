@@ -13857,6 +13857,33 @@ body:not(.login-active) #logoutButton {
   line-height: 1.15 !important;
 }
 
+/* Compact operational clock: clear time at a glance, date as supporting context. */
+body:not(.login-active) .topbar .datetime {
+  min-width: 174px !important;
+  display: grid !important;
+  gap: 1px;
+  padding: 7px 13px !important;
+  border-radius: 14px !important;
+  text-align: left !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+body:not(.login-active) .topbar .datetime .clock-time {
+  font-size: 16px;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.03em;
+  line-height: 1.05;
+}
+
+body:not(.login-active) .topbar .datetime .clock-date {
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  opacity: 0.82;
+  text-transform: uppercase;
+}
+
 #analyticsView .analytics-summary .summary-card > .kpi-icon {
   display: none !important;
 }

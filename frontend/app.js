@@ -2649,7 +2649,7 @@ function updateClock() {
   const now = new Date();
   const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   const date = now.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
-  document.getElementById("dateTime").innerHTML = `${time}<small>${date}</small>`;
+  document.getElementById("dateTime").innerHTML = `<span class="clock-time">${time}</span><span class="clock-date">${date}</span>`;
   updateCurrentUserDisplay();
 
   const orderTimer = document.getElementById("orderTimeRemaining");
@@ -5935,21 +5935,7 @@ function updateFooter() {
 }
 
 function activeAlerts() {
-  const alerts = [];
-  wards.forEach(ward => {
-    ward.tanks
-      .filter(t => t.active && (t.leakageAlert || t.highFlowAlert))
-      .forEach(t => alerts.push(`${ward.name} ${t.alertType || "oxygen alert"} - ${t.name}`));
-  });
-  wards.forEach(ward => {
-    ward.tanks
-      .filter(t => t.active && Math.round((t.volumeRemaining * 100) / t.maxVolume) < 10)
-      .forEach(t => {
-        const percent = Math.round((t.volumeRemaining * 100) / t.maxVolume);
-        alerts.push(`${ward.name} critical tank level - ${t.name} at ${percent}%`);
-      });
-  });
-  return alerts;
+  return getAlertIncidentRows().map(alert => `${alert.type} — ${alert.ward} / ${alert.asset}`);
 }
 
 function getTank(name) {
