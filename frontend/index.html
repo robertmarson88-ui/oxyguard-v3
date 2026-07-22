@@ -52,7 +52,7 @@
         <button class="side-button" data-view="analytics" data-role-required="admin">Analytics</button>
         <button class="side-button" data-view="dashboard" data-role-required="admin">Report</button>
         <button class="side-button" data-view="order" data-role-required="admin">Order Summary</button>
-        <button class="side-button" data-view="simulator" data-role-required="admin">Simulator</button>
+        <button class="side-button" data-view="simulator" data-role-required="admin" hidden>Simulator</button>
         <button class="side-button" data-view="administration" data-role-required="admin">Administration</button>
         <button class="side-button" id="logoutButton">Logout</button>
         <div class="sidebar-fill"></div>
@@ -203,8 +203,6 @@
                   <span><i class="normal"></i>Normal</span>
                   <span><i class="high"></i>High Usage</span>
                   <span><i class="alert"></i>Alert</span>
-                  <span><i class="offline"></i>Offline</span>
-                  <span><i class="maintenance"></i>Maintenance</span>
                 </div>
               </div>
               <div id="alertPipelineMap" class="alert-pipeline-map"></div>
@@ -259,9 +257,7 @@
               <div class="v5-map-legend">
                 <span><i class="normal"></i>Normal</span>
                 <span><i class="high"></i>High Usage</span>
-                <span><i class="ghost"></i>Ghost Flow</span>
-                <span><i class="offline"></i>Offline</span>
-                <span><i class="maintenance"></i>Maintenance</span>
+                <span><i class="ghost"></i>Alert</span>
               </div>
             </article>
 
@@ -610,7 +606,7 @@
           </section>
         </section>
 
-        <section class="simulator view" id="simulatorView">
+        <section class="simulator view" id="simulatorView" hidden>
           <section class="simulator-hero">
             <div>
               <span>OxyGuard Alert Simulator</span>

@@ -1518,6 +1518,8 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
 
 async function submitSimulatorEvent(event) {
   event.preventDefault();
+  updateSimulatorApiStatus("Simulation is disabled. OxyGuard now displays only live triggered incidents.", "ready");
+  return;
   const tankItem = getSimulatorSelectedTank();
   const ward = getSimulatorSelectedWard();
   if (!tankItem || !ward) return;
@@ -1956,29 +1958,16 @@ function alertKpiCard(label, value, detail, tone, action = "", iconMode = "text"
 }
 
 function getAlertIncidentRows() {
-  const databaseRows = databaseAlertRows
+  return databaseAlertRows
     .map(row => ({ ...row, type: normalizeWardIncidentStatus(row.type) }))
-    .filter(row => row.type);
-  const timedRows = wards.flatMap(ward => ward.tanks
-    .filter(t => t.active && (t.leakageAlert || t.highFlowAlert))
-    .map(t => {
-      const type = normalizeWardIncidentStatus(t.alertType);
-      if (!type) return null;
-      return {
-      time: formatActivityTime(new Date().toISOString()),
-      ward: ward.name,
-      type,
-      priority: t.alertType === "Ghost Flow" ? "Critical" : t.alertType === "Unauthorized Bed Usage" ? "High" : "Medium",
-      asset: t.occupied ? t.station : t.station.replace("Station", "Bed"),
-      status: "Awaiting Response",
-      assigned: t.alertType === "Residual Gas" ? "Nurse Station" : "Facilities",
-      recommendedAction: getRecommendedAlertAction(type)
-    };
-    }).filter(Boolean));
-  const incidents = [...databaseRows, ...timedRows];
-  return incidents.filter((row, index) => incidents.findIndex(candidate => (
+    .filter(row => row.type && !isSimulatedAlertAsset(row.asset))
+    .filter((row, index, rows) => rows.findIndex(candidate => (
     candidate.type === row.type && candidate.ward === row.ward && candidate.asset === row.asset
   )) === index).slice(0, 6);
+}
+
+function isSimulatedAlertAsset(asset = "") {
+  return /^(AE|LB|PD|RC|NS)\d{3}$/i.test(String(asset).trim());
 }
 
 function alertPill(priority) {
@@ -5753,9 +5742,9 @@ function renderHospitalHeatMap() {
     const flow = ward ? totalFlow(ward) : 0;
     const activeCount = ward ? ward.tanks.filter(tankItem => tankItem.active).length : 0;
     const tankCount = ward?.tanks.length || 0;
-    const alertCount = ward ? ward.tanks.filter(tankItem => tankItem.leakageAlert || tankItem.highFlowAlert || getReportVolumePercent(tankItem) < 10).length : 0;
+    const alertCount = ward ? getWardIncidentCount(ward.name) : 0;
     const pressure = ward ? averagePressure(ward) : 0;
-    const state = getHeatMapWardState(ward);
+    const state = getHeatMapWardState(ward, alertCount);
     return {
       label,
       className,
@@ -5774,11 +5763,11 @@ function renderHospitalHeatMap() {
   const supportRoom = (label, className, meta, details) => ({
     label,
     className,
-    state: details.alertCount > 0 ? "high" : "normal",
+    state: details.alertCount > 0 ? "ghost" : details.flow >= 15 ? "high" : "normal",
     meta,
     details: {
       ...details,
-      stateLabel: details.alertCount > 0 ? "Review needed" : "Normal usage"
+      stateLabel: details.alertCount > 0 ? "Alert" : details.flow >= 15 ? "High oxygen usage" : "Normal usage"
     }
   });
   const allTanks = wards.flatMap(ward => ward.tanks);
@@ -5786,7 +5775,7 @@ function renderHospitalHeatMap() {
   const hospitalPressure = onlineTanks.length
     ? Math.round(onlineTanks.reduce((sum, tank) => sum + tank.pressure, 0) / onlineTanks.length)
     : 0;
-  const hospitalAlerts = activeAlerts().length;
+  const hospitalAlerts = getAlertIncidentRows().length;
   const mapRooms = [
     supportRoom("ICU", "icu", "North intake | 8.0 Litre/Min | 2 online", {
       flow: 8,
@@ -5848,20 +5837,19 @@ function heatMapStateLabel(state) {
   const labels = {
     normal: "Normal usage",
     high: "High oxygen usage",
-    ghost: "Alert condition",
-    offline: "Offline",
-    maintenance: "Maintenance"
+    ghost: "Alert"
   };
   return labels[state] || "Monitoring";
 }
 
-function getHeatMapWardState(ward) {
-  if (!ward) return "offline";
-  const activeTanks = ward.tanks.filter(tankItem => tankItem.active);
-  if (!activeTanks.length) return "offline";
-  if (ward.tanks.some(tankItem => tankItem.leakageAlert || tankItem.highFlowAlert || getReportVolumePercent(tankItem) < 10)) return "ghost";
-  const flow = totalFlow(ward);
-  if (flow >= 18 || ward.tanks.some(tankItem => tankItem.fixedFlow || getReportVolumePercent(tankItem) < 30)) return "high";
+function getWardIncidentCount(wardName) {
+  return getAlertIncidentRows().filter(row => normalizeWardLabel(row.ward) === normalizeWardLabel(wardName)).length;
+}
+
+function getHeatMapWardState(ward, alertCount = 0) {
+  if (alertCount > 0) return "ghost";
+  if (!ward) return "normal";
+  if (totalFlow(ward) >= 15) return "high";
   return "normal";
 }
 
