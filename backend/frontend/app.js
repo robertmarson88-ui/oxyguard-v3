@@ -2765,8 +2765,7 @@ function openWard(id) {
 
 function updateClock() {
   const now = new Date();
-  const time = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  const date = now.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" });
+  const { time, date } = formatApplicationTimestamp(now);
   document.getElementById("dateTime").innerHTML = `<span class="clock-time">${time}</span><span class="clock-date">${date}</span>`;
   updateCurrentUserDisplay();
 
@@ -2981,6 +2980,15 @@ function renderNurseActiveAlerts(alertRows) {
   });
   target.querySelectorAll(".incident-response-input").forEach(protectIncidentResponseInput);
   if (count) count.textContent = `${rows.length} active`;
+}
+
+function formatApplicationTimestamp(value) {
+  const dateTime = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(dateTime.getTime())) return { time: "--:--:--", date: "--" };
+  return {
+    time: dateTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+    date: dateTime.toLocaleDateString([], { day: "2-digit", month: "short", year: "numeric" })
+  };
 }
 
 function renderNurseWardCards() {
@@ -5265,10 +5273,10 @@ function buildLiveAuditFallbackRows() {
   const latestAlert = active[0] || "No active alert";
   return [
     [formatAdminAuditTime(now.toISOString()), currentUser?.username || "Current Session", currentUser?.label || "Unknown", "User Login", "Live session active"],
-    [formatAdminAuditTime(minutesFromNow(1)), "System", "System", "Telemetry Check", `${totalFlowAllWards().toFixed(1)} Litre/Min live hospital flow`],
-    [formatAdminAuditTime(minutesFromNow(2)), "System", "System", active.length ? "Alert Review" : "System Normal", latestAlert],
-    [formatAdminAuditTime(minutesFromNow(3)), "System", "System", "Database Sync", databaseConnectionStatus.label || "Checking connection"],
-    [formatAdminAuditTime(minutesFromNow(4)), "System", "System", "Heat Map Refresh", "Ward oxygen usage status updated"]
+    [formatAdminAuditTime(new Date(Date.now() - 60_000)), "System", "System", "Telemetry Check", `${totalFlowAllWards().toFixed(1)} Litre/Min live hospital flow`],
+    [formatAdminAuditTime(new Date(Date.now() - 120_000)), "System", "System", active.length ? "Alert Review" : "System Normal", latestAlert],
+    [formatAdminAuditTime(new Date(Date.now() - 180_000)), "System", "System", "Database Sync", databaseConnectionStatus.label || "Checking connection"],
+    [formatAdminAuditTime(new Date(Date.now() - 240_000)), "System", "System", "Heat Map Refresh", "Ward oxygen usage status updated"]
   ];
 }
 
@@ -5413,13 +5421,8 @@ function emailAuditLogRows() {
 function formatAdminAuditTime(value) {
   const date = value ? new Date(value) : new Date();
   if (Number.isNaN(date.getTime())) return escapeHtml(value || "");
-  return date.toLocaleString([], {
-    year: "numeric",
-    month: "short",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
+  const formatted = formatApplicationTimestamp(date);
+  return `${formatted.time} · ${formatted.date}`;
 }
 
 function adminRoleBadge(role) {
