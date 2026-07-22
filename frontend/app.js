@@ -1518,8 +1518,6 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
 
 async function submitSimulatorEvent(event) {
   event.preventDefault();
-  updateSimulatorApiStatus("Simulation is disabled. OxyGuard now displays only live triggered incidents.", "ready");
-  return;
   const tankItem = getSimulatorSelectedTank();
   const ward = getSimulatorSelectedWard();
   if (!tankItem || !ward) return;
