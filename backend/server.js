@@ -22,6 +22,7 @@ const contentTypes = {
 };
 
 const db = await createRelationalStore();
+console.info(`OxyGuard account directory loaded from ${db.source || "database"}.`);
 const handleApi = createApiHandler({ db, nurseStationDataPath });
 
 async function resolveFrontendRoot() {
