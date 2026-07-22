@@ -763,7 +763,7 @@ async function recordClientAuditEvent(req, res, db, actor) {
   const payload = await readJson(req);
   const action = String(payload.action || "").trim();
   const details = truncateAuditDetail(payload.details || "Recorded");
-  const allowedActions = new Set(["Report Download", "Configuration Change"]);
+  const allowedActions = new Set(["Report Download", "Configuration Change", "Simulator Alert Sent"]);
 
   if (!allowedActions.has(action)) {
     sendJson(res, 400, { ok: false, message: "Unsupported audit action." });

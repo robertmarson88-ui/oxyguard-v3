@@ -1611,6 +1611,10 @@ async function submitSimulatorEvent(event) {
   });
   simulatorEvents = simulatorEvents.slice(0, 8);
 
+  if (telemetryResult.ok && getSimulatorExpectedAlertType(alertType)) {
+    void recordAuditEvent("Simulator Alert Sent", `${alertType} sent for ${ward.name} / ${tankItem.name}`);
+  }
+
   updateSimulatorApiStatus(
     telemetryResult.ok
       ? `${alertType} verified: ${telemetryResult.triggeredAlerts.join(", ") || "no alert expected"}.`
@@ -1958,14 +1962,10 @@ function alertKpiCard(label, value, detail, tone, action = "", iconMode = "text"
 function getAlertIncidentRows() {
   return databaseAlertRows
     .map(row => ({ ...row, type: normalizeWardIncidentStatus(row.type) }))
-    .filter(row => row.type && !isSimulatedAlertAsset(row.asset))
+    .filter(row => row.type)
     .filter((row, index, rows) => rows.findIndex(candidate => (
     candidate.type === row.type && candidate.ward === row.ward && candidate.asset === row.asset
   )) === index).slice(0, 6);
-}
-
-function isSimulatedAlertAsset(asset = "") {
-  return /^(AE|LB|PD|RC|NS)\d{3}$/i.test(String(asset).trim());
 }
 
 function alertPill(priority) {
@@ -2023,13 +2023,16 @@ function normalizeWardLabel(value = "") {
 function getLiveWardIncidentStatus(card, row) {
   const rowIdentifiers = [row.assetKey, row.asset, row.patientId]
     .map(value => String(value).toLowerCase().replace(/[^a-z0-9]/g, ""));
-  const apiIncident = databaseAlertRows.find(alert => {
+  const wardIncidents = getAlertIncidentRows().filter(alert => normalizeWardLabel(alert.ward) === normalizeWardLabel(card.ward));
+  const apiIncident = wardIncidents.find(alert => {
     const alertAsset = String(alert.asset || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    return normalizeWardLabel(alert.ward) === normalizeWardLabel(card.ward)
-      && normalizeWardIncidentStatus(alert.type)
-      && rowIdentifiers.some(identifier => identifier && (alertAsset.includes(identifier) || identifier.includes(alertAsset)));
+    return rowIdentifiers.some(identifier => identifier && (alertAsset.includes(identifier) || identifier.includes(alertAsset)));
   });
   if (apiIncident) return normalizeWardIncidentStatus(apiIncident.type);
+
+  // Simulator IDs do not carry a ward-card bed key. Place the live ward incident
+  // on the card's designated incident row so the card remains synchronized.
+  if (wardIncidents.length && card.rows.at(-1) === row) return wardIncidents[0].type;
 
   const ward = wards.find(item => normalizeWardLabel(item.name) === normalizeWardLabel(card.ward));
   const tank = ward?.tanks.find(item => item.name === row.asset || item.station === row.asset);
