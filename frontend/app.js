@@ -3165,16 +3165,12 @@ function getEsp32DeviceStatus() {
   };
 }
 
-function getCriticalAlertOverview(alertRows) {
-  const liveLeaks = alertRows.filter(t => t.leakageAlert && !t.alertType).length;
-  const liveGhostFlow = alertRows.filter(t => t.alertType === "Ghost Flow" || t.highFlowAlert).length
-    + databaseAlertRows.filter(row => row.type === "Ghost Flow").length;
-  const unauthorized = alertRows.filter(t => t.alertType === "Unauthorized Bed Usage").length
-    + databaseAlertRows.filter(row => row.type === "Unauthorized Bed Usage").length;
-  const residualGas = alertRows.filter(t => t.alertType === "Residual Gas").length
-    + databaseAlertRows.filter(row => row.type === "Residual Gas Waste").length;
+function getCriticalAlertOverview() {
+  const incidents = getAlertIncidentRows();
+  const liveGhostFlow = incidents.filter(row => row.type === "Ghost Flow").length;
+  const unauthorized = incidents.filter(row => row.type === "Unauthorized Bed Usage").length;
+  const residualGas = incidents.filter(row => row.type === "Residual Gas").length;
   const cards = [
-    ["Leaks", liveLeaks, "LK"],
     ["Ghost Flow", liveGhostFlow, "GF"],
     ["Unauthorized", unauthorized, "ID"],
     ["Residual Gas", residualGas, "O2"]
@@ -4588,35 +4584,29 @@ function renderWardFlowChart() {
   `;
 }
 
-function renderTankVolumeChart(activeTanks) {
+function renderTankVolumeChart() {
   const target = document.getElementById("tankVolumeChart");
   if (!target) return;
-  const criticalTanks = activeTanks
-    .map(t => ({
-      ...t,
-      volumePercent: Math.round((t.volumeRemaining * 100) / t.maxVolume)
-    }))
-    .filter(t => t.volumePercent < 10)
-    .sort((a, b) => a.volumePercent - b.volumePercent);
+  const incidents = getAlertIncidentRows();
 
-  target.innerHTML = criticalTanks.length
+  target.innerHTML = incidents.length
     ? `
       <div class="critical-tank-board">
-        ${criticalTanks.map(t => `
+        ${incidents.map(incident => `
           <article class="critical-tank-item">
             <div>
-              <strong>${t.name}</strong>
-              <span>${t.wardName} | ${t.station}</span>
+              <strong>${incident.type}</strong>
+              <span>${incident.ward} | ${incident.asset}</span>
             </div>
-            <b>${t.volumePercent}%</b>
+            <b>${incident.priority}</b>
           </article>
         `).join("")}
       </div>
     `
     : `
       <div class="critical-tank-empty">
-        <strong>No critical tanks</strong>
-        <span>All active oxygen tanks are at or above the 10% volume threshold.</span>
+        <strong>No active detection alerts</strong>
+        <span>Ghost Flow, Unauthorized Bed Usage, and Residual Gas alerts will appear here when triggered.</span>
       </div>
     `;
 }
