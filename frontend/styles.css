@@ -5713,7 +5713,16 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 }
 
 .nurse-active-alerts-card .report-table {
-  overflow-x: auto;
+  max-height: 460px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.nurse-active-alerts-card .report-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f7faff;
 }
 
 .nurse-ward-hero {
