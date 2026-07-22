@@ -223,6 +223,7 @@ let flashRed;
 let activeView = "report";
 let timers = [];
 let currentUser = null;
+const incidentResponseDrafts = new Map();
 let pipelineFilter = "";
 let depletionStatusFilter = "all";
 let selectedReportType = "operations";
@@ -1259,6 +1260,9 @@ function renderRealTimeAlert() {
         respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
       });
     });
+    incidentTarget.querySelectorAll(".incident-response-input").forEach(input => {
+      input.addEventListener("input", () => incidentResponseDrafts.set(input.closest("[data-incident-form]")?.dataset.incidentForm, input.value));
+    });
   }
 
   const mapTarget = document.getElementById("alertPipelineMap");
@@ -2003,7 +2007,7 @@ function incidentResponseControls(row) {
   return `
     <div class="incident-response-actions" data-incident-form="${row.id}">
       <label class="incident-note-label" for="incident-note-${row.id}">Response note</label>
-      <textarea id="incident-note-${row.id}" class="incident-response-input" maxlength="50" rows="2" placeholder="Add acknowledgement note (50 characters)" aria-label="Acknowledgement note"></textarea>
+      <textarea id="incident-note-${row.id}" class="incident-response-input" maxlength="50" rows="2" placeholder="Add acknowledgement note (50 characters)" aria-label="Acknowledgement note">${escapeHtml(incidentResponseDrafts.get(String(row.id)) || "")}</textarea>
       <div class="incident-response-buttons">
         <button type="button" class="incident-response-button acknowledge" data-incident-response="acknowledge" data-alert-id="${row.id}">Acknowledge</button>
         <button type="button" class="incident-response-button clear" data-incident-response="resolve" data-alert-id="${row.id}">Clear alert</button>
@@ -2014,6 +2018,10 @@ function incidentResponseControls(row) {
 
 async function respondToIncident(alertId, action, note = "") {
   if (!Number.isFinite(alertId) || !canRespondToIncident()) return;
+  if (!hasServerToken()) {
+    window.alert("Your Nurse Manager session has expired. Please sign out and sign in again before saving an incident response.");
+    return;
+  }
   if (action === "acknowledge") {
     note = String(note || "").trim();
     if (!note) {
@@ -2029,7 +2037,12 @@ async function respondToIncident(alertId, action, note = "") {
   try {
     const response = await fetch(endpoint, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ note }) });
     const result = await response.json();
+    if (isInvalidBearerTokenError(response, result)) {
+      clearInvalidServerToken();
+      throw new Error("Your session has expired. Please sign out and sign in again as Nurse Manager.");
+    }
     if (!response.ok) throw new Error(result?.message || "Incident response could not be saved.");
+    incidentResponseDrafts.delete(String(alertId));
     await loadDatabaseAlerts();
     renderAll();
   } catch (error) {
@@ -2930,13 +2943,22 @@ function renderNurseActiveAlerts(alertRows) {
       respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
     });
   });
+  target.querySelectorAll(".incident-response-input").forEach(input => {
+    input.addEventListener("input", () => incidentResponseDrafts.set(input.closest("[data-incident-form]")?.dataset.incidentForm, input.value));
+  });
   if (count) count.textContent = `${rows.length} active`;
 }
 
 function renderNurseWardCards() {
   const target = document.getElementById("nurseWardCards");
   if (!target) return;
-  target.innerHTML = wards.map(ward => renderWardCard(ward)).join("");
+  target.innerHTML = getAlertWardCards().map(renderAlertWardCard).join("");
+  target.querySelectorAll(".alert-ward-panel").forEach(card => {
+    card.addEventListener("click", event => {
+      if (event.target.closest("select, button, a, input, label")) return;
+      openAlertWardDialog(card.dataset.wardKey);
+    });
+  });
 }
 
 function renderNurseCurrentUsage(totalFlowValue, avgPressure, activeTanks, occupiedBeds) {
