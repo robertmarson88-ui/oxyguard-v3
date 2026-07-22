@@ -224,6 +224,7 @@ let activeView = "report";
 let timers = [];
 let currentUser = null;
 const incidentResponseDrafts = new Map();
+let activeIncidentResponseEditorId = "";
 let pipelineFilter = "";
 let depletionStatusFilter = "all";
 let selectedReportType = "operations";
@@ -1145,6 +1146,7 @@ function resetState() {
 }
 
 function renderAll() {
+  if (isEditingIncidentResponse()) return;
   renderWards();
   updateMetrics();
   renderReport();
@@ -1186,6 +1188,7 @@ function setView(view) {
 }
 
 function renderWards() {
+  if (isEditingIncidentResponse()) return;
   const grid = document.getElementById("wardGrid");
   const alertGrid = document.getElementById("alertKpiGrid");
   if (alertGrid) {
@@ -1260,9 +1263,7 @@ function renderRealTimeAlert() {
         respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
       });
     });
-    incidentTarget.querySelectorAll(".incident-response-input").forEach(input => {
-      input.addEventListener("input", () => incidentResponseDrafts.set(input.closest("[data-incident-form]")?.dataset.incidentForm, input.value));
-    });
+    incidentTarget.querySelectorAll(".incident-response-input").forEach(protectIncidentResponseInput);
   }
 
   const mapTarget = document.getElementById("alertPipelineMap");
@@ -2003,7 +2004,25 @@ function canRespondToIncident() {
 }
 
 function isEditingIncidentResponse() {
-  return document.activeElement?.classList?.contains("incident-response-input");
+  return Boolean(activeIncidentResponseEditorId)
+    || document.activeElement?.classList?.contains("incident-response-input");
+}
+
+function protectIncidentResponseInput(input) {
+  const editorId = input.closest("[data-incident-form]")?.dataset.incidentForm || "";
+  const activate = () => { activeIncidentResponseEditorId = editorId; };
+  input.addEventListener("pointerdown", activate);
+  input.addEventListener("focus", activate);
+  input.addEventListener("input", () => {
+    activate();
+    incidentResponseDrafts.set(editorId, input.value);
+  });
+  input.addEventListener("blur", () => {
+    window.setTimeout(() => {
+      const focusedEditorId = document.activeElement?.closest?.("[data-incident-form]")?.dataset.incidentForm || "";
+      if (focusedEditorId !== editorId) activeIncidentResponseEditorId = "";
+    }, 250);
+  });
 }
 
 function incidentResponseControls(row) {
@@ -2047,6 +2066,7 @@ async function respondToIncident(alertId, action, note = "") {
     }
     if (!response.ok) throw new Error(result?.message || "Incident response could not be saved.");
     incidentResponseDrafts.delete(String(alertId));
+    activeIncidentResponseEditorId = "";
     await loadDatabaseAlerts();
     renderAll();
   } catch (error) {
@@ -2799,6 +2819,7 @@ function getAlertSignature(alerts) {
 }
 
 function renderReport() {
+  if (isEditingIncidentResponse()) return;
   const generated = document.getElementById("reportGenerated");
 
   const now = new Date();
@@ -2947,9 +2968,7 @@ function renderNurseActiveAlerts(alertRows) {
       respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
     });
   });
-  target.querySelectorAll(".incident-response-input").forEach(input => {
-    input.addEventListener("input", () => incidentResponseDrafts.set(input.closest("[data-incident-form]")?.dataset.incidentForm, input.value));
-  });
+  target.querySelectorAll(".incident-response-input").forEach(protectIncidentResponseInput);
   if (count) count.textContent = `${rows.length} active`;
 }
 
