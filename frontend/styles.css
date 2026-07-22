@@ -5709,13 +5709,16 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
 
 .nurse-active-alerts-card {
   grid-column: 1 / -1;
-  min-height: 300px;
+  min-height: 0;
 }
 
 .nurse-active-alerts-card .report-table {
-  max-height: 460px;
+  max-height: 332px;
   overflow: auto;
   scrollbar-gutter: stable;
+  border: 1px solid #e0e9f3;
+  border-radius: 10px;
+  background: #fff;
 }
 
 .nurse-active-alerts-card .report-table thead th {
@@ -5723,6 +5726,20 @@ body:not(.login-active) .sidebar-user .permission-preview-menu button {
   top: 0;
   z-index: 1;
   background: #f7faff;
+}
+
+.nurse-active-alerts-card .report-table th,
+.nurse-active-alerts-card .report-table td {
+  vertical-align: top;
+  line-height: 1.35;
+}
+
+.nurse-active-alerts-card .incident-response-actions {
+  min-width: 190px;
+}
+
+.nurse-active-alerts-card .incident-response-input {
+  min-height: 42px;
 }
 
 .nurse-ward-hero {
