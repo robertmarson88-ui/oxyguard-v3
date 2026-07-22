@@ -596,14 +596,19 @@ function setupLogin() {
   const hint = document.getElementById("loginHint");
 
   const savedUser = readSavedUser();
-  if (savedUser) {
+  const savedAccessToken = savedUser?.accessToken || savedUser?.access_token || sessionStorage.getItem("oxyguardAccessToken") || "";
+  if (savedUser && (!requiresServerAuthenticatedSession() || savedAccessToken)) {
     currentUser = {
       ...savedUser,
-      accessToken: savedUser.accessToken || savedUser.access_token || sessionStorage.getItem("oxyguardAccessToken") || ""
+      accessToken: savedAccessToken
     };
     sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
     showApp();
   } else {
+    if (savedUser) {
+      sessionStorage.removeItem("oxyguardUser");
+      sessionStorage.removeItem("oxyguardAccessToken");
+    }
     pendingMfaChallenge = null;
     setMfaLoginMode(false, { submit, mfaField, mfaCode, username, password, backButton, hint });
     username.focus();
@@ -648,7 +653,7 @@ function setupLogin() {
       const result = parseJsonResponse(responseText);
 
       if (!response.ok || !result.ok) {
-        const fallbackUser = getLocalLoginUser(username.value, password.value);
+        const fallbackUser = requiresServerAuthenticatedSession() ? null : getLocalLoginUser(username.value, password.value);
         if (!fallbackUser) throw new Error(result?.message || "Invalid username or password.");
         currentUser = fallbackUser;
         sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
@@ -1996,6 +2001,12 @@ function getAlertIncidentRows() {
     .filter((row, index, rows) => rows.findIndex(candidate => (
     candidate.type === row.type && candidate.ward === row.ward && candidate.asset === row.asset
   )) === index).slice(0, 6);
+}
+
+function requiresServerAuthenticatedSession() {
+  const hostname = String(window.location.hostname || "").toLowerCase();
+  return window.location.protocol === "https:"
+    || (window.location.protocol === "http:" && !["localhost", "127.0.0.1"].includes(hostname));
 }
 
 function canRespondToIncident() {

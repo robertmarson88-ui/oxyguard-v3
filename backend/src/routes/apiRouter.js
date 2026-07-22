@@ -205,6 +205,24 @@ async function login(req, res, db, auth, apiV1) {
   const delivery = await sendMfaCode(challenge.user.email, challenge.code, challenge.user.username);
   if (!delivery.sent) {
     await addAuditLog(db, challenge.user, "MFA Email Failed", delivery.message || maskEmail(challenge.user.email), getClientIp(req));
+    if (delivery.provider === "console") {
+      const session = auth.authenticate(username, password);
+      if (!session) {
+        sendJson(res, 401, { ok: false, message: "Invalid username or password." });
+        return;
+      }
+      await addAuditLog(db, challenge.user, "User Login", `${challenge.user.username}; password authentication`, getClientIp(req));
+      const response = {
+        access_token: session.access_token,
+        token_type: "bearer",
+        expires_in: session.expires_in,
+        role: session.role,
+        user: session.user,
+        authentication_method: "password"
+      };
+      sendJson(res, 200, apiV1 ? response : { ok: true, ...response });
+      return;
+    }
     sendJson(res, 503, {
       ok: false,
       mfa_required: false,
