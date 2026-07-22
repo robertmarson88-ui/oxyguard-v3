@@ -16,13 +16,11 @@ export async function createRelationalStore() {
       { permission_id: 2, permission_name: "view_logs" }
     ],
     role_permissions: [
-      { role_id: 1, permission_id: 1 },
       { role_id: 1, permission_id: 2 },
       { role_id: 2, permission_id: 2 },
       { role_id: 3, permission_id: 2 },
       { role_id: 4, permission_id: 2 },
       { role_id: 4, permission_id: 1 },
-      { role_id: 5, permission_id: 1 },
       { role_id: 5, permission_id: 2 }
     ],
     users: [
@@ -195,7 +193,7 @@ async function ensureOperationalSchema(pool) {
   }
   const resolveAlertPermission = permissions.find(permission => String(permission.permission_name || "").toLowerCase() === "resolve_alert");
   if (resolveAlertPermission) {
-    for (const role of [adminRole, nurseManagerRole, nurseRole]) {
+    for (const role of [nurseManagerRole]) {
       await pool.query(
         `insert into public.role_permissions (role_id, permission_id)
          values ($1, $2)

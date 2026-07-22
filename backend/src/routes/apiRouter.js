@@ -155,17 +155,18 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
     const resolveMatch = apiPath.match(/^\/alerts\/(\d+)\/resolve$/);
     if (req.method === "POST" && resolveMatch) {
-      const session = requireAuthorized(req, res, auth, "resolve_alert");
+      const session = requireNurseManager(req, res, auth);
       if (!session) return true;
-      await resolveAlert(db, res, Number(resolveMatch[1]), session.user);
+      await resolveAlert(db, res, Number(resolveMatch[1]), session.user, getClientIp(req));
       return true;
     }
 
     const acknowledgeMatch = apiPath.match(/^\/alerts\/(\d+)\/acknowledge$/);
     if (req.method === "POST" && acknowledgeMatch) {
-      const session = requireAuthorized(req, res, auth, "resolve_alert");
+      const session = requireNurseManager(req, res, auth);
       if (!session) return true;
-      await acknowledgeAlert(db, res, Number(acknowledgeMatch[1]), session.user, getClientIp(req));
+      const { note } = await readJson(req);
+      await acknowledgeAlert(db, res, Number(acknowledgeMatch[1]), session.user, note, getClientIp(req));
       return true;
     }
 
@@ -428,6 +429,20 @@ function requireAdmin(req, res, auth) {
   return result.session;
 }
 
+function requireNurseManager(req, res, auth) {
+  const result = auth.authorizeRequest(req, "resolve_alert");
+  if (!result.ok) {
+    sendJson(res, result.status, { ok: false, message: result.message });
+    return null;
+  }
+  const roleName = String(result.session.user.role_name || "").trim().toLowerCase();
+  if (Number(result.session.user.role_id) !== 4 && roleName !== "nurse manager" && roleName !== "nurse supervisor") {
+    sendJson(res, 403, { ok: false, message: "Nurse Manager permission required." });
+    return null;
+  }
+  return result.session;
+}
+
 async function createUser(req, res, db, actor) {
   const { username, email, password, role_id } = await readJson(req);
   const normalizedUsername = String(username || "").trim();
@@ -685,7 +700,7 @@ function buildAuditInsert(db, auditLog) {
   };
 }
 
-async function resolveAlert(db, res, alertId, user) {
+async function resolveAlert(db, res, alertId, user, ipAddress = null) {
   const alert = db.alerts.find(item => item.alert_id === alertId);
   if (!alert) {
     sendJson(res, 404, { ok: false, message: "Alert not found." });
@@ -696,16 +711,16 @@ async function resolveAlert(db, res, alertId, user) {
   alert.resolved_by = user.user_id;
   alert.resolved_at = new Date().toISOString();
   alert.acknowledged_at = alert.acknowledged_at || alert.resolved_at;
-  alert.status = "resolved";
+  alert.status = "normal";
   if (db.pgPool) {
     await db.pgPool.query(
       `update public.alerts set is_resolved = true, resolved_by = $1, resolved_at = $2,
-         acknowledged_at = coalesce(acknowledged_at, $2), status = 'resolved'
+         acknowledged_at = coalesce(acknowledged_at, $2), status = 'normal'
        where alert_id = $3`,
       [user.user_id, alert.resolved_at, alertId]
     );
   }
-  await addAuditLog(db, user, "Resolve Alert", `Alert #${alert.alert_id}`);
+  await addAuditLog(db, user, "Clear Alert", `Alert #${alert.alert_id}; status returned to normal`, ipAddress);
 
   sendJson(res, 200, {
     ok: true,
@@ -779,21 +794,29 @@ async function recordClientAuditEvent(req, res, db, actor) {
   sendJson(res, 201, { ok: true, audit_id: auditLog.audit_id });
 }
 
-async function acknowledgeAlert(db, res, alertId, user, ipAddress = null) {
+async function acknowledgeAlert(db, res, alertId, user, note, ipAddress = null) {
   const alert = db.alerts.find(item => item.alert_id === alertId);
   if (!alert) {
     sendJson(res, 404, { ok: false, message: "Alert not found." });
     return;
   }
+  const acknowledgementNote = String(note || "").trim();
+  if (!acknowledgementNote || acknowledgementNote.length > 50) {
+    sendJson(res, 400, { ok: false, message: "An acknowledgement note of 1 to 50 characters is required." });
+    return;
+  }
   alert.acknowledged_at = new Date().toISOString();
-  alert.status = "acknowledged";
+  alert.is_resolved = true;
+  alert.resolved_by = user.user_id;
+  alert.resolved_at = alert.acknowledged_at;
+  alert.status = "normal";
   if (db.pgPool) {
     await db.pgPool.query(
-      `update public.alerts set acknowledged_at = $1, status = 'acknowledged' where alert_id = $2`,
-      [alert.acknowledged_at, alertId]
+      `update public.alerts set acknowledged_at = $1, is_resolved = true, resolved_by = $2, resolved_at = $1, status = 'normal' where alert_id = $3`,
+      [alert.acknowledged_at, user.user_id, alertId]
     );
   }
-  await addAuditLog(db, user, "Acknowledge Alert", `Alert #${alert.alert_id}`, ipAddress);
+  await addAuditLog(db, user, "Acknowledge Alert", `Alert #${alert.alert_id}; note: ${acknowledgementNote}; status returned to normal`, ipAddress);
   sendJson(res, 200, { ok: true, status: "success", alert });
 }
 

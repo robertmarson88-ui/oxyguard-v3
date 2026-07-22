@@ -1104,7 +1104,7 @@ function normalizePermissionRole(role = "") {
 }
 
 function isNurseSupervisorDashboard() {
-  return ["nurse-supervisor", "nurse"].includes(getActivePermissionKey());
+  return getActivePermissionKey() === "nurse-supervisor";
 }
 
 function isMaintenanceExecutiveDashboard() {
@@ -1991,7 +1991,7 @@ function getAlertIncidentRows() {
 }
 
 function canRespondToIncident() {
-  return ["admin", "nurse-supervisor", "nurse"].includes(getActivePermissionKey())
+  return getActivePermissionKey() === "nurse-supervisor"
     && Boolean(currentUser?.permissions?.includes("resolve_alert") || currentUser?.accessToken);
 }
 
@@ -2007,9 +2007,23 @@ function incidentResponseControls(row) {
 
 async function respondToIncident(alertId, action) {
   if (!Number.isFinite(alertId) || !canRespondToIncident()) return;
+  let note = "";
+  if (action === "acknowledge") {
+    const enteredNote = window.prompt("Acknowledgement note (up to 50 characters):", "");
+    if (enteredNote === null) return;
+    note = enteredNote.trim();
+    if (!note) {
+      window.alert("An acknowledgement note is required.");
+      return;
+    }
+    if (note.length > 50) {
+      window.alert("Acknowledgement notes must be 50 characters or fewer.");
+      return;
+    }
+  }
   const endpoint = `/api/alerts/${alertId}/${action}`;
   try {
-    const response = await fetch(endpoint, { method: "POST", headers: authHeaders(true), body: "{}" });
+    const response = await fetch(endpoint, { method: "POST", headers: authHeaders(true), body: JSON.stringify({ note }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result?.message || "Incident response could not be saved.");
     await loadDatabaseAlerts();
