@@ -1149,6 +1149,9 @@ function resetState() {
   }, 500));
   timers.push(setInterval(renderV5TrendAnalytics, 3000));
   timers.push(setInterval(loadDatabaseAlerts, 7000));
+  timers.push(setInterval(() => {
+    if (activeView === "order") renderOrderSummary();
+  }, 5 * 60 * 1000));
   updateClock();
 }
 
@@ -4953,9 +4956,9 @@ function renderOrderSummaryData(summary) {
   const inventory = summary.inventory_details || {};
   const risk = summary.risk || {};
   const replacementTanks = Array.isArray(summary.replacement_tanks) ? summary.replacement_tanks : [];
-  const inventoryUpdatedAt = inventory.last_updated
-    ? new Date(inventory.last_updated).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-    : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  // Inventory detail is a live operational snapshot. Refreshing this view at
+  // five-minute intervals makes the displayed timestamp match that cadence.
+  const inventoryUpdatedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   setOrderHtml("orderRecommendMetrics", `
     ${orderMetric("Reason", metrics.reason || `${replacementTanks.length || 0} tanks below threshold`, "R")}
@@ -4964,7 +4967,6 @@ function renderOrderSummaryData(summary) {
     ${orderMetric("Confidence", metrics.confidence || "96%", "%")}
   `);
   renderReplacementSummary(replacementTanks);
-  setOrderHtml("capacityForecastChart", renderCapacityForecastChart());
   setOrderHtml("riskAssessmentPanel", renderRiskAssessment(risk));
   setOrderHtml("orderTriggerSummary", orderMiniPanel("Order Trigger Summary", [
     ["Tanks below threshold", trigger.tanks_below_threshold ?? replacementTanks.length],
@@ -4996,13 +4998,6 @@ function renderOrderSummaryData(summary) {
     ["Reorder Level", inventory.reorder_level || "30%"],
     ["Available Reserve", inventory.available_reserve ?? "Monitoring"],
     ["Last Updated", inventoryUpdatedAt]
-  ]));
-  setOrderHtml("orderDetails", orderMiniPanel("Order Details (Preview)", [
-    ["Product", details.product || "100 lb Oxygen Cylinder Refill"],
-    ["Quantity", `${details.quantity || replacementTanks.length || 0} Tanks`],
-    ["Tank Type", details.tank_type || "100 lb medical oxygen cylinder"],
-    ["PO Number (Auto)", details.po_number || "Pending"],
-    ["Order Status", details.status || "Pending Approval"]
   ]));
 }
 

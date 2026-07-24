@@ -14210,3 +14210,36 @@ body:not(.login-active) .sidebar > .side-button[hidden] {
   .simulator-actions button,
   .simulator-quick-actions button { min-height: 44px; }
 }
+
+/* Order Summary: focused replacement and inventory view. */
+.order-summary-page .order-recommendation {
+  grid-template-columns: 46px minmax(210px, 0.9fr) minmax(360px, 1.55fr) minmax(230px, 0.7fr);
+  gap: 18px;
+  min-height: 118px;
+  padding: 18px 20px;
+  border-color: #cfe0ef !important;
+  background: linear-gradient(115deg, #ffffff 0%, #f6fbff 68%, #eff8f4 100%) !important;
+}
+.order-summary-page .order-status-badge { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 12px; background: #e9f9ef; color: #087f3e; font-size: 11px; font-weight: 900; }
+.order-summary-page .order-recommendation-copy h2 { margin: 0; color: #062b52; font-size: clamp(18px, 1.45vw, 25px); font-weight: 900; line-height: 1.14; }
+.order-summary-page .order-recommendation-copy p { margin: 8px 0 0; color: #4d6680; font-size: 13px; line-height: 1.45; }
+.order-summary-page .order-metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 16px; }
+.order-summary-page .order-rec-metric { grid-template-columns: 30px minmax(0, 1fr); }
+.order-summary-page .order-rec-metric span { font-size: 10px; }
+.order-summary-page .order-rec-metric strong { font-size: 13px; line-height: 1.25; }
+.order-summary-page .order-protocol-box { grid-template-columns: 1fr auto; gap: 4px 12px; padding-left: 18px; }
+.order-summary-page .order-protocol-box button { grid-row: 1 / span 2; grid-column: 2; min-height: 42px; white-space: nowrap; }
+.order-dashboard-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: "critical critical risk trigger" "financial supplier inventory inventory"; }
+#inventoryDetails { grid-area: inventory; }
+@media (max-width: 1280px) {
+  .order-summary-page .order-recommendation { grid-template-columns: 46px minmax(210px, 1fr) minmax(300px, 1.2fr); }
+  .order-summary-page .order-protocol-box { grid-column: 1 / -1; grid-template-columns: 1fr auto; padding: 12px 0 0; border-top: 1px solid #d8e4ef; border-left: 0; }
+  .order-dashboard-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "critical critical" "risk trigger" "financial supplier" "inventory inventory"; }
+}
+@media (max-width: 720px) {
+  .order-summary-page .order-recommendation { grid-template-columns: 42px minmax(0, 1fr); padding: 15px; }
+  .order-summary-page .order-metrics, .order-summary-page .order-protocol-box { grid-column: 1 / -1; }
+  .order-summary-page .order-metrics, .order-summary-page .order-protocol-box { grid-template-columns: 1fr; }
+  .order-summary-page .order-protocol-box button { grid-row: auto; grid-column: auto; }
+  .order-dashboard-grid { grid-template-columns: 1fr; grid-template-areas: "critical" "risk" "trigger" "financial" "supplier" "inventory"; }
+}
