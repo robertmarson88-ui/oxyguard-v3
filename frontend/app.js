@@ -739,7 +739,7 @@ function setMfaLoginMode(enabled, elements, delivery = {}) {
     const message = delivery?.message || `Authentication code sent to ${delivery?.masked_email || "your email"}.`;
     hint.textContent = enabled
       ? `${message}${delivery?.dev_code ? ` Code: ${delivery.dev_code}` : ""}`
-      : "Admin: admin / admin1 | Facilities Manager: facilities / facilities1 | Nurse: nurse / nurse1 | CFO: executive / executive1";
+      : "Use your OxyGuard account credentials to sign in.";
   }
   if (enabled) {
     if (mfaCode) mfaCode.value = "";

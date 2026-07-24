@@ -278,6 +278,9 @@ async function verifyMfa(req, res, db, auth, apiV1) {
 
 async function sendMfaCode(email, code, username) {
   const safeEmail = maskEmail(email);
+  if (process.env.RESEND_API_KEY) {
+    return sendMfaCodeViaResend(email, code, username);
+  }
   if (process.env.SENDGRID_API_KEY) {
     return sendMfaCodeViaSendGrid(email, code, username);
   }
@@ -290,7 +293,7 @@ async function sendMfaCode(email, code, username) {
     provider: "console",
     message: isLocal
       ? `Development code logged for ${safeEmail}.`
-      : "Email provider is not configured. Set SENDGRID_API_KEY and MFA_FROM_EMAIL on Render.",
+      : "Email provider is not configured. Set RESEND_API_KEY and OXYGUARD_EMAIL_FROM on Render.",
     masked_email: safeEmail,
     dev_code: isLocal ? code : undefined
   };
@@ -455,6 +458,33 @@ function requireAdmin(req, res, auth) {
   }
 
   return result.session;
+}
+
+function sendMfaCodeViaResend(email, code, username) {
+  const payload = JSON.stringify({
+    from: process.env.OXYGUARD_EMAIL_FROM || "OxyGuard <onboarding@resend.dev>",
+    to: [email],
+    subject: "Your OxyGuard authentication code",
+    text: `Hello ${username || "OxyGuard user"},\n\nYour OxyGuard authentication code is ${code}.\n\nThis code expires in 10 minutes.`
+  });
+  return new Promise(resolve => {
+    const request = https.request({
+      hostname: "api.resend.com", path: "/emails", method: "POST",
+      headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, "content-type": "application/json", "content-length": Buffer.byteLength(payload) }
+    }, response => {
+      response.resume();
+      response.on("end", () => resolve({
+        sent: response.statusCode >= 200 && response.statusCode < 300,
+        provider: "resend", masked_email: maskEmail(email),
+        message: response.statusCode >= 200 && response.statusCode < 300
+          ? `Authentication code sent to ${maskEmail(email)}.`
+          : `Email delivery failed with status ${response.statusCode}.`
+      }));
+    });
+    request.on("error", error => resolve({ sent: false, provider: "resend", masked_email: maskEmail(email), message: `Email delivery failed: ${String(error?.message || error)}` }));
+    request.write(payload);
+    request.end();
+  });
 }
 
 async function requestPasswordReset(req, res, db, auth) {
