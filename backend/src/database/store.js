@@ -219,7 +219,7 @@ async function ensureRole(pool, roles, acceptedNames, roleName) {
 async function ensureOperationalUser(pool, username, password, email, roleId) {
   const updated = await pool.query(
     `update public.users
-     set role_id = $2, password_hash = $3, email = $4, email_verified = true
+     set role_id = $2, email = $4, email_verified = true
      where lower(username) = lower($1)`,
     [username, roleId, `demo-plain:${password}`, email]
   );

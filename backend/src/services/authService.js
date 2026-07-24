@@ -1,10 +1,11 @@
-import { createHash, createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, randomUUID, scryptSync, timingSafeEqual } from "node:crypto";
 
 const JWT_ALGORITHM = "HS256";
 
 export function createAuthService(db) {
   const jwtConfig = resolveJwtConfig();
   const mfaChallenges = new Map();
+  const passwordResetChallenges = new Map();
   const MFA_TTL_MS = 10 * 60 * 1000;
 
   function authenticate(username, password) {
@@ -61,6 +62,31 @@ export function createAuthService(db) {
     if (!user) return { ok: false, status: 401, message: "MFA user could not be verified." };
 
     return { ok: true, ...createSessionForUser(user) };
+  }
+
+  function createPasswordResetChallenge(email) {
+    clearExpiredMfaChallenges();
+    const user = db.users.find(item => String(item.email || "").toLowerCase() === String(email || "").trim().toLowerCase());
+    if (!user) return null;
+    const challenge_id = randomUUID();
+    const code = String(randomInt(100000, 1000000));
+    const expires_at = new Date(Date.now() + MFA_TTL_MS).toISOString();
+    passwordResetChallenges.set(challenge_id, { user_id: user.user_id, code_hash: hashMfaCode(code), attempts: 0, expires_at });
+    return { challenge_id, code, expires_at, user: buildSafeUser(user) };
+  }
+
+  function verifyPasswordResetChallenge(challengeId, code, password) {
+    clearExpiredMfaChallenges();
+    const challenge = passwordResetChallenges.get(String(challengeId || ""));
+    if (!challenge) return { ok: false, status: 401, message: "Password reset code has expired. Request a new code." };
+    if (++challenge.attempts > 5) { passwordResetChallenges.delete(challengeId); return { ok: false, status: 429, message: "Too many attempts. Request a new code." }; }
+    if (challenge.code_hash !== hashMfaCode(String(code || "").trim())) return { ok: false, status: 401, message: "Invalid password reset code." };
+    if (String(password || "").length < 8) return { ok: false, status: 400, message: "Use a password with at least 8 characters." };
+    const user = db.users.find(item => String(item.user_id) === String(challenge.user_id));
+    if (!user) return { ok: false, status: 404, message: "User account was not found." };
+    passwordResetChallenges.delete(challengeId);
+    const salt = randomBytes(16).toString("hex");
+    return { ok: true, user, password_hash: `scrypt$${salt}$${scryptSync(String(password), salt, 64).toString("hex")}` };
   }
 
   function validateCredentials(username, password) {
@@ -166,7 +192,11 @@ export function createAuthService(db) {
       ...(user.password_aliases || []),
       ...(user.passwords || [])
     ].filter(Boolean));
-    return acceptedPasswords.has(password) || user.password_hash === `demo-plain:${password}`;
+    if (acceptedPasswords.has(password) || user.password_hash === `demo-plain:${password}`) return true;
+    const [scheme, salt, expected] = String(user.password_hash || "").split("$");
+    if (scheme !== "scrypt" || !salt || !expected) return false;
+    const actual = scryptSync(String(password || ""), salt, 64).toString("hex");
+    return timingSafeEqual(Buffer.from(actual, "hex"), Buffer.from(expected, "hex"));
   }
 
   function getPermissionNamesForRole(roleId) {
@@ -206,9 +236,12 @@ export function createAuthService(db) {
         mfaChallenges.delete(challengeId);
       }
     }
+    for (const [challengeId, challenge] of passwordResetChallenges.entries()) {
+      if (new Date(challenge.expires_at).getTime() <= now) passwordResetChallenges.delete(challengeId);
+    }
   }
 
-  return { authenticate, authorizeRequest, createMfaChallenge, verifyMfaChallenge };
+  return { authenticate, authorizeRequest, createMfaChallenge, verifyMfaChallenge, createPasswordResetChallenge, verifyPasswordResetChallenge };
 }
 
 function createAccessToken(user, config) {

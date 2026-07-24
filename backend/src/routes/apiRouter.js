@@ -58,6 +58,16 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "POST" && apiPath === "/password-reset/request") {
+      await requestPasswordReset(req, res, db, auth);
+      return true;
+    }
+
+    if (req.method === "POST" && apiPath === "/password-reset/confirm") {
+      await confirmPasswordReset(req, res, db, auth);
+      return true;
+    }
+
     if (req.method === "POST" && apiPath === "/logout") {
       const session = requireSession(req, res, auth);
       if (!session) return true;
@@ -445,6 +455,28 @@ function requireAdmin(req, res, auth) {
   }
 
   return result.session;
+}
+
+async function requestPasswordReset(req, res, db, auth) {
+  const { email } = await readJson(req);
+  const challenge = auth.createPasswordResetChallenge(email);
+  if (!challenge) { sendJson(res, 200, { ok: true, message: "If that email is registered, a reset code has been sent." }); return; }
+  const delivery = await sendMfaCode(challenge.user.email, challenge.code, challenge.user.username);
+  if (!delivery.sent) { sendJson(res, 503, { ok: false, message: delivery.message || "Password reset email could not be sent." }); return; }
+  await addAuditLog(db, challenge.user, "Password Reset Requested", maskEmail(challenge.user.email), getClientIp(req));
+  sendJson(res, 200, { ok: true, challenge_id: challenge.challenge_id, delivery, message: "A reset code has been sent to your email." });
+}
+
+async function confirmPasswordReset(req, res, db, auth) {
+  const { challenge_id, code, password } = await readJson(req);
+  const result = auth.verifyPasswordResetChallenge(challenge_id, code, password);
+  if (!result.ok) { sendJson(res, result.status || 400, { ok: false, message: result.message }); return; }
+  result.user.password = "";
+  result.user.password_aliases = [];
+  result.user.password_hash = result.password_hash;
+  if (db.pgPool) await db.pgPool.query("update public.users set password_hash = $1 where user_id = $2", [result.password_hash, result.user.user_id]);
+  await addAuditLog(db, result.user, "Password Reset Completed", result.user.username, getClientIp(req));
+  sendJson(res, 200, { ok: true, message: "Password updated. You can now sign in." });
 }
 
 function requireNurseManager(req, res, auth) {

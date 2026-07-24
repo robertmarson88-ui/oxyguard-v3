@@ -594,6 +594,30 @@ function setupLogin() {
   const submit = document.getElementById("loginSubmit");
   const error = document.getElementById("loginError");
   const hint = document.getElementById("loginHint");
+  const resetPanel = document.getElementById("passwordResetPanel");
+  const resetMessage = document.getElementById("resetPasswordMessage");
+  let resetChallengeId = "";
+
+  document.getElementById("forgotPasswordButton")?.addEventListener("click", () => {
+    resetPanel.hidden = !resetPanel.hidden;
+    if (!resetPanel.hidden) document.getElementById("resetEmail")?.focus();
+  });
+  document.getElementById("requestResetButton")?.addEventListener("click", async () => {
+    const email = document.getElementById("resetEmail")?.value.trim();
+    resetMessage.textContent = "Sending reset code…";
+    const response = await fetch("/api/password-reset/request", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
+    const result = parseJsonResponse(await response.text());
+    resetMessage.textContent = result.message || "Unable to send reset code.";
+    if (response.ok && result.challenge_id) { resetChallengeId = result.challenge_id; document.getElementById("resetConfirmFields").hidden = false; }
+  });
+  document.getElementById("confirmResetButton")?.addEventListener("click", async () => {
+    const code = document.getElementById("resetCode")?.value.trim();
+    const newPassword = document.getElementById("resetPassword")?.value;
+    const response = await fetch("/api/password-reset/confirm", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ challenge_id: resetChallengeId, code, password: newPassword }) });
+    const result = parseJsonResponse(await response.text());
+    resetMessage.textContent = result.message || "Unable to update password.";
+    if (response.ok) { resetPanel.hidden = true; resetChallengeId = ""; password.value = ""; }
+  });
 
   const savedUser = readSavedUser();
   const savedAccessToken = savedUser?.accessToken || savedUser?.access_token || sessionStorage.getItem("oxyguardAccessToken") || "";

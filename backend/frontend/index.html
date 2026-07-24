@@ -35,6 +35,17 @@
           <input id="loginMfaCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Enter 6-digit code" />
         </label>
         <button type="submit" id="loginSubmit">Login</button>
+        <button class="forgot-password-action" id="forgotPasswordButton" type="button">Forgot password?</button>
+        <div class="password-reset-panel" id="passwordResetPanel" hidden>
+          <label>Email address<input id="resetEmail" type="email" autocomplete="email" placeholder="name@example.com" /></label>
+          <button id="requestResetButton" type="button">Send reset code</button>
+          <div id="resetConfirmFields" hidden>
+            <label>Reset code<input id="resetCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" /></label>
+            <label>New password<input id="resetPassword" type="password" minlength="8" autocomplete="new-password" /></label>
+            <button id="confirmResetButton" type="button">Update password</button>
+          </div>
+          <small id="resetPasswordMessage"></small>
+        </div>
         <button class="secondary-login-action" id="loginBackButton" type="button">Use a different login</button>
         <span class="login-error" id="loginError">Invalid username or password.</span>
         <span class="login-hint" id="loginHint">Admin: admin / admin1 | Facilities Manager: facilities / facilities1 | Nurse: nurse / nurse1 | CFO: executive / executive1</span>
