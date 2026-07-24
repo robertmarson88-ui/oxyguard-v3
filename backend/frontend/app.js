@@ -909,8 +909,10 @@ async function loadDatabaseAlerts() {
     const alerts = await response.json();
     databaseAlertRows = Array.isArray(alerts) ? alerts.map(mapDatabaseAlertRow) : [];
     databaseAlertsLoaded = true;
-    if (activeView === "alert") renderRealTimeAlert();
-    if (activeView === "report") renderReport();
+    // The dashboard, active incidents, patient alerts, and notifications all
+    // read from this shared incident feed. Re-render them together so every
+    // signed-in user sees the same current values after a refresh or update.
+    if (!isEditingIncidentResponse()) renderAll();
     updateNotifications(activeAlerts());
   } catch {
     databaseAlertsLoaded = false;
@@ -2849,22 +2851,24 @@ function renderReport() {
   const depletedTanks = allTanks.filter(t => t.volumeRemaining <= 0).length;
   const todayConsumptionLitres = Math.round(totalFlowValue * 60 * 24);
   const yesterdayConsumptionLitres = YESTERDAY_CONSUMPTION_LITRES;
-  const wastageTodayLitres = Math.round(todayConsumptionLitres * (wastage / 100));
-  const wastageCost = Math.round(wastageTodayLitres * OXYGEN_COST_PER_LITRE);
-  const wastageTankEquivalent = wastageCost / TANK_COST;
-  const wastageTankLabel = formatTankEquivalent(wastageTankEquivalent);
-  const wastageCostLabel = `${currency(wastageCost)}&nbsp;Est.&nbsp;Cost&nbsp;|&nbsp;${wastageTankLabel}`;
+  const criticalIncidentImpact = getCriticalIncidentImpact();
+  const wastageTodayLitres = criticalIncidentImpact.estimatedWaste;
+  const wastageCost = criticalIncidentImpact.estimatedCost;
   const yesterdayDelta = formatSignedPercent((todayConsumptionLitres - yesterdayConsumptionLitres) / yesterdayConsumptionLitres);
   const consumptionDirection = todayConsumptionLitres >= yesterdayConsumptionLitres ? "up" : "down";
   const consumptionTone = todayConsumptionLitres >= yesterdayConsumptionLitres ? "bad" : "good";
   const esp32Status = getEsp32DeviceStatus();
   const criticalOverview = getCriticalAlertOverview(alertRows);
+  const patientAlertSummary = getPatientAlertSummary(activeTanks);
+  const wastageCostLabel = criticalIncidentImpact.count
+    ? `${currency(wastageCost)}&nbsp;Est.&nbsp;Cost&nbsp;|&nbsp;${criticalIncidentImpact.count}&nbsp;Critical&nbsp;Alert${criticalIncidentImpact.count === 1 ? "" : "s"}`
+    : "No active critical-alert wastage";
 
   document.getElementById("reportSummary").innerHTML = [
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
     reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, consumptionDirection, { delta: yesterdayDelta, deltaTone: consumptionTone }),
     reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
-    reportSummaryCard("Active Patients", ACTIVE_PATIENT_TARGET, "On Oxygen Support", colors.purple, "people"),
+    reportSummaryCard("Active Patients", patientAlertSummary.total, `${patientAlertSummary.alertCount} Patient Alert${patientAlertSummary.alertCount === 1 ? "" : "s"}`, colors.purple, "people"),
     reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
     reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
   ].join("");
@@ -3371,6 +3375,24 @@ function formatAlertImpact(row) {
   const loss = Number.isFinite(row.estimatedFinancialLoss) ? currency(row.estimatedFinancialLoss) : "-";
   const savings = Number.isFinite(row.potentialSavings) ? currency(row.potentialSavings) : "-";
   return `<strong>${row.estimatedOxygenWaste.toLocaleString()} L waste (${unusedPercent})</strong><br>Loss ${loss} · Savings ${savings}<br>${action}`;
+}
+
+function getCriticalIncidentImpact() {
+  // Keep this in lockstep with the Critical Alerts Overview card.
+  const incidents = getAlertIncidentRows().filter(row => ["Ghost Flow", "Unauthorized Bed Usage", "Residual Gas"].includes(row.type));
+  const estimatedWaste = Math.round(incidents.reduce((total, row) => {
+    const value = Number(row.estimatedOxygenWaste);
+    return total + (Number.isFinite(value) ? value : 0);
+  }, 0));
+  const reportedCost = incidents.reduce((total, row) => {
+    const value = Number(row.estimatedFinancialLoss);
+    return total + (Number.isFinite(value) ? value : 0);
+  }, 0);
+  return {
+    count: incidents.length,
+    estimatedWaste,
+    estimatedCost: Math.round(reportedCost || estimatedWaste * OXYGEN_COST_PER_LITRE)
+  };
 }
 
 function getRecommendedAlertAction(type = "") {
@@ -4754,6 +4776,17 @@ function renderTankVolumeChart() {
         <span>Ghost Flow, Unauthorized Bed Usage, and Residual Gas alerts will appear here when triggered.</span>
       </div>
     `;
+}
+
+function getPatientAlertSummary(activeTanks) {
+  const incidents = getAlertIncidentRows();
+  const patientAlerts = incidents.filter(row => ["Ghost Flow", "Unauthorized Bed Usage", "Residual Gas"].includes(row.type));
+  return {
+    // This is the same monitored patient population shown in the anonymized
+    // patient-alert table; the secondary value is the live incident count.
+    total: activeTanks.length ? ACTIVE_PATIENT_TARGET : 0,
+    alertCount: patientAlerts.length
+  };
 }
 
 function renderWardUsageChart() {

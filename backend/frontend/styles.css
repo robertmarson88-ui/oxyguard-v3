@@ -13694,6 +13694,32 @@ body:not(.login-active) #logoutButton {
 }
 
 /* Final ward card sizing overrides */
+.v5-kpi-grid {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  align-items: stretch;
+}
+
+.v5-dashboard .v5-kpi-card {
+  height: auto;
+  min-height: 132px;
+  max-height: none;
+}
+
+.v5-kpi-card .kpi-copy {
+  min-width: 0;
+}
+
+.v5-kpi-card .kpi-copy > span,
+.v5-kpi-card .kpi-copy > strong,
+.v5-kpi-card .kpi-copy > small {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .v5-kpi-grid { grid-template-columns: 1fr; }
+  .v5-dashboard .v5-kpi-card { min-height: 122px; }
+}
+
 .alert-ward-panel {
   height: 306px !important;
   min-height: 306px !important;
