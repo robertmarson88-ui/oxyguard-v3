@@ -1237,7 +1237,7 @@ function renderRealTimeAlert() {
     kpiGrid.innerHTML = [
       alertKpiCard("Critical Alerts", alertRows.filter(r => r.priority === "Critical").length, "Require immediate action", "danger", "View Alerts", "alert"),
       alertKpiCard("Active Alerts", alertRows.length, "Across all wards", "warning", "View All", "blank"),
-      alertKpiCard("Total Tanks", `<span id="activePatients">${activeTankCount} / ${totalTankCount}</span>`, "Tanks in use", "blue", "", "blank"),
+      alertKpiCard("Total Tanks", totalTankCount, `${activeTankCount} tanks currently in use`, "blue", "", "blank"),
       alertKpiCard("System Status", `<span id="systemAlert">Monitoring</span>`, `<span id="alertText">All systems normal</span>`, "success", "", "blank"),
       alertKpiCard("Wastage Today", `<span id="wastage">${wastage}%</span>`, `<span id="wastageStatus">vs yesterday</span>`, "purple", "+ 8%", "blank")
     ].join("");
@@ -1249,24 +1249,22 @@ function renderRealTimeAlert() {
   const incidentTarget = document.getElementById("alertIncidentsTable");
   if (incidentTarget && !isEditingIncidentResponse()) {
     const canRespond = canRespondToIncident();
-    incidentTarget.innerHTML = `
-      <table class="alert-data-table">
-        <thead><tr><th>Time</th><th>Ward</th><th>Alert Type</th><th>Priority</th><th>Bed / Tank</th><th>Impact / Action</th><th>Status</th><th>Assigned To</th>${canRespond ? "<th>Response</th>" : ""}</tr></thead>
-        <tbody>${alertRows.map(row => `
-          <tr>
-            <td>${row.time}</td>
-            <td>${row.ward}</td>
-            <td>${row.type}</td>
-            <td>${alertPill(row.priority)}</td>
-            <td>${row.asset}</td>
-            <td>${formatAlertImpact(row)}</td>
-            <td>${alertStatus(row.status)}</td>
-            <td>${row.assigned}</td>
-            ${canRespond ? `<td>${incidentResponseControls(row)}</td>` : ""}
-          </tr>
-        `).join("")}</tbody>
-      </table>
-    `;
+    incidentTarget.innerHTML = alertRows.length ? `
+      <div class="incident-list">
+        ${alertRows.map(row => `
+          <article class="active-incident-row">
+            <div class="incident-alert-summary">
+              <div><strong>${row.type}</strong><span>${row.time}</span></div>
+              ${alertPill(row.priority)}
+            </div>
+            <div class="incident-location"><span>Location</span><strong>${row.ward}</strong><small>${row.asset}</small></div>
+            <div class="incident-action">${formatAlertImpact(row)}</div>
+            <div class="incident-state"><span>Current status</span>${alertStatus(row.status)}<small>Assigned to ${row.assigned}</small></div>
+            ${canRespond ? incidentResponseControls(row) : ""}
+          </article>
+        `).join("")}
+      </div>
+    ` : `<div class="nurse-empty-state">No active incidents. New detections will appear here automatically.</div>`;
     incidentTarget.querySelectorAll("[data-incident-response]").forEach(button => {
       button.addEventListener("click", () => {
         const note = button.closest("[data-incident-form]")?.querySelector(".incident-response-input")?.value || "";
@@ -2270,7 +2268,7 @@ function renderAlertPipelineMap() {
   const flowTotal = Math.round(wards.reduce((sum, ward) => sum + totalFlow(ward), 0));
   const tankPercent = Math.max(42, 88 - Math.floor((Date.now() / 60000) % 28));
   return `
-    <div class="pipeline-canvas live-pipeline" style="--flow-speed:${Math.max(2.6, 7 - flowTotal / 10)}s; --tank-level:${tankPercent}%">
+    <div class="pipeline-canvas live-pipeline" style="--flow-speed:${Math.max(10, 20 - flowTotal / 10)}s; --tank-level:${tankPercent}%">
       <div class="tank-farm">
         <strong>Main Tank Farm</strong>
         <span class="tank-percent">${tankPercent}%</span>
@@ -2373,8 +2371,6 @@ function renderTankRow(t) {
 }
 
 function updateMetrics() {
-  const activePatientsEl = document.getElementById("activePatients");
-  if (activePatientsEl) activePatientsEl.textContent = `${ACTIVE_PATIENT_TARGET}/${ACTIVE_PATIENT_TARGET}`;
   const wastageEl = document.getElementById("wastage");
   if (wastageEl) wastageEl.textContent = `${wastage}%`;
   const wastageStatusEl = document.getElementById("wastageStatus");
@@ -3443,7 +3439,16 @@ function getSynchronizedWardAlertEntries() {
 function renderPatientAlerts(activeTanks) {
   const target = document.getElementById("patientAlertsTable");
   if (!target) return;
-  const rows = getSynchronizedWardAlertEntries().map(({ card, row, type, priority }) => {
+  const incidents = getAlertIncidentRows();
+  const rows = getAlertWardCards().flatMap(card => card.rows
+    .filter(row => row.patientFlag === "On")
+    .map(row => {
+    const type = getWardRowStatus(card, row);
+    const incident = incidents.find(item => (
+      normalizeWardLabel(item.ward) === normalizeWardLabel(card.ward)
+      && normalizeWardIncidentStatus(item.type) === type
+    ));
+    const priority = incident?.priority || "Normal";
     const setValue = Number(row.setValue) || 0;
     const liveReading = Number(row.flow) || 0;
     const status = evaluatePatientFlowStatus(Math.max(0.1, setValue), liveReading);
@@ -3453,13 +3458,13 @@ function renderPatientAlerts(activeTanks) {
       formatFlow(setValue),
       formatFlow(liveReading),
       formatVariance(status.variance),
-      alertPill(priority),
-      patientAlertTypeBadge(type)
+      type === "Normal" ? badge("Normal", "good") : alertPill(priority),
+      patientAlertTypeBadge(type === "Normal" ? "Clear" : type)
     ];
-  });
+  }));
   target.innerHTML = rows.length
     ? tableHtml(["Patient ID", "Ward / Bed", "SetValue", "Live Reading", "Variance", "Status", "Alert"], rows)
-    : `<div class="nurse-empty-state">No active patient alerts. New ward incidents will appear here automatically.</div>`;
+    : `<div class="nurse-empty-state">No patients are currently flagged as on oxygen support in the Ward Cards.</div>`;
 }
 
 function getPatientAlertType(tankItem, status, index = 0) {
@@ -3540,59 +3545,40 @@ function renderV5TrendAnalytics() {
 
   const hours = ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"];
   const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
-  const averageFlowValue = Math.max(10, Math.round(totalFlowValue / Math.max(1, wards.length)));
-  const activeAlertRows = getAlertIncidentRows();
-  const currentWasteLitres = Math.round(activeAlertRows.reduce((total, alert) => {
-    const waste = Number(alert.estimatedOxygenWaste);
-    return total + (Number.isFinite(waste) ? waste : 0);
-  }, 0));
-  const wasteAxisMaximum = Math.max(50, Math.ceil(Math.max(1, currentWasteLitres) / 50) * 50);
-  const phase = Math.floor(Date.now() / 3000);
-  const flowPattern = [0.72, 0.82, 0.94, 1.03, 1.15, 1.08, 1.22, 1.14, 1.02, 0.91, 0.84, 0.76];
-  const flowPoints = flowPattern.map((multiplier, index) => {
-    const wave = Math.sin((phase + index) / 2.2) * 5;
-    return Math.round(clamp((averageFlowValue * 8 * multiplier) + wave, 12, 120));
-  });
-  // The red line is a live reading of unresolved alert wastage. It has no
-  // simulated floor or animated variance, so clearing alerts returns it to 0.
-  const wastePoints = flowPattern.map(() => currentWasteLitres);
+  const averageFlowValue = Math.round(totalFlowValue / Math.max(1, wards.length));
+  const flowAxisMaximum = Math.max(20, Math.ceil(Math.max(1, averageFlowValue) / 20) * 20);
+  const now = new Date();
+  const dayProgress = (now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60) / (24 * 60);
   const width = 520;
   const height = 188;
   const left = 50;
-  const right = 58;
+  const right = 20;
   const top = 28;
   const bottom = 40;
   const plotWidth = width - left - right;
   const plotHeight = height - top - bottom;
-  const xFor = index => left + (index / (flowPoints.length - 1)) * plotWidth;
-  const yFlow = value => top + ((120 - value) / 120) * plotHeight;
-  const yWaste = value => top + ((wasteAxisMaximum - value) / wasteAxisMaximum) * plotHeight;
-  const flowPath = flowPoints.map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yFlow(value).toFixed(1)}`).join(" ");
-  const wastePath = wastePoints.map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yWaste(value).toFixed(1)}`).join(" ");
+  const currentX = left + dayProgress * plotWidth;
+  const currentY = top + ((flowAxisMaximum - averageFlowValue) / flowAxisMaximum) * plotHeight;
+  const flowPath = `M ${left.toFixed(1)} ${currentY.toFixed(1)} L ${currentX.toFixed(1)} ${currentY.toFixed(1)}`;
 
   target.innerHTML = `
     <div class="trend-legend">
-      <span class="flow">Average Flow (Litre/Min)</span>
-      <span class="waste">Active-alert wastage (${activeAlertRows.length} alert${activeAlertRows.length === 1 ? "" : "s"})</span>
+      <span class="flow">Live Average Flow — ${averageFlowValue} Litre/Min</span>
     </div>
-    <svg viewBox="0 0 ${width} ${height}" aria-label="Daily average flow and wastage trend">
+    <svg viewBox="0 0 ${width} ${height}" aria-label="Live average flow by current time of day">
       <text class="trend-axis-title left" x="${left}" y="16">Flow (Litre/Min)</text>
-      <text class="trend-axis-title right" x="${width - right}" y="16">Wastage (Litre)</text>
-      ${[0, 40, 80, 120].map(value => {
-        const y = yFlow(value);
+      ${[0, 1, 2, 3].map(index => Math.round((flowAxisMaximum / 3) * index)).map(value => {
+        const y = top + ((flowAxisMaximum - value) / flowAxisMaximum) * plotHeight;
         return `
           <line class="trend-grid" x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"></line>
           <text class="trend-tick" x="${left - 14}" y="${y + 4}">${value}</text>
         `;
       }).join("")}
-      ${[0, 1, 2, 3].map(index => Math.round((wasteAxisMaximum / 3) * index)).map(value => {
-        const y = yWaste(value);
-        return `<text class="trend-tick right" x="${width - right + 14}" y="${y + 4}">${value}</text>`;
-      }).join("")}
       <line class="trend-axis" x1="${left}" y1="${top}" x2="${left}" y2="${height - bottom}"></line>
       <line class="trend-axis" x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}"></line>
       <path class="trend-flow-line" d="${flowPath}"></path>
-      <path class="trend-waste-line" d="${wastePath}"></path>
+      <circle cx="${currentX.toFixed(1)}" cy="${currentY.toFixed(1)}" r="5" fill="#1f8bff" stroke="#ffffff" stroke-width="2"></circle>
+      <text class="trend-time" x="${currentX.toFixed(1)}" y="${Math.max(top + 12, currentY - 10).toFixed(1)}">Now</text>
       ${hours.map((hour, index) => {
         const x = left + (index / (hours.length - 1)) * plotWidth;
         return `<text class="trend-time" x="${x}" y="${height - 8}">${hour}</text>`;
