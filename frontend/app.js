@@ -3427,38 +3427,39 @@ function renderCriticalOverview(overview) {
   `).join("");
 }
 
+function getSynchronizedWardAlertEntries() {
+  const incidents = getAlertIncidentRows();
+  return getAlertWardCards().flatMap(card => card.rows.map(row => {
+    const type = getWardRowStatus(card, row);
+    if (type === "Normal") return null;
+    const incident = incidents.find(item => (
+      normalizeWardLabel(item.ward) === normalizeWardLabel(card.ward)
+      && normalizeWardIncidentStatus(item.type) === type
+    ));
+    return { card, row, type, priority: incident?.priority || "High" };
+  }).filter(Boolean));
+}
+
 function renderPatientAlerts(activeTanks) {
   const target = document.getElementById("patientAlertsTable");
   if (!target) return;
-  const hasLiveAlerts = activeTanks.some(t => t.leakageAlert || t.highFlowAlert || getReportVolumePercent(t) < 10);
-  const liveRows = Array.from({ length: ACTIVE_PATIENT_TARGET }, (_, index) => {
-    const tankItem = activeTanks[index % Math.max(1, activeTanks.length)];
-    const setValue = Math.max(1, tankItem.flowRate - 1);
-    const liveReading = tankItem.alertType === "Ghost Flow"
-      ? setValue * 1.35
-      : tankItem.alertType === "Unauthorized Bed Usage"
-        ? setValue * 1.32
-        : tankItem.alertType === "Residual Gas"
-          ? setValue * 0.74
-          : tankItem.leakageAlert
-        ? setValue * 0.8
-        : index % 4 === 0
-          ? setValue
-          : setValue * 1.12;
-    const status = evaluatePatientFlowStatus(setValue, liveReading);
-    const alertType = getPatientAlertType(tankItem, status, index);
+  const rows = getSynchronizedWardAlertEntries().map(({ card, row, type, priority }) => {
+    const setValue = Number(row.setValue) || 0;
+    const liveReading = Number(row.flow) || 0;
+    const status = evaluatePatientFlowStatus(Math.max(0.1, setValue), liveReading);
     return [
-      `PT-${String(index + 1).padStart(4, "0")}`,
-      `${tankItem.wardName} / ${tankItem.station}`,
+      row.patientId,
+      `${card.ward} / ${row.asset}`,
       formatFlow(setValue),
       formatFlow(liveReading),
       formatVariance(status.variance),
-      status.badge,
-      patientAlertTypeBadge(alertType)
+      alertPill(priority),
+      patientAlertTypeBadge(type)
     ];
   });
-  const rows = hasLiveAlerts ? liveRows : dashboardBaselinePatientRows;
-  target.innerHTML = tableHtml(["Patient ID", "Ward / Bed", "SetValue", "Live Reading", "Variance", "Status", "Alert"], rows);
+  target.innerHTML = rows.length
+    ? tableHtml(["Patient ID", "Ward / Bed", "SetValue", "Live Reading", "Variance", "Status", "Alert"], rows)
+    : `<div class="nurse-empty-state">No active patient alerts. New ward incidents will appear here automatically.</div>`;
 }
 
 function getPatientAlertType(tankItem, status, index = 0) {
@@ -3498,22 +3499,19 @@ function renderLiveTankStatus(activeTanks) {
 function renderAlertsByWard() {
   const target = document.getElementById("leakageTable");
   if (!target) return;
-  const rows = wards.map(ward => {
-    const baseline = dashboardBaselineAlertsByWard[ward.id] || { activeAlerts: 0, critical: 0, warning: 0 };
-    const liveActiveAlerts = ward.tanks.filter(t => t.active && (t.leakageAlert || t.highFlowAlert)).length;
-    const liveCritical = ward.tanks.filter(t => t.active && getReportVolumePercent(t) < 10).length;
-    const liveWarning = ward.tanks.filter(t => t.active && getReportVolumePercent(t) >= 10 && getReportVolumePercent(t) < 30).length;
-    const activeAlerts = Math.max(liveActiveAlerts, baseline.activeAlerts);
-    const critical = Math.max(liveCritical, baseline.critical);
-    const warning = Math.max(liveWarning, baseline.warning);
-    const total = activeAlerts + critical + warning;
+  const entries = getSynchronizedWardAlertEntries();
+  const rows = getAlertWardCards().map(card => {
+    const wardEntries = entries.filter(entry => entry.card.key === card.key);
+    const critical = wardEntries.filter(entry => entry.priority === "Critical").length;
+    const warning = wardEntries.filter(entry => entry.priority !== "Critical").length;
+    const activeAlerts = wardEntries.length;
     return {
-      ward: ward.name.replace(" Ward", ""),
-      total,
+      ward: card.ward.replace(" Ward", ""),
+      total: activeAlerts,
       activeAlerts,
       critical,
       warning,
-      accent: ward.accent
+      accent: wards.find(ward => normalizeWardLabel(ward.name) === normalizeWardLabel(card.ward))?.accent || colors.grey
     };
   });
   target.innerHTML = `
@@ -3543,18 +3541,21 @@ function renderV5TrendAnalytics() {
   const hours = ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"];
   const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
   const averageFlowValue = Math.max(10, Math.round(totalFlowValue / Math.max(1, wards.length)));
-  const currentWasteLitres = Math.round(totalFlowValue * 60 * (wastage / 100));
+  const activeAlertRows = getAlertIncidentRows();
+  const currentWasteLitres = Math.round(activeAlertRows.reduce((total, alert) => {
+    const waste = Number(alert.estimatedOxygenWaste);
+    return total + (Number.isFinite(waste) ? waste : 0);
+  }, 0));
+  const wasteAxisMaximum = Math.max(50, Math.ceil(Math.max(1, currentWasteLitres) / 50) * 50);
   const phase = Math.floor(Date.now() / 3000);
   const flowPattern = [0.72, 0.82, 0.94, 1.03, 1.15, 1.08, 1.22, 1.14, 1.02, 0.91, 0.84, 0.76];
-  const wastePattern = [0.52, 0.61, 0.7, 0.78, 0.92, 1.02, 1.15, 1.07, 0.95, 0.83, 0.72, 0.64];
   const flowPoints = flowPattern.map((multiplier, index) => {
     const wave = Math.sin((phase + index) / 2.2) * 5;
     return Math.round(clamp((averageFlowValue * 8 * multiplier) + wave, 12, 120));
   });
-  const wastePoints = wastePattern.map((multiplier, index) => {
-    const wave = Math.cos((phase + index) / 2) * 18;
-    return Math.round(clamp((currentWasteLitres / 18) * multiplier + wave, 18, 450));
-  });
+  // The red line is a live reading of unresolved alert wastage. It has no
+  // simulated floor or animated variance, so clearing alerts returns it to 0.
+  const wastePoints = flowPattern.map(() => currentWasteLitres);
   const width = 520;
   const height = 188;
   const left = 50;
@@ -3565,14 +3566,14 @@ function renderV5TrendAnalytics() {
   const plotHeight = height - top - bottom;
   const xFor = index => left + (index / (flowPoints.length - 1)) * plotWidth;
   const yFlow = value => top + ((120 - value) / 120) * plotHeight;
-  const yWaste = value => top + ((450 - value) / 450) * plotHeight;
+  const yWaste = value => top + ((wasteAxisMaximum - value) / wasteAxisMaximum) * plotHeight;
   const flowPath = flowPoints.map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yFlow(value).toFixed(1)}`).join(" ");
   const wastePath = wastePoints.map((value, index) => `${index === 0 ? "M" : "L"} ${xFor(index).toFixed(1)} ${yWaste(value).toFixed(1)}`).join(" ");
 
   target.innerHTML = `
     <div class="trend-legend">
       <span class="flow">Average Flow (Litre/Min)</span>
-      <span class="waste">Wastage (Litre)</span>
+      <span class="waste">Active-alert wastage (${activeAlertRows.length} alert${activeAlertRows.length === 1 ? "" : "s"})</span>
     </div>
     <svg viewBox="0 0 ${width} ${height}" aria-label="Daily average flow and wastage trend">
       <text class="trend-axis-title left" x="${left}" y="16">Flow (Litre/Min)</text>
@@ -3584,7 +3585,7 @@ function renderV5TrendAnalytics() {
           <text class="trend-tick" x="${left - 14}" y="${y + 4}">${value}</text>
         `;
       }).join("")}
-      ${[0, 150, 300, 450].map(value => {
+      ${[0, 1, 2, 3].map(index => Math.round((wasteAxisMaximum / 3) * index)).map(value => {
         const y = yWaste(value);
         return `<text class="trend-tick right" x="${width - right + 14}" y="${y + 4}">${value}</text>`;
       }).join("")}
