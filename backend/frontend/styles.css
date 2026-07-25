@@ -14290,6 +14290,113 @@ body:not(.login-active) table td small {
   }
 }
 
+/* Dashboard table containment and scrolling fixes shared by Administrator and Facilities Manager. */
+.v5-depletion-card {
+  min-width: 0 !important;
+  overflow: hidden !important;
+}
+
+.v5-depletion-card .report-table {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.v5-depletion-card #depletionTable table {
+  width: 100% !important;
+  max-width: 100%;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+.v5-depletion-card #depletionTable .badge {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+}
+
+.v5-alerts-ward-card .report-table {
+  max-height: 142px !important;
+  overflow-x: auto !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.v5-depletion-card .report-table::-webkit-scrollbar,
+.v5-alerts-ward-card .report-table::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.v5-depletion-card .report-table::-webkit-scrollbar-thumb,
+.v5-alerts-ward-card .report-table::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #9eb4c9;
+}
+
+/* Report actions: visible generate feedback and a true in-app preview. */
+.report-action-status {
+  grid-column: 1 / -1;
+  min-height: 18px;
+  color: #5d7187;
+  font-size: 10px;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.report-action-status[data-tone="success"] { color: #087b4c; }
+.report-action-status[data-tone="info"] { color: #1769b0; }
+
+.report-preview-dialog {
+  width: min(1180px, calc(100vw - 36px));
+  max-width: 1180px;
+  max-height: calc(100vh - 36px);
+  overflow: hidden;
+  border: 1px solid #d4e1ee;
+  border-radius: 14px;
+  background: #f3f7fb;
+}
+
+.report-preview-dialog-head {
+  background: #ffffff;
+}
+
+.report-preview-dialog-head h2,
+.report-preview-dialog-head p {
+  margin: 0;
+}
+
+.report-preview-dialog-head p {
+  margin-top: 4px;
+  color: #61758b;
+  font-size: 12px;
+}
+
+.report-preview-body {
+  display: grid;
+  gap: 12px;
+  max-height: calc(100vh - 132px);
+  padding: 16px;
+  overflow: auto;
+}
+
+.report-preview-body .report-center-grid {
+  display: grid !important;
+}
+
+@media (max-width: 760px) {
+  .report-action-status { text-align: left; }
+  .report-preview-dialog { width: calc(100vw - 18px); max-height: calc(100vh - 18px); }
+  .report-preview-dialog-head { align-items: flex-start; flex-direction: column; gap: 10px; }
+  .report-preview-body { max-height: calc(100vh - 162px); padding: 10px; }
+}
+
 @media (max-width: 420px) {
   body:not(.login-active) .sidebar-user {
     grid-template-columns: 32px minmax(0, 1fr);

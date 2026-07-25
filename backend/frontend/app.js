@@ -472,13 +472,71 @@ function setupReportGenerator() {
     selectedReportType = event.target.value;
     renderGeneratedReport();
   });
-  document.getElementById("emailGeneratedReport")?.addEventListener("click", () => {
-    renderGeneratedReport();
-    renderReportLiveInsights();
-    renderMonthlyUsageComparison();
-  });
-  document.getElementById("printGeneratedReport")?.addEventListener("click", () => window.print());
+  document.getElementById("emailGeneratedReport")?.addEventListener("click", generateSelectedReport);
+  document.getElementById("printGeneratedReport")?.addEventListener("click", previewGeneratedReport);
   document.getElementById("exportGeneratedReport")?.addEventListener("click", exportGeneratedReport);
+  document.getElementById("closeReportPreviewDialog")?.addEventListener("click", () => {
+    document.getElementById("reportPreviewDialog")?.close();
+  });
+  document.getElementById("reportPreviewDialog")?.addEventListener("click", event => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  });
+}
+
+function generateSelectedReport() {
+  const button = document.getElementById("emailGeneratedReport");
+  if (button?.disabled) return;
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Generating...";
+  }
+
+  renderGeneratedReport();
+  renderReportLiveInsights();
+  renderMonthlyUsageComparison();
+
+  const report = buildGeneratedReport(selectedReportType);
+  updateReportActionStatus(`${report.title} generated at ${report.generatedAt}.`, "success");
+  void recordAuditEvent("Report Generated", `${selectedReportType} report; ${report.range}`);
+  document.getElementById("reportGeneratedSummaryCard")?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  if (button) {
+    button.textContent = "Generated";
+    window.setTimeout(() => {
+      button.disabled = false;
+      button.textContent = "Generate";
+    }, 900);
+  }
+}
+
+function previewGeneratedReport() {
+  renderGeneratedReport();
+  renderReportLiveInsights();
+  renderMonthlyUsageComparison();
+
+  const dialog = document.getElementById("reportPreviewDialog");
+  const body = document.getElementById("reportPreviewBody");
+  if (!dialog || !body) return;
+
+  const previewSections = ["reportGeneratedSummaryCard", "reportExecutiveSummary", "generatedReport"]
+    .map(id => document.getElementById(id))
+    .filter(Boolean)
+    .map(section => {
+      const clone = section.cloneNode(true);
+      clone.removeAttribute("id");
+      clone.querySelectorAll("[id]").forEach(element => element.removeAttribute("id"));
+      return clone;
+    });
+  body.replaceChildren(...previewSections);
+  updateReportActionStatus("Preview opened. Export PDF to open the print/save dialog.", "info");
+  if (!dialog.open) dialog.showModal();
+}
+
+function updateReportActionStatus(message, tone = "info") {
+  const status = document.getElementById("reportActionStatus");
+  if (!status) return;
+  status.textContent = message;
+  status.dataset.tone = tone;
 }
 
 function emailGeneratedReport() {
@@ -506,9 +564,11 @@ function exportGeneratedReport() {
   const format = document.getElementById("reportExportFormat")?.value || "pdf";
   if (format === "csv") {
     downloadGeneratedReportCsv();
+    updateReportActionStatus("CSV export downloaded.", "success");
     return;
   }
   void recordAuditEvent("Report Download", `${selectedReportType} report; format=pdf`);
+  updateReportActionStatus("PDF export opened. Choose Save as PDF in the print dialog.", "success");
   window.print();
 }
 

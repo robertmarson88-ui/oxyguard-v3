@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OxyGuard Web Dashboard</title>
     <link rel="icon" href="data:," />
-    <link rel="stylesheet" href="./styles.css?v=20260721-black-table-text" />
+    <link rel="stylesheet" href="./styles.css?v=20260724-frontend-fixes" />
   </head>
   <body class="login-active">
     <section class="login-screen" id="loginScreen">
@@ -121,6 +121,7 @@
                   </select>
                   <button type="button" id="exportGeneratedReport" class="ghost-report-button compact-report-button">Export</button>
                 </div>
+                <span id="reportActionStatus" class="report-action-status" role="status" aria-live="polite">Ready to generate.</span>
               </div>
             </div>
 
@@ -765,6 +766,17 @@
       <div id="dialogBody" class="dialog-body"></div>
     </dialog>
 
+    <dialog id="reportPreviewDialog" class="report-preview-dialog">
+      <div class="dialog-head report-preview-dialog-head">
+        <div>
+          <h2>Report Preview</h2>
+          <p>Review the generated report before exporting it.</p>
+        </div>
+        <button id="closeReportPreviewDialog" type="button" aria-label="Close report preview">Close</button>
+      </div>
+      <div id="reportPreviewBody" class="report-preview-body"></div>
+    </dialog>
+
     <dialog id="heatMapDialog" class="heatmap-dialog">
       <div class="dialog-head heatmap-dialog-head">
         <div>
@@ -888,6 +900,6 @@
       <p class="user-message" id="deviceMessage"></p>
     </dialog>
 
-    <script type="module" src="./app.js?v=20260720-application-cleanup"></script>
+    <script type="module" src="./app.js?v=20260724-frontend-fixes"></script>
   </body>
 </html>
