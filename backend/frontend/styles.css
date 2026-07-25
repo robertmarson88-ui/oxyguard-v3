@@ -13695,8 +13695,16 @@ body:not(.login-active) #logoutButton {
 
 /* Final ward card sizing overrides */
 .v5-kpi-grid {
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .v5-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 760px) {
+  .v5-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* Active incidents: readable card rows in place of a compressed wide table. */

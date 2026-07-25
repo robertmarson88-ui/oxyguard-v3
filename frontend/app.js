@@ -2939,7 +2939,6 @@ function renderReport() {
 
   document.getElementById("reportSummary").innerHTML = [
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
-    reportSummaryCard("Today's Consumption", `${todayConsumptionLitres.toLocaleString()} Litre`, `vs Yesterday (${yesterdayConsumptionLitres.toLocaleString()} Litre)`, colors.blue, consumptionDirection, { delta: yesterdayDelta, deltaTone: consumptionTone }),
     reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
     reportSummaryCard("Active Patients", patientAlertSummary.total, `${patientAlertSummary.alertCount} Patient Alert${patientAlertSummary.alertCount === 1 ? "" : "s"}`, colors.purple, "people"),
     reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
