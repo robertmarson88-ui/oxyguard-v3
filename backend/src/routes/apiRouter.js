@@ -259,11 +259,11 @@ async function verifyMfa(req, res, db, auth, apiV1) {
 
 async function sendMfaCode(email, code, username) {
   const safeEmail = maskEmail(email);
-  if (process.env.RESEND_API_KEY) {
-    return sendMfaCodeViaResend(email, code, username);
-  }
   if (process.env.SENDGRID_API_KEY) {
     return sendMfaCodeViaSendGrid(email, code, username);
+  }
+  if (process.env.RESEND_API_KEY) {
+    return sendMfaCodeViaResend(email, code, username);
   }
 
   console.info(`OxyGuard MFA code for ${username} (${safeEmail}): ${code}`);
