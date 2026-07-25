@@ -947,6 +947,10 @@ function showApp() {
   applyRoleAccess();
   updateCurrentUserDisplay();
   updatePageTitle();
+  if (!sessionStorage.getItem("oxyguardDashboardAccessLogged")) {
+    sessionStorage.setItem("oxyguardDashboardAccessLogged", "true");
+    void recordAuditEvent("Dashboard Access", "Dashboard session opened");
+  }
   loadDatabaseAlerts();
   loadWardCardStatuses();
 }
@@ -957,6 +961,8 @@ async function logout() {
   currentUser = null;
   permissionPreview = "admin";
   sessionStorage.removeItem("oxyguardUser");
+  sessionStorage.removeItem("oxyguardAccessToken");
+  sessionStorage.removeItem("oxyguardDashboardAccessLogged");
   document.body.classList.add("login-active");
   document.getElementById("appShell").setAttribute("aria-hidden", "true");
   resetLoginStep();

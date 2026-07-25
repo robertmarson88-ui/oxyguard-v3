@@ -38,6 +38,8 @@ export function createApiHandler({ db, nurseStationDataPath }) {
         database_config_source: databaseConnectionInfo.envName || (databaseConnectionInfo.projectUrlConfigured ? "SUPABASE_URL_ONLY" : "none"),
         supabase_project_url_configured: databaseConnectionInfo.projectUrlConfigured,
         database_error: db.connection_error || null,
+        audit_log_status: db.audit_log_error ? "error" : "recording",
+        audit_log_rows: db.audit_logs.length,
         telemetry_rows: db.telemetry_logs.length
       });
       return true;
@@ -710,7 +712,10 @@ async function addAuditLog(db, actor, action, target, ipAddress = null) {
 
   db.audit_logs.push(auditLog);
 
-  if (!db.pgPool) return auditLog;
+  if (!db.pgPool) {
+    auditLog.persisted = true;
+    return auditLog;
+  }
 
   try {
     const { columns, values } = buildAuditInsert(db, auditLog);
@@ -723,8 +728,12 @@ async function addAuditLog(db, actor, action, target, ipAddress = null) {
     );
     const remoteAuditId = result.rows?.[0]?.audit_id;
     if (remoteAuditId) auditLog.audit_id = remoteAuditId;
+    auditLog.persisted = true;
+    db.audit_log_error = null;
   } catch (error) {
-    console.warn(`OxyGuard audit log insert failed: ${String(error?.message || error)}`);
+    auditLog.persisted = false;
+    db.audit_log_error = String(error?.message || error);
+    console.warn(`OxyGuard audit log insert failed: ${db.audit_log_error}`);
   }
 
   return auditLog;
@@ -839,7 +848,7 @@ async function recordClientAuditEvent(req, res, db, actor) {
   const payload = await readJson(req);
   const action = String(payload.action || "").trim();
   const details = truncateAuditDetail(payload.details || "Recorded");
-  const allowedActions = new Set(["Report Download", "Configuration Change", "Simulator Alert Sent"]);
+  const allowedActions = new Set(["Dashboard Access", "Report Download", "Configuration Change", "Simulator Alert Sent"]);
 
   if (!allowedActions.has(action)) {
     sendJson(res, 400, { ok: false, message: "Unsupported audit action." });
@@ -852,6 +861,10 @@ async function recordClientAuditEvent(req, res, db, actor) {
   }
 
   const auditLog = await addAuditLog(db, actor, action, details, getClientIp(req));
+  if (db.pgPool && !auditLog.persisted) {
+    sendJson(res, 500, { ok: false, message: "Audit event could not be saved to the database." });
+    return;
+  }
   sendJson(res, 201, { ok: true, audit_id: auditLog.audit_id });
 }
 
