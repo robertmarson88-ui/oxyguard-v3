@@ -272,7 +272,6 @@ let wardCardStatusOverrides = new Map();
 let activeWardAlertKey = "";
 let orderSummaryRequestId = 0;
 let lastOrderSummaryFetchAt = 0;
-let pendingMfaChallenge = null;
 
 const WARD_STATUS_EDITOR_ROLES = new Set(["admin", "nurse-supervisor", "nurse"]);
 const WARD_STATUS_OPTIONS = ["Normal", "Supply Failure", "Ghost Flow", "Flow Anomaly", "Leakage"];
@@ -588,12 +587,8 @@ function setupLogin() {
   const form = document.getElementById("loginForm");
   const username = document.getElementById("loginUsername");
   const password = document.getElementById("loginPassword");
-  const mfaCode = document.getElementById("loginMfaCode");
-  const mfaField = document.getElementById("authCodeField");
-  const backButton = document.getElementById("loginBackButton");
   const submit = document.getElementById("loginSubmit");
   const error = document.getElementById("loginError");
-  const hint = document.getElementById("loginHint");
   const resetPanel = document.getElementById("passwordResetPanel");
   const resetMessage = document.getElementById("resetPasswordMessage");
   let resetChallengeId = "";
@@ -633,16 +628,8 @@ function setupLogin() {
       sessionStorage.removeItem("oxyguardUser");
       sessionStorage.removeItem("oxyguardAccessToken");
     }
-    pendingMfaChallenge = null;
-    setMfaLoginMode(false, { submit, mfaField, mfaCode, username, password, backButton, hint });
     username.focus();
   }
-
-  backButton?.addEventListener("click", () => {
-    pendingMfaChallenge = null;
-    setMfaLoginMode(false, { submit, mfaField, mfaCode, username, password, backButton, hint });
-    error.classList.remove("visible");
-  });
 
   form.addEventListener("submit", async event => {
     event.preventDefault();
@@ -650,24 +637,6 @@ function setupLogin() {
     submit.disabled = true;
 
     try {
-      if (pendingMfaChallenge) {
-        const verifyResponse = await fetch("/api/mfa/verify", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ challenge_id: pendingMfaChallenge.challenge_id, code: mfaCode.value.trim() })
-        });
-        const verifyText = await verifyResponse.text();
-        const verifyResult = parseJsonResponse(verifyText);
-        if (!verifyResponse.ok || !verifyResult.ok) {
-          throw new Error(verifyResult?.message || "Invalid authentication code.");
-        }
-
-        completeLogin(verifyResult);
-        pendingMfaChallenge = null;
-        setMfaLoginMode(false, { submit, mfaField, mfaCode, username, password, backButton, hint });
-        return;
-      }
-
       const response = await fetch("/api/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -684,19 +653,6 @@ function setupLogin() {
         password.value = "";
         error.classList.remove("visible");
         showApp();
-        return;
-      }
-
-      if (result.mfa_required) {
-        if (result.delivery && result.delivery.sent === false) {
-          throw new Error(result.delivery.message || "Authentication email could not be sent.");
-        }
-        pendingMfaChallenge = {
-          challenge_id: result.challenge_id,
-          expires_at: result.expires_at,
-          username: username.value.trim()
-        };
-        setMfaLoginMode(true, { submit, mfaField, mfaCode, username, password, backButton, hint }, result.delivery);
         return;
       }
 
@@ -719,38 +675,10 @@ function completeLogin(result) {
   sessionStorage.setItem("oxyguardUser", JSON.stringify(currentUser));
   sessionStorage.setItem("oxyguardAccessToken", result.access_token);
   const password = document.getElementById("loginPassword");
-  const code = document.getElementById("loginMfaCode");
   const error = document.getElementById("loginError");
   if (password) password.value = "";
-  if (code) code.value = "";
   error?.classList.remove("visible");
   showApp();
-}
-
-function setMfaLoginMode(enabled, elements, delivery = {}) {
-  const { submit, mfaField, mfaCode, username, password, backButton, hint } = elements;
-  mfaField?.classList.toggle("visible", enabled);
-  if (mfaField) mfaField.hidden = !enabled;
-  backButton?.classList.toggle("visible", enabled);
-  if (submit) submit.textContent = enabled ? "Verify Code" : "Login";
-  if (username) username.disabled = enabled;
-  if (password) password.disabled = enabled;
-  if (hint) {
-    const message = delivery?.message || `Authentication code sent to ${delivery?.masked_email || "your email"}.`;
-    hint.textContent = enabled
-      ? `${message}${delivery?.dev_code ? ` Code: ${delivery.dev_code}` : ""}`
-      : "Use your OxyGuard account credentials to sign in.";
-  }
-  if (enabled) {
-    if (mfaCode) mfaCode.value = "";
-    mfaCode?.focus();
-  } else {
-    if (username) username.disabled = false;
-    if (password) password.disabled = false;
-    if (password) password.value = "";
-    if (mfaCode) mfaCode.value = "";
-    username?.focus();
-  }
 }
 
 function parseJsonResponse(text) {

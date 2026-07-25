@@ -205,53 +205,23 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
 async function login(req, res, db, auth, apiV1) {
   const { username, password } = await readJson(req);
-  const challenge = auth.createMfaChallenge(username, password);
+  const session = auth.authenticate(username, password);
 
-  if (!challenge) {
+  if (!session) {
     sendJson(res, 401, { ok: false, message: "Invalid username or password." });
     return;
   }
 
-  const delivery = await sendMfaCode(challenge.user.email, challenge.code, challenge.user.username);
-  if (!delivery.sent) {
-    await addAuditLog(db, challenge.user, "MFA Email Failed", delivery.message || maskEmail(challenge.user.email), getClientIp(req));
-    if (delivery.provider === "console") {
-      const session = auth.authenticate(username, password);
-      if (!session) {
-        sendJson(res, 401, { ok: false, message: "Invalid username or password." });
-        return;
-      }
-      await addAuditLog(db, challenge.user, "User Login", `${challenge.user.username}; password authentication`, getClientIp(req));
-      const response = {
-        access_token: session.access_token,
-        token_type: "bearer",
-        expires_in: session.expires_in,
-        role: session.role,
-        user: session.user,
-        authentication_method: "password"
-      };
-      sendJson(res, 200, apiV1 ? response : { ok: true, ...response });
-      return;
-    }
-    sendJson(res, 503, {
-      ok: false,
-      mfa_required: false,
-      message: delivery.message || "Authentication email could not be sent.",
-      delivery
-    });
-    return;
-  }
-
-  await addAuditLog(db, challenge.user, "MFA Code Sent", maskEmail(challenge.user.email), getClientIp(req));
-
-  sendJson(res, 200, {
-    ok: true,
-    mfa_required: true,
-    challenge_id: challenge.challenge_id,
-    expires_at: challenge.expires_at,
-    expires_in_seconds: challenge.expires_in_seconds,
-    delivery
-  });
+  await addAuditLog(db, session.user, "User Login", `${session.user.username}; password authentication`, getClientIp(req));
+  const response = {
+    access_token: session.access_token,
+    token_type: "bearer",
+    expires_in: session.expires_in,
+    role: session.role,
+    user: session.user,
+    authentication_method: "password"
+  };
+  sendJson(res, 200, apiV1 ? response : { ok: true, ...response });
 }
 
 async function verifyMfa(req, res, db, auth, apiV1) {
