@@ -15,6 +15,10 @@ services:
         generateValue: true
       - key: JWT_ACCESS_TTL_SECONDS
         value: "900"
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: MFA_FROM_EMAIL
+        sync: false
   - type: web
     name: oxyguard-v3-api
     runtime: python
