@@ -274,7 +274,7 @@
             </article>
 
             <article class="report-card v5-critical-overview">
-              <h3>Critical Alerts Overview</h3>
+              <h3>Core Rule Performance (YTD)</h3>
               <div id="criticalOverviewCards" class="critical-overview-grid"></div>
               <div class="card-toolbar tight">
                 <h3>Active Detection Alerts</h3>
@@ -562,7 +562,7 @@
             <div class="analytics-range-copy">
               <span>Analytics period</span>
               <strong id="analyticsRangeLabel">Jan–Jul</strong>
-              <small>Consumption, loss, and cost panels update instantly. Core rule performance remains live.</small>
+              <small>Consumption, loss, cost, and cumulative rule performance update together.</small>
             </div>
             <div class="analytics-range-control">
               <div class="analytics-range-marks" aria-hidden="true">
@@ -577,10 +577,10 @@
           <section class="analytics-rule-section" aria-labelledby="analyticsRuleTitle">
             <div class="analytics-rule-heading">
               <div>
-                <span>Detection coverage</span>
+                <span>Cumulative detection coverage</span>
                 <h3 id="analyticsRuleTitle">Core rule performance</h3>
               </div>
-              <p>Live status and trigger logic for the three rules protecting oxygen use.</p>
+              <p id="analyticsRulePeriodCopy">Cumulative detections and exposure through July.</p>
             </div>
             <div class="analytics-rule-grid" id="analyticsRuleSummary"></div>
           </section>

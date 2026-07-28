@@ -1048,11 +1048,7 @@ async function getAnalyticsSnapshot(db) {
       { ward: "Recovery Bay", usage: [10, 12, 13, 15, 16, 17, 18], leakage: [1, 1, 2, 2, 3, 3, 3] },
       { ward: "Nurse Station", usage: [4, 5, 5, 6, 7, 8, 9], leakage: [0, 0, 1, 1, 1, 1, 1] }
     ],
-    rules: [
-      { rule_key: "ghost_flow", active_detections: 8, detection_share: 44.44, oxygen_at_risk_litres: 126, cost_exposure_jmd: 28500, recoverable_value_jmd: 19950, as_of_date: "2026-07-28" },
-      { rule_key: "unauthorized_bed_usage", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 88, cost_exposure_jmd: 21000, recoverable_value_jmd: 14700, as_of_date: "2026-07-28" },
-      { rule_key: "residual_gas", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 241, cost_exposure_jmd: 52500, recoverable_value_jmd: 36750, as_of_date: "2026-07-28" }
-    ]
+    rules: buildFallbackRuleHistory()
   };
 
   if (!db.pgPool) return fallback;
@@ -1071,8 +1067,8 @@ async function getAnalyticsSnapshot(db) {
                 oxygen_at_risk_litres, cost_exposure_jmd, recoverable_value_jmd,
                 rule_logic, as_of_date
          from public.analytics_rule_performance
-         where as_of_date = (select max(as_of_date) from public.analytics_rule_performance)
-         order by rule_key`
+         where as_of_date between date '2026-01-01' and date '2026-07-31'
+         order by as_of_date, rule_key`
       )
     ]);
 
@@ -1091,7 +1087,7 @@ async function getAnalyticsSnapshot(db) {
 
     return {
       source: "supabase",
-      as_of_date: rulesResult.rows[0]?.as_of_date || "2026-07-28",
+      as_of_date: rulesResult.rows.at(-1)?.as_of_date || "2026-07-28",
       months: months.length ? months : fallback.months,
       wards: wards.length ? wards : fallback.wards,
       rules: rulesResult.rows.length ? rulesResult.rows : fallback.rules
@@ -1100,6 +1096,28 @@ async function getAnalyticsSnapshot(db) {
     console.warn(`OxyGuard analytics snapshot query failed: ${String(error?.message || error)}`);
     return fallback;
   }
+}
+
+function buildFallbackRuleHistory() {
+  const periods = [
+    ["2026-01-31", [1, 1, 0], [50, 50, 0], [15, 12, 0], [3500, 2500, 0]],
+    ["2026-02-28", [2, 1, 1], [50, 25, 25], [32, 19, 38], [7200, 4200, 8200]],
+    ["2026-03-31", [3, 2, 1], [50, 33.33, 16.67], [48, 34, 72], [10800, 7600, 15600]],
+    ["2026-04-30", [4, 3, 2], [44.44, 33.33, 22.22], [69, 49, 118], [15500, 11000, 25500]],
+    ["2026-05-31", [5, 3, 3], [45.45, 27.27, 27.27], [84, 58, 159], [19000, 13500, 34500]],
+    ["2026-06-30", [6, 4, 4], [42.86, 28.57, 28.57], [103, 72, 198], [23000, 17000, 43000]],
+    ["2026-07-28", [8, 5, 5], [44.44, 27.78, 27.78], [126, 88, 241], [28500, 21000, 52500]]
+  ];
+  const keys = ["ghost_flow", "unauthorized_bed_usage", "residual_gas"];
+  return periods.flatMap(([asOfDate, detections, shares, oxygenRisk, exposure]) => keys.map((ruleKey, index) => ({
+    rule_key: ruleKey,
+    active_detections: detections[index],
+    detection_share: shares[index],
+    oxygen_at_risk_litres: oxygenRisk[index],
+    cost_exposure_jmd: exposure[index],
+    recoverable_value_jmd: Math.round(exposure[index] * 0.7),
+    as_of_date: asOfDate
+  })));
 }
 
 function normalizeWardName(name) {

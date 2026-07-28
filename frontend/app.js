@@ -83,11 +83,29 @@ let analyticsData = [
   { ward: "Recovery Bay", accent: colors.recovery, usage: [10, 12, 13, 15, 16, 17, 18], leakage: [1, 1, 2, 2, 3, 3, 3] },
   { ward: "Nurse Station", accent: colors.nurse, usage: [4, 5, 5, 6, 7, 8, 9], leakage: [0, 0, 1, 1, 1, 1, 1] }
 ];
-let analyticsRulePerformance = [
-  { rule_key: "ghost_flow", active_detections: 8, detection_share: 44.44, oxygen_at_risk_litres: 126, cost_exposure_jmd: 28500, recoverable_value_jmd: 19950, as_of_date: "2026-07-28" },
-  { rule_key: "unauthorized_bed_usage", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 88, cost_exposure_jmd: 21000, recoverable_value_jmd: 14700, as_of_date: "2026-07-28" },
-  { rule_key: "residual_gas", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 241, cost_exposure_jmd: 52500, recoverable_value_jmd: 36750, as_of_date: "2026-07-28" }
-];
+let analyticsRulePerformance = buildAnalyticsRuleHistory();
+
+function buildAnalyticsRuleHistory() {
+  const periods = [
+    ["2026-01-31", [1, 1, 0], [50, 50, 0], [15, 12, 0], [3500, 2500, 0]],
+    ["2026-02-28", [2, 1, 1], [50, 25, 25], [32, 19, 38], [7200, 4200, 8200]],
+    ["2026-03-31", [3, 2, 1], [50, 33.33, 16.67], [48, 34, 72], [10800, 7600, 15600]],
+    ["2026-04-30", [4, 3, 2], [44.44, 33.33, 22.22], [69, 49, 118], [15500, 11000, 25500]],
+    ["2026-05-31", [5, 3, 3], [45.45, 27.27, 27.27], [84, 58, 159], [19000, 13500, 34500]],
+    ["2026-06-30", [6, 4, 4], [42.86, 28.57, 28.57], [103, 72, 198], [23000, 17000, 43000]],
+    ["2026-07-28", [8, 5, 5], [44.44, 27.78, 27.78], [126, 88, 241], [28500, 21000, 52500]]
+  ];
+  const keys = ["ghost_flow", "unauthorized_bed_usage", "residual_gas"];
+  return periods.flatMap(([asOfDate, detections, shares, oxygenRisk, exposure]) => keys.map((ruleKey, index) => ({
+    rule_key: ruleKey,
+    active_detections: detections[index],
+    detection_share: shares[index],
+    oxygen_at_risk_litres: oxygenRisk[index],
+    cost_exposure_jmd: exposure[index],
+    recoverable_value_jmd: Math.round(exposure[index] * 0.7),
+    as_of_date: asOfDate
+  })));
+}
 const dashboardBaselineAlertsByWard = {
   ae: { activeAlerts: 0, critical: 0, warning: 0 },
   nurse: { activeAlerts: 0, critical: 0, warning: 0 },
@@ -1033,6 +1051,7 @@ async function loadAnalyticsSnapshot() {
     }
     if (Array.isArray(snapshot.rules) && snapshot.rules.length) analyticsRulePerformance = snapshot.rules;
     if (activeView === "analytics") renderAnalytics();
+    if (activeView === "report") renderReport();
   } catch {
     // Keep the July 28 fallback snapshot available when the database is offline.
   }
@@ -2988,14 +3007,14 @@ function renderReport() {
   const criticalOverview = getCriticalAlertOverview(alertRows);
   const patientAlertSummary = getPatientAlertSummary(activeTanks);
   const wastageCostLabel = criticalIncidentImpact.count
-    ? `${currency(wastageCost)}&nbsp;Est.&nbsp;Cost&nbsp;|&nbsp;${criticalIncidentImpact.count}&nbsp;Critical&nbsp;Alert${criticalIncidentImpact.count === 1 ? "" : "s"}`
-    : "No active critical-alert wastage";
+    ? `${currency(wastageCost)}&nbsp;Exposure&nbsp;|&nbsp;${criticalIncidentImpact.count}&nbsp;Core&nbsp;Detection${criticalIncidentImpact.count === 1 ? "" : "s"}`
+    : "No cumulative core-rule exposure";
 
   document.getElementById("reportSummary").innerHTML = [
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
-    reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
+    reportSummaryCard("Oxygen at Risk (YTD)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
     reportSummaryCard("Active Patients", patientAlertSummary.total, `${patientAlertSummary.alertCount} Patient Alert${patientAlertSummary.alertCount === 1 ? "" : "s"}`, colors.purple, "people"),
-    reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
+    reportSummaryCard("Core Detections (YTD)", criticalOverview.total, "Matches cumulative rule overview", colors.red, "alert"),
     reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
   ].join("");
 
@@ -3441,6 +3460,19 @@ function getEsp32DeviceStatus() {
 }
 
 function getCriticalAlertOverview() {
+  const latestRuleRows = getLatestRulePerformance();
+  if (latestRuleRows.length) {
+    const countFor = key => Number(latestRuleRows.find(item => item.rule_key === key)?.active_detections || 0);
+    const cards = [
+      ["Ghost Flow", countFor("ghost_flow"), "GF"],
+      ["Unauthorized", countFor("unauthorized_bed_usage"), "ID"],
+      ["Residual Gas", countFor("residual_gas"), "O2"]
+    ];
+    return {
+      cards,
+      total: cards.reduce((sum, [, value]) => sum + value, 0)
+    };
+  }
   const incidents = getAlertIncidentRows();
   const liveGhostFlow = incidents.filter(row => row.type === "Ghost Flow").length;
   const unauthorized = incidents.filter(row => row.type === "Unauthorized Bed Usage").length;
@@ -3504,7 +3536,15 @@ function formatAlertImpact(row) {
 }
 
 function getCriticalIncidentImpact() {
-  // Keep this in lockstep with the Critical Alerts Overview card.
+  const latestRuleRows = getLatestRulePerformance();
+  if (latestRuleRows.length) {
+    return {
+      count: latestRuleRows.reduce((total, row) => total + Number(row.active_detections || 0), 0),
+      estimatedWaste: Math.round(latestRuleRows.reduce((total, row) => total + Number(row.oxygen_at_risk_litres || 0), 0)),
+      estimatedCost: Math.round(latestRuleRows.reduce((total, row) => total + Number(row.cost_exposure_jmd || 0), 0))
+    };
+  }
+  // Fall back to unresolved incidents when no cumulative snapshot is available.
   const incidents = getAlertIncidentRows().filter(row => ["Ghost Flow", "Unauthorized Bed Usage", "Residual Gas"].includes(row.type));
   const estimatedWaste = Math.round(incidents.reduce((total, row) => {
     const value = Number(row.estimatedOxygenWaste);
@@ -3543,7 +3583,7 @@ function renderCriticalOverview(overview) {
       <div>
         <span>${label}</span>
         <strong>${value}</strong>
-        <small>${value ? "Active" : "Clear"}</small>
+        <small>${value ? "YTD" : "Clear"}</small>
       </div>
       <b>${icon}</b>
     </article>
@@ -5756,7 +5796,7 @@ function renderAnalytics() {
   renderTopInsight("topWastage", topWastage, "leakage wastage", topWastage.leakageTanks, topWastage.leakageCost, selectedMonths);
   renderCostExposureChart(wardTotals);
   renderSavingsOpportunityChart(wardTotals);
-  renderAnalyticsRuleSummary();
+  renderAnalyticsRuleSummary(safeRangeEnd);
 
   renderWardMonthlyTotals(wardTotals, selectedMonths);
 }
@@ -5769,11 +5809,13 @@ function updateAnalyticsRangeControl(selectedMonths, rangeEnd) {
   const label = document.getElementById("analyticsRangeLabel");
   const period = document.getElementById("analyticsReportingPeriod");
   const summaryCopy = document.getElementById("analyticsWardSummaryCopy");
+  const ruleCopy = document.getElementById("analyticsRulePeriodCopy");
   const marks = document.querySelector(".analytics-range-marks");
 
   if (label) label.textContent = periodLabel;
   if (period) period.textContent = periodLabel;
   if (summaryCopy) summaryCopy.textContent = `${lastMonth} usage, period movement, and ${periodLabel} contribution by ward.`;
+  if (ruleCopy) ruleCopy.textContent = `Cumulative detections, oxygen risk, and financial exposure through ${lastMonth}.`;
   if (marks) marks.innerHTML = analyticsMonths.slice(1).map(month => `<span>${month}</span>`).join("");
   if (slider) {
     const maximum = Math.max(1, analyticsMonths.length - 1);
@@ -5784,7 +5826,7 @@ function updateAnalyticsRangeControl(selectedMonths, rangeEnd) {
   }
 }
 
-function renderAnalyticsRuleSummary() {
+function renderAnalyticsRuleSummary(rangeEnd = analyticsRangeEnd) {
   const target = document.getElementById("analyticsRuleSummary");
   if (!target) return;
 
@@ -5817,7 +5859,7 @@ function renderAnalyticsRuleSummary() {
   ];
 
   target.innerHTML = rules.map(rule => {
-    const snapshot = analyticsRulePerformance.find(item => item.rule_key === rule.key);
+    const snapshot = getRulePerformanceForMonth(rule.key, rangeEnd);
     const aliases = rule.key === "unauthorized_bed_usage"
       ? ["Unauthorized Bed Usage", "Unauthorized Usage"]
       : rule.key === "residual_gas"
@@ -5839,11 +5881,11 @@ function renderAnalyticsRuleSummary() {
       <article class="analytics-rule-card ${rule.tone} ${active ? "has-active" : "is-clear"}">
         <div class="analytics-rule-card-head">
           <span class="analytics-rule-code">${rule.code}</span>
-          <span class="analytics-rule-status">${active ? `${active} active` : "Clear"}</span>
+        <span class="analytics-rule-status">${active ? `${active} YTD` : "Clear"}</span>
         </div>
         <h4>${rule.type}</h4>
-        <div class="analytics-rule-primary"><strong>${active}</strong><span>active detection${active === 1 ? "" : "s"}</span></div>
-        <div class="analytics-rule-meter" aria-label="${detectionShare.toFixed(0)} percent of active rule detections"><i style="width:${Math.max(active ? 8 : 0, detectionShare)}%"></i></div>
+        <div class="analytics-rule-primary"><strong>${active}</strong><span>cumulative detection${active === 1 ? "" : "s"}</span></div>
+        <div class="analytics-rule-meter" aria-label="${detectionShare.toFixed(0)} percent of cumulative rule detections"><i style="width:${Math.max(active ? 8 : 0, detectionShare)}%"></i></div>
         <dl class="analytics-rule-metrics">
           <div><dt>Detection share</dt><dd>${active ? `${detectionShare.toFixed(0)}%` : "0%"}</dd></div>
           <div><dt>Oxygen at risk</dt><dd>${oxygenAtRisk.toLocaleString(undefined, { maximumFractionDigits: 1 })} L</dd></div>
@@ -5854,6 +5896,18 @@ function renderAnalyticsRuleSummary() {
       </article>
     `;
   }).join("");
+}
+
+function getRulePerformanceForMonth(ruleKey, rangeEnd) {
+  const targetMonth = Math.max(1, Math.min(12, Number(rangeEnd) + 1));
+  return analyticsRulePerformance
+    .filter(item => item.rule_key === ruleKey && new Date(`${String(item.as_of_date).slice(0, 10)}T00:00:00Z`).getUTCMonth() + 1 === targetMonth)
+    .sort((a, b) => String(b.as_of_date).localeCompare(String(a.as_of_date)))[0] || null;
+}
+
+function getLatestRulePerformance() {
+  const latestDate = analyticsRulePerformance.reduce((latest, item) => String(item.as_of_date) > latest ? String(item.as_of_date) : latest, "");
+  return analyticsRulePerformance.filter(item => String(item.as_of_date) === latestDate);
 }
 
 function renderMonthlyUsageChart(wardTotals, selectedMonths) {
