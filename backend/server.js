@@ -27,10 +27,10 @@ const handleApi = createApiHandler({ db, nurseStationDataPath });
 
 async function resolveFrontendRoot() {
   try {
-    await access(join(bundledFrontendRoot, "index.html"));
-    return bundledFrontendRoot;
-  } catch {
+    await access(join(siblingFrontendRoot, "index.html"));
     return siblingFrontendRoot;
+  } catch {
+    return bundledFrontendRoot;
   }
 }
 
