@@ -5678,61 +5678,135 @@ function renderAnalytics() {
   const totalLeakageCost = sumValues(wardTotals.map(item => item.leakageCost));
   const topConsumption = [...wardTotals].sort((a, b) => b.totalTanks - a.totalTanks)[0];
   const topWastage = [...wardTotals].sort((a, b) => b.leakageCost - a.leakageCost)[0];
+  const leakageRate = (totalLeakageTanks / Math.max(1, totalTanks)) * 100;
+  const averageMonthlyUse = totalTanks / analyticsMonths.length;
+  const recoverableSavings = Math.round(totalLeakageCost * 0.7);
 
   summary.innerHTML = [
-    reportSummaryCard("Tank Usage", totalTanks, "Jan-May total tanks", colors.ae),
-    reportSummaryCard("Usage Cost", currency(totalUsageCost), "Jan-May oxygen spend", colors.green, "dot", {
-      hover: `Usage Cost: ${currency(totalUsageCost)}. Refill cost of ${currency(CYLINDER_REFILL_COST)} per 100 lb cylinder applied monthly.`
+    reportSummaryCard("Total consumption", `${totalTanks} tanks`, `${averageMonthlyUse.toFixed(1)} tanks per month`, colors.ae),
+    reportSummaryCard("Leakage rate", `${leakageRate.toFixed(1)}%`, `${totalLeakageTanks} tanks lost across all wards`, colors.orange),
+    reportSummaryCard("Loss exposure", currency(totalLeakageCost), `${currency(CYLINDER_REFILL_COST)} per refill-equivalent tank`, colors.red, "dot", {
+      hover: `Loss exposure: ${currency(totalLeakageCost)} based on ${totalLeakageTanks} estimated tanks lost.`
     }),
-    reportSummaryCard("Wasted Tanks", totalLeakageTanks, "Estimated leakage tanks", colors.red),
-    reportSummaryCard("Wastage Cost", currency(totalLeakageCost), "Estimated loss value", colors.red, "dot", {
-      hover: `Wastage Cost: ${currency(totalLeakageCost)}. Estimated wasted refill value at ${currency(CYLINDER_REFILL_COST)} per 100 lb cylinder.`
+    reportSummaryCard("Recoverable value", currency(recoverableSavings), "Estimated savings if loss is reduced by 70%", colors.green, "dot", {
+      hover: `Recoverable value: ${currency(recoverableSavings)} if the current leakage loss is reduced by 70%.`
     })
   ].join("");
 
-  document.getElementById("monthlyUsageLegend").innerHTML = analyticsLegend(wardTotals);
   renderMonthlyUsageChart(wardTotals);
   renderMonthlyWastageChart(wardTotals);
   renderTopInsight("topConsumption", topConsumption, "consumption", topConsumption.totalTanks, topConsumption.usageCost);
   renderTopInsight("topWastage", topWastage, "leakage wastage", topWastage.leakageTanks, topWastage.leakageCost);
-  renderLeakageRateChart(wardTotals);
   renderCostExposureChart(wardTotals);
-  renderUsageTrendChart(wardTotals);
   renderSavingsOpportunityChart(wardTotals);
+  renderAnalyticsRuleSummary();
 
   renderWardMonthlyTotals(wardTotals);
 }
 
-function renderMonthlyUsageChart(wardTotals) {
-  document.getElementById("monthlyUsageChart").innerHTML = analyticsMonths.map((month, index) => {
-    const monthTotal = sumValues(wardTotals.map(item => item.usage[index]));
-    const monthCost = monthTotal * TANK_COST;
+function renderAnalyticsRuleSummary() {
+  const target = document.getElementById("analyticsRuleSummary");
+  if (!target) return;
+
+  const incidents = getAlertIncidentRows();
+  const rules = [
+    {
+      type: "Ghost Flow",
+      code: "GF",
+      tone: "ghost",
+      trigger: "Flow above 0.5 LPM with breathing variance below 0.01 for at least 11 minutes.",
+      action: "Verify patient occupancy and close oxygen supply."
+    },
+    {
+      type: "Unauthorized Bed Usage",
+      code: "ID",
+      tone: "unauthorized",
+      trigger: "An inactive EMR bed consumes at least 2.0 LPM for at least 11 minutes.",
+      action: "Verify patient assignment and investigate oxygen usage."
+    },
+    {
+      type: "Residual Gas",
+      code: "O₂",
+      tone: "residual",
+      trigger: "A replaced cylinder reports more than 90% utilization.",
+      action: "Review cylinder replacement procedures."
+    }
+  ];
+
+  target.innerHTML = rules.map(rule => {
+    const ruleIncidents = incidents.filter(item => item.type === rule.type);
+    const active = ruleIncidents.length;
+    const detectionShare = (active / Math.max(1, incidents.length)) * 100;
+    const oxygenAtRisk = ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedOxygenWaste)) ? Number(item.estimatedOxygenWaste) : 0), 0);
+    const financialExposure = ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedFinancialLoss)) ? Number(item.estimatedFinancialLoss) : 0), 0);
+    const recoverableValue = ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.potentialSavings)) ? Number(item.potentialSavings) : 0), 0);
     return `
-      <div class="month-card">
-        <div class="month-metric">
-          <strong>${month}</strong>
-          <span>${monthTotal} tanks</span>
-          <em>${currency(monthCost)}</em>
+      <article class="analytics-rule-card ${rule.tone} ${active ? "has-active" : "is-clear"}">
+        <div class="analytics-rule-card-head">
+          <span class="analytics-rule-code">${rule.code}</span>
+          <span class="analytics-rule-status">${active ? `${active} active` : "Clear"}</span>
         </div>
-        <div class="month-visual">
-          <div class="stacked-bar" title="${month}: ${monthTotal} tanks used">
-            ${wardTotals.map(item => {
-              const width = Math.max(5, Math.round((item.usage[index] / Math.max(1, monthTotal)) * 100));
-              return `<i style="width:${width}%; background:${item.accent}" title="${item.ward}: ${item.usage[index]} tanks"></i>`;
-            }).join("")}
-          </div>
-          <div class="month-breakdown">
-            ${wardTotals.map(item => `
-              <span>
-                <i style="background:${item.accent}"></i>
-                ${item.ward.replace(" Ward", "")}: <b>${item.usage[index]}</b>
-              </span>
-            `).join("")}
-          </div>
-        </div>
-      </div>
+        <h4>${rule.type}</h4>
+        <div class="analytics-rule-primary"><strong>${active}</strong><span>active detection${active === 1 ? "" : "s"}</span></div>
+        <div class="analytics-rule-meter" aria-label="${detectionShare.toFixed(0)} percent of active rule detections"><i style="width:${Math.max(active ? 8 : 0, detectionShare)}%"></i></div>
+        <dl class="analytics-rule-metrics">
+          <div><dt>Detection share</dt><dd>${active ? `${detectionShare.toFixed(0)}%` : "0%"}</dd></div>
+          <div><dt>Oxygen at risk</dt><dd>${oxygenAtRisk.toLocaleString(undefined, { maximumFractionDigits: 1 })} L</dd></div>
+          <div><dt>Cost exposure</dt><dd>${currency(financialExposure)}</dd></div>
+          <div><dt>Recoverable value</dt><dd>${currency(recoverableValue)}</dd></div>
+        </dl>
+        <div class="analytics-rule-action"><span>Rule logic</span><strong>${rule.trigger}</strong></div>
+      </article>
     `;
   }).join("");
+}
+
+function renderMonthlyUsageChart(wardTotals) {
+  const totalUsage = sumValues(wardTotals.map(ward => ward.totalTanks));
+  const chartWidth = 480;
+  const chartHeight = 32;
+  const padding = { top: 4, right: 4, bottom: 4, left: 4 };
+
+  document.getElementById("monthlyUsageChart").innerHTML = `
+    <div class="ward-summary-board" aria-label="Ward oxygen consumption summary">
+      <div class="ward-summary-columns" aria-hidden="true">
+        <span>Ward</span><span>Jan–May trend</span><span>May</span><span>Change</span><span>Share</span>
+      </div>
+      ${wardTotals.slice().sort((a, b) => b.usage.at(-1) - a.usage.at(-1)).map(ward => {
+        const firstMonth = ward.usage[0];
+        const latestMonth = ward.usage[ward.usage.length - 1];
+        const change = latestMonth - firstMonth;
+        const maximumUsage = Math.max(...ward.usage);
+        const minimumUsage = Math.min(...ward.usage);
+        const usageRange = Math.max(1, maximumUsage - minimumUsage);
+        const pointX = index => Math.round(padding.left + (index * (chartWidth - padding.left - padding.right)) / (analyticsMonths.length - 1));
+        const pointY = value => Math.round((padding.top + ((maximumUsage - value) / usageRange) * (chartHeight - padding.top - padding.bottom)) * 2) / 2;
+        const points = ward.usage.map((value, index) => `${pointX(index)},${pointY(value)}`).join(" ");
+        const share = Math.round((ward.totalTanks / Math.max(1, totalUsage)) * 100);
+        const lastX = pointX(ward.usage.length - 1);
+        const lastY = pointY(latestMonth);
+        return `
+          <div class="ward-summary-row" style="--ward-accent:${ward.accent}">
+            <div class="ward-summary-ward">
+              <i></i>
+              <div><strong>${ward.ward}</strong><span>${ward.totalTanks} tanks total</span></div>
+            </div>
+            <div class="ward-summary-spark">
+              <svg viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="none" shape-rendering="geometricPrecision" role="img" aria-label="${ward.ward} moved from ${firstMonth} tanks in January to ${latestMonth} tanks in May">
+                <polyline points="${points}" fill="none" stroke="${ward.accent}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+                <line x1="${lastX}" y1="${lastY}" x2="${lastX}" y2="${lastY}" stroke="${ward.accent}" stroke-width="7" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+              </svg>
+            </div>
+            <div class="ward-summary-latest"><span>May</span><strong>${latestMonth}</strong><small>tanks</small></div>
+            <div class="ward-summary-change ${change >= 0 ? "is-up" : "is-down"}"><span>vs Jan</span><strong>${change >= 0 ? "+" : ""}${change}</strong></div>
+            <div class="ward-summary-share">
+              <div><span>Share</span><strong>${share}%</strong></div>
+              <i><b style="width:${share}%;"></b></i>
+            </div>
+          </div>`;
+      }).join("")}
+    </div>
+  `;
 }
 
 function renderMonthlyWastageChart(wardTotals) {
@@ -5742,29 +5816,38 @@ function renderMonthlyWastageChart(wardTotals) {
     const leakageRate = Math.round((leakage / Math.max(1, usage)) * 100);
     return { month, usage, leakage, leakageRate, leakageCost: leakage * TANK_COST };
   });
-  const maxUsage = Math.max(1, ...monthlyTotals.map(item => item.usage));
-  const maxLeakage = Math.max(1, ...monthlyTotals.map(item => item.leakage));
-  document.getElementById("monthlyWastageChart").innerHTML = analyticsMonths.map((month, index) => {
-    const item = monthlyTotals[index];
-    return `
-      <div class="leakage-compare-row" style="--month-accent:${monthAccent(index)}">
-        <div class="leakage-compare-month">
-          <strong>${month}</strong>
-          <span>${item.leakageRate}% leakage rate</span>
-        </div>
-        <div class="leakage-compare-bars">
-          <div class="compare-track usage" title="${month}: ${item.usage} tanks used">
-            <span style="width:${Math.max(8, Math.round((item.usage / maxUsage) * 100))}%"></span>
-            <b>${item.usage} used</b>
-          </div>
-          <div class="compare-track leakage" title="${month}: ${item.leakage} tanks wasted">
-            <span style="width:${Math.max(8, Math.round((item.leakage / maxLeakage) * 100))}%"></span>
-            <b>${item.leakage} wasted | ${currency(item.leakageCost)}</b>
-          </div>
-        </div>
+  const totalUsage = sumValues(monthlyTotals.map(item => item.usage));
+  const totalLeakage = sumValues(monthlyTotals.map(item => item.leakage));
+  const usageMax = Math.ceil(Math.max(...monthlyTotals.map(item => item.usage)) / 20) * 20;
+  const rateMax = Math.max(20, Math.ceil(Math.max(...monthlyTotals.map(item => item.leakageRate)) / 5) * 5);
+
+  document.getElementById("monthlyWastageChart").innerHTML = `
+    <div class="loss-line-summary">
+      <div><span>Total consumption</span><strong>${totalUsage} tanks</strong></div>
+      <div><span>Oxygen loss</span><strong>${totalLeakage} tanks</strong></div>
+      <div><span>Latest loss rate</span><strong>${monthlyTotals.at(-1).leakageRate}%</strong></div>
+    </div>
+    <div class="loss-compare-board" role="table" aria-label="Monthly consumption and oxygen loss rate from January through May">
+      <div class="loss-compare-heading" role="row">
+        <span role="columnheader">Month</span>
+        <span role="columnheader">Consumption</span>
+        <span role="columnheader">Loss rate</span>
       </div>
-    `;
-  }).join("");
+      ${monthlyTotals.map(item => `
+        <div class="loss-compare-month-row" role="row">
+          <strong class="loss-compare-month" role="cell">${item.month}</strong>
+          <div class="loss-compare-metric usage" role="cell">
+            <div><span>Oxygen used</span><strong>${item.usage} <small>tanks</small></strong></div>
+            <i><b style="width:${Math.max(8, (item.usage / usageMax) * 100)}%"></b></i>
+          </div>
+          <div class="loss-compare-metric loss" role="cell">
+            <div><span>Estimated loss</span><strong>${item.leakageRate}<small>%</small></strong></div>
+            <i><b style="width:${Math.max(8, (item.leakageRate / rateMax) * 100)}%"></b></i>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
 function renderWardMonthlyTotals(wardTotals) {
@@ -5784,8 +5867,9 @@ function renderWardMonthlyTotals(wardTotals) {
           `).join("")}
         </div>
         <div class="ward-total-costs">
-          <span>Usage <strong>${currency(item.usageCost)}</strong></span>
-          <span>Wastage <strong>${currency(item.leakageCost)}</strong></span>
+          <span>Spend <strong>${currency(item.usageCost)}</strong></span>
+          <span>Loss rate <strong>${((item.leakageTanks / Math.max(1, item.totalTanks)) * 100).toFixed(1)}%</strong></span>
+          <span>Recoverable <strong>${currency(Math.round(item.leakageCost * 0.7))}</strong></span>
         </div>
       </article>
     `).join("");
@@ -5793,23 +5877,6 @@ function renderWardMonthlyTotals(wardTotals) {
 
 function monthAccent(index) {
   return ["#0b72e7", "#7c3aed", "#06a6d8", "#10a37f", "#f97316"][index % 5];
-}
-
-function renderLeakageRateChart(wardTotals) {
-  const maxRate = Math.max(1, ...wardTotals.map(item => (item.leakageTanks / Math.max(1, item.totalTanks)) * 100));
-  document.getElementById("leakageRateChart").innerHTML = wardTotals
-    .slice()
-    .sort((a, b) => (b.leakageTanks / b.totalTanks) - (a.leakageTanks / a.totalTanks))
-    .map(item => {
-      const rate = (item.leakageTanks / Math.max(1, item.totalTanks)) * 100;
-      return `
-        <div class="analytics-rate-row">
-          <span><i style="background:${item.accent}"></i>${item.ward}</span>
-          <div><b style="width:${Math.max(8, Math.round((rate / maxRate) * 100))}%; background:${item.accent}"></b></div>
-          <strong>${rate.toFixed(1)}%</strong>
-        </div>
-      `;
-    }).join("");
 }
 
 function renderCostExposureChart(wardTotals) {
@@ -5833,27 +5900,6 @@ function renderCostExposureChart(wardTotals) {
         </div>
       `;
     }).join("");
-}
-
-function renderUsageTrendChart(wardTotals) {
-  const monthlyTotals = analyticsMonths.map((month, index) => sumValues(wardTotals.map(item => item.usage[index])));
-  const maxTotal = Math.max(1, ...monthlyTotals);
-  document.getElementById("usageTrendChart").innerHTML = `
-    <div class="trend-bars">
-      ${monthlyTotals.map((value, index) => {
-        const previous = index === 0 ? value : monthlyTotals[index - 1];
-        const delta = index === 0 ? 0 : value - previous;
-        return `
-          <div class="trend-bar">
-            <strong>${value}</strong>
-            <span style="height:${Math.max(12, Math.round((value / maxTotal) * 66))}px"></span>
-            <small>${analyticsMonths[index]}</small>
-            <em class="${delta >= 0 ? "up" : "down"}">${index === 0 ? "base" : `${delta >= 0 ? "+" : ""}${delta}`}</em>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
 }
 
 function renderSavingsOpportunityChart(wardTotals) {

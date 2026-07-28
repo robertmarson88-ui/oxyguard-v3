@@ -1,63 +1,84 @@
-# Analytics KPI Card Design QA
+# Design QA — Analytics card color and spacing
 
-Source visual truth: `C:\Users\twcl.ssa\AppData\Local\Temp\codex-clipboard-0f5c1984-36ea-41dc-bee5-e90283ed9496.png`
+**Source visual truth path**
 
-Implementation screenshot: `analytics-page-fixed.png`
+`C:\Users\twcl.ssa\Documents\Codex\2026-07-28\giv\work\analytics-color-before.png`
 
-Combined focused comparison: `analytics-card-design-qa-comparison.png`
+**Implementation screenshot path**
 
-Viewport and density: 1608 x 900 CSS px at device scale factor 1. Source image is 1608 x 235 px. Implementation screenshot is 1608 x 900 px; the KPI region was cropped to 1280 x 184 px and the source was proportionally normalized to 1280 px wide for the combined comparison.
+`C:\Users\twcl.ssa\Documents\Codex\2026-07-28\giv\work\analytics-color-after-aligned.png`
 
-State: Administrator signed in, Analytics view selected, four primary KPI cards visible.
+**Combined comparison path**
 
-## Full-view comparison evidence
+`C:\Users\twcl.ssa\Documents\Codex\2026-07-28\giv\work\analytics-color-comparison.png`
 
-- All four cards have equal dimensions and aligned top and bottom edges.
-- Titles use a clear 13 px semibold display size; KPI values scale between 24 px and 30 px.
-- Titles, values, and footer badges now share consistent vertical baselines.
-- `JMD 3,217,500` and `JMD 495,000` remain on one line.
-- Footer badge text remains on one line without colliding with the decorative circle.
-- Card accent colors, borders, background treatment, and content match the supplied visual direction.
+**Viewport and normalization**
 
-## Focused region comparison evidence
+- Desktop browser viewport: 1280 × 720 CSS px.
+- Source pixels: 1280 × 720.
+- Implementation pixels: 1280 × 720.
+- Device scale and density were unchanged; no resampling was required.
+- Responsive verification viewport: 520 × 900 CSS px.
+- State: authenticated Analytics view, Ward Consumption Summary and priority insight cards visible.
 
-The combined comparison shows the original broken layout above the corrected implementation. The original has narrow text columns, multi-line currency values, and heavily wrapped footer labels. The corrected cards use the full content width, center each text row, and preserve readable single-line values and badges.
+**Full-view comparison evidence**
 
-## Findings
+- The matched side-by-side capture shows the same Analytics content, scroll region, typography, and data.
+- Card hierarchy is improved without changing the dashboard structure: consumption uses a cyan/blue treatment and loss uses a coral/orange treatment.
+- The main and side columns now share a 14 px desktop gap; all direct Analytics report cards use 14 px padding.
+- The layout remains balanced and no horizontal overflow is present.
 
-- P0: none.
-- P1: none remaining.
-- P2: none remaining.
-- P3: none required for handoff.
+**Focused region comparison evidence**
 
-## Comparison history
+- Highest Consumption Exposure: blue/cyan border, ring, heading marker, value text, and restrained tint are visually consistent.
+- Largest Loss Hotspot: coral/orange border, ring, heading marker, value text, and restrained tint distinguish loss severity.
+- The focused mobile capture confirms the two cards stack cleanly with 12 px gaps and 14 px internal padding.
 
-### Iteration 1
+**Required fidelity surfaces**
 
-- Earlier finding: P1 — currency values and footer labels wrapped unpredictably because the shared KPI copy column retained a reduced `max-width` intended for icon cards.
-- Fix: restored the Analytics KPI copy column to full width and applied controlled no-wrap behavior to numeric values and footer badges.
-- Post-fix evidence: values and badges rendered on one line, but measurement showed the copy column was still offset by an unused icon grid column.
+- Fonts and typography: unchanged; headings, values, wrapping, weights, and line height remain readable at both tested viewports.
+- Spacing and layout rhythm: passed; 14 px desktop gaps/padding and 12 px mobile gaps are consistent across card groups.
+- Colors and visual tokens: passed; blue/cyan is reserved for consumption exposure and coral/orange for loss hotspot with adequate foreground contrast.
+- Image quality and asset fidelity: passed; chart rings and sparklines remain crisp vector-rendered UI with no raster scaling or blur introduced.
+- Copy and content: passed; all ward names, values, labels, and reporting-period copy are unchanged.
 
-### Iteration 2
+**Findings**
 
-- Earlier finding: P2 — the hidden icon column reserved horizontal space and prevented true visual centering.
-- Fix: changed Analytics cards to a single grid column and removed the unused `.kpi-icon` element from their layout.
-- Post-fix evidence: every copy region measures 267.9 px inside a 309.5 px card at the desktop viewport, with identical centered title/value row widths and aligned footer positions. The 1000 px layout resolves to two columns and the 600 px layout resolves to one column without value or badge wrapping.
+- No actionable P0, P1, or P2 findings.
 
-## Required fidelity surfaces
+**Open Questions**
 
-- Fonts and typography: existing OxyGuard family, weights, capitalization, and hierarchy preserved; line height and wrapping corrected.
-- Spacing and layout rhythm: equal card sizes, consistent three-row grid, centered copy, and aligned badges verified.
-- Colors and visual tokens: existing blue, green, and red accent tokens preserved.
-- Image quality and asset fidelity: supplied logo and existing decorative treatment remain unchanged; no assets were replaced.
-- Copy and content: all four labels, currency values, counts, and footer descriptions remain unchanged.
+- None.
 
-## Validation
+**Primary interactions tested**
 
-- Browser-rendered implementation captured and compared.
-- Responsive layouts checked at 1608 px, 1000 px, and 600 px widths.
-- Analytics navigation and administrator login flow tested.
+- Refreshed the local application.
+- Opened Analytics from the sidebar.
+- Scrolled to the Ward Consumption Summary and priority insight cards.
+- Verified desktop and mobile card stacking.
+
+**Diagnostics**
+
+- Horizontal overflow: none at 1280 × 720 and 520 × 900.
 - Browser console errors: none.
-- Backend tests: 3 passed, 0 failed.
+
+**Comparison history**
+
+- Initial state: priority insight cards shared the same neutral treatment and Analytics gaps were 7 px with mixed 10/12 px padding.
+- Fix: applied semantic blue/cyan and coral/orange treatments, standardized desktop gaps and padding, and set a compact mobile spacing rhythm.
+- Post-fix evidence: `analytics-color-after-aligned.png` and `analytics-insights-mobile.png`.
+
+**Implementation Checklist**
+
+- [x] Equalize Analytics card gaps.
+- [x] Equalize direct card padding.
+- [x] Color Highest Consumption Exposure.
+- [x] Color Largest Loss Hotspot.
+- [x] Verify responsive stacking and overflow.
+- [x] Check browser console.
+
+**Follow-up Polish**
+
+- No additional polish is required for this scoped change.
 
 final result: passed

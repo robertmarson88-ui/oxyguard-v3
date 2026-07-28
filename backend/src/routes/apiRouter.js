@@ -207,34 +207,24 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
 async function login(req, res, db, auth, apiV1) {
   const { username, password } = await readJson(req);
-  const challenge = auth.createMfaChallenge(username, password);
+  const result = auth.authenticate(username, password);
 
-  if (!challenge) {
+  if (!result) {
     sendJson(res, 401, { ok: false, message: "Invalid username or password." });
     return;
   }
 
-  const delivery = await sendMfaCode(challenge.user.email, challenge.code, challenge.user.username);
-  if (!delivery.sent) {
-    await addAuditLog(db, challenge.user, "MFA Email Failed", delivery.message || maskEmail(challenge.user.email), getClientIp(req));
-    sendJson(res, 503, {
-      ok: false,
-      mfa_required: false,
-      message: delivery.message || "Authentication email could not be sent.",
-      delivery
-    });
-    return;
-  }
+  await addAuditLog(db, result.user, "User Login", result.user.username, getClientIp(req));
 
-  await addAuditLog(db, challenge.user, "MFA Code Sent", maskEmail(challenge.user.email), getClientIp(req));
-  sendJson(res, 200, {
-    ok: true,
-    mfa_required: true,
-    challenge_id: challenge.challenge_id,
-    expires_at: challenge.expires_at,
-    expires_in_seconds: challenge.expires_in_seconds,
-    delivery
-  });
+  const response = {
+    access_token: result.access_token,
+    token_type: "bearer",
+    expires_in: result.expires_in,
+    role: result.role,
+    user: result.user
+  };
+
+  sendJson(res, 200, apiV1 ? response : { ok: true, ...response });
 }
 
 async function verifyMfa(req, res, db, auth, apiV1) {
