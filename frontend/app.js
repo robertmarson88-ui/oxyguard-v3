@@ -75,6 +75,7 @@ const YESTERDAY_CONSUMPTION_LITRES = 69077;
 const ESP32_DEVICE_TOTAL = 24;
 const depletionVolumeFloors = {};
 let analyticsMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+let analyticsRangeEnd = analyticsMonths.length - 1;
 let analyticsData = [
   { ward: "A&E Ward", accent: colors.ae, usage: [18, 21, 24, 27, 30, 32, 35], leakage: [2, 3, 4, 3, 5, 5, 6] },
   { ward: "Labour Ward", accent: colors.labour, usage: [14, 16, 17, 18, 20, 21, 23], leakage: [1, 2, 2, 3, 2, 3, 3] },
@@ -339,6 +340,10 @@ function start() {
   setupLogin();
   document.getElementById("resetData").addEventListener("click", resetState);
   document.getElementById("refreshAnalytics").addEventListener("click", renderAnalytics);
+  document.getElementById("analyticsMonthRange")?.addEventListener("input", event => {
+    analyticsRangeEnd = Math.max(1, Math.min(analyticsMonths.length - 1, Number(event.target.value)));
+    renderAnalytics();
+  });
   document.getElementById("protocolDetails")?.addEventListener("click", () => {
     window.alert("Protocol details: automated replenishment is triggered when projected depletion falls below the safety buffer.");
   });
@@ -1014,7 +1019,10 @@ async function loadAnalyticsSnapshot() {
     });
     if (!response.ok) return;
     const snapshot = await response.json();
-    if (Array.isArray(snapshot.months) && snapshot.months.length) analyticsMonths = snapshot.months;
+    if (Array.isArray(snapshot.months) && snapshot.months.length) {
+      analyticsMonths = snapshot.months;
+      analyticsRangeEnd = analyticsMonths.length - 1;
+    }
     if (Array.isArray(snapshot.wards) && snapshot.wards.length) {
       analyticsData = snapshot.wards.map(ward => ({
         ward: ward.ward,
@@ -5700,7 +5708,16 @@ function renderAnalytics() {
   const summary = document.getElementById("analyticsSummary");
   if (!summary) return;
 
-  const wardTotals = analyticsData.map(ward => {
+  const safeRangeEnd = Math.max(1, Math.min(analyticsMonths.length - 1, analyticsRangeEnd));
+  const selectedMonths = analyticsMonths.slice(0, safeRangeEnd + 1);
+  const selectedData = analyticsData.map(ward => ({
+    ...ward,
+    usage: ward.usage.slice(0, safeRangeEnd + 1),
+    leakage: ward.leakage.slice(0, safeRangeEnd + 1)
+  }));
+  updateAnalyticsRangeControl(selectedMonths, safeRangeEnd);
+
+  const wardTotals = selectedData.map(ward => {
     const totalTanks = sumValues(ward.usage);
     const leakageTanks = sumValues(ward.leakage);
     return {
@@ -5719,7 +5736,7 @@ function renderAnalytics() {
   const topConsumption = [...wardTotals].sort((a, b) => b.totalTanks - a.totalTanks)[0];
   const topWastage = [...wardTotals].sort((a, b) => b.leakageCost - a.leakageCost)[0];
   const leakageRate = (totalLeakageTanks / Math.max(1, totalTanks)) * 100;
-  const averageMonthlyUse = totalTanks / analyticsMonths.length;
+  const averageMonthlyUse = totalTanks / selectedMonths.length;
   const recoverableSavings = Math.round(totalLeakageCost * 0.7);
 
   summary.innerHTML = [
@@ -5733,15 +5750,38 @@ function renderAnalytics() {
     })
   ].join("");
 
-  renderMonthlyUsageChart(wardTotals);
-  renderMonthlyWastageChart(wardTotals);
-  renderTopInsight("topConsumption", topConsumption, "consumption", topConsumption.totalTanks, topConsumption.usageCost);
-  renderTopInsight("topWastage", topWastage, "leakage wastage", topWastage.leakageTanks, topWastage.leakageCost);
+  renderMonthlyUsageChart(wardTotals, selectedMonths);
+  renderMonthlyWastageChart(wardTotals, selectedMonths);
+  renderTopInsight("topConsumption", topConsumption, "consumption", topConsumption.totalTanks, topConsumption.usageCost, selectedMonths);
+  renderTopInsight("topWastage", topWastage, "leakage wastage", topWastage.leakageTanks, topWastage.leakageCost, selectedMonths);
   renderCostExposureChart(wardTotals);
   renderSavingsOpportunityChart(wardTotals);
   renderAnalyticsRuleSummary();
 
-  renderWardMonthlyTotals(wardTotals);
+  renderWardMonthlyTotals(wardTotals, selectedMonths);
+}
+
+function updateAnalyticsRangeControl(selectedMonths, rangeEnd) {
+  const firstMonth = selectedMonths[0];
+  const lastMonth = selectedMonths.at(-1);
+  const periodLabel = `${firstMonth}–${lastMonth}`;
+  const slider = document.getElementById("analyticsMonthRange");
+  const label = document.getElementById("analyticsRangeLabel");
+  const period = document.getElementById("analyticsReportingPeriod");
+  const summaryCopy = document.getElementById("analyticsWardSummaryCopy");
+  const marks = document.querySelector(".analytics-range-marks");
+
+  if (label) label.textContent = periodLabel;
+  if (period) period.textContent = periodLabel;
+  if (summaryCopy) summaryCopy.textContent = `${lastMonth} usage, period movement, and ${periodLabel} contribution by ward.`;
+  if (marks) marks.innerHTML = analyticsMonths.slice(1).map(month => `<span>${month}</span>`).join("");
+  if (slider) {
+    const maximum = Math.max(1, analyticsMonths.length - 1);
+    slider.max = String(maximum);
+    slider.value = String(rangeEnd);
+    slider.setAttribute("aria-valuetext", `${analyticsMonths[0]} through ${lastMonth}`);
+    slider.style.setProperty("--range-progress", `${((rangeEnd - 1) / Math.max(1, maximum - 1)) * 100}%`);
+  }
 }
 
 function renderAnalyticsRuleSummary() {
@@ -5816,7 +5856,7 @@ function renderAnalyticsRuleSummary() {
   }).join("");
 }
 
-function renderMonthlyUsageChart(wardTotals) {
+function renderMonthlyUsageChart(wardTotals, selectedMonths) {
   const totalUsage = sumValues(wardTotals.map(ward => ward.totalTanks));
   const chartWidth = 480;
   const chartHeight = 32;
@@ -5825,7 +5865,7 @@ function renderMonthlyUsageChart(wardTotals) {
   document.getElementById("monthlyUsageChart").innerHTML = `
     <div class="ward-summary-board" aria-label="Ward oxygen consumption summary">
       <div class="ward-summary-columns" aria-hidden="true">
-        <span>Ward</span><span>${analyticsMonths[0]}–${analyticsMonths.at(-1)} trend</span><span>${analyticsMonths.at(-1)}</span><span>Change</span><span>Share</span>
+        <span>Ward</span><span>${selectedMonths[0]}–${selectedMonths.at(-1)} trend</span><span>${selectedMonths.at(-1)}</span><span>Change</span><span>Share</span>
       </div>
       ${wardTotals.slice().sort((a, b) => b.usage.at(-1) - a.usage.at(-1)).map(ward => {
         const firstMonth = ward.usage[0];
@@ -5834,7 +5874,7 @@ function renderMonthlyUsageChart(wardTotals) {
         const maximumUsage = Math.max(...ward.usage);
         const minimumUsage = Math.min(...ward.usage);
         const usageRange = Math.max(1, maximumUsage - minimumUsage);
-        const pointX = index => Math.round(padding.left + (index * (chartWidth - padding.left - padding.right)) / (analyticsMonths.length - 1));
+        const pointX = index => Math.round(padding.left + (index * (chartWidth - padding.left - padding.right)) / Math.max(1, selectedMonths.length - 1));
         const pointY = value => Math.round((padding.top + ((maximumUsage - value) / usageRange) * (chartHeight - padding.top - padding.bottom)) * 2) / 2;
         const points = ward.usage.map((value, index) => `${pointX(index)},${pointY(value)}`).join(" ");
         const share = Math.round((ward.totalTanks / Math.max(1, totalUsage)) * 100);
@@ -5847,13 +5887,13 @@ function renderMonthlyUsageChart(wardTotals) {
               <div><strong>${ward.ward}</strong><span>${ward.totalTanks} tanks total</span></div>
             </div>
             <div class="ward-summary-spark">
-              <svg viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="none" shape-rendering="geometricPrecision" role="img" aria-label="${ward.ward} moved from ${firstMonth} tanks in ${analyticsMonths[0]} to ${latestMonth} tanks in ${analyticsMonths.at(-1)}">
+              <svg viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="none" shape-rendering="geometricPrecision" role="img" aria-label="${ward.ward} moved from ${firstMonth} tanks in ${selectedMonths[0]} to ${latestMonth} tanks in ${selectedMonths.at(-1)}">
                 <polyline points="${points}" fill="none" stroke="${ward.accent}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
                 <line x1="${lastX}" y1="${lastY}" x2="${lastX}" y2="${lastY}" stroke="${ward.accent}" stroke-width="7" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
               </svg>
             </div>
-            <div class="ward-summary-latest"><span>${analyticsMonths.at(-1)}</span><strong>${latestMonth}</strong><small>tanks</small></div>
-            <div class="ward-summary-change ${change >= 0 ? "is-up" : "is-down"}"><span>vs ${analyticsMonths[0]}</span><strong>${change >= 0 ? "+" : ""}${change}</strong></div>
+            <div class="ward-summary-latest"><span>${selectedMonths.at(-1)}</span><strong>${latestMonth}</strong><small>tanks</small></div>
+            <div class="ward-summary-change ${change >= 0 ? "is-up" : "is-down"}"><span>vs ${selectedMonths[0]}</span><strong>${change >= 0 ? "+" : ""}${change}</strong></div>
             <div class="ward-summary-share">
               <div><span>Share</span><strong>${share}%</strong></div>
               <i><b style="width:${share}%;"></b></i>
@@ -5864,8 +5904,8 @@ function renderMonthlyUsageChart(wardTotals) {
   `;
 }
 
-function renderMonthlyWastageChart(wardTotals) {
-  const monthlyTotals = analyticsMonths.map((month, index) => {
+function renderMonthlyWastageChart(wardTotals, selectedMonths) {
+  const monthlyTotals = selectedMonths.map((month, index) => {
     const usage = sumValues(wardTotals.map(item => item.usage[index]));
     const leakage = sumValues(wardTotals.map(item => item.leakage[index]));
     const leakageRate = Math.round((leakage / Math.max(1, usage)) * 100);
@@ -5882,7 +5922,7 @@ function renderMonthlyWastageChart(wardTotals) {
       <div><span>Oxygen loss</span><strong>${totalLeakage} tanks</strong></div>
       <div><span>Latest loss rate</span><strong>${monthlyTotals.at(-1).leakageRate}%</strong></div>
     </div>
-    <div class="loss-compare-board" role="table" aria-label="Monthly consumption and oxygen loss rate from ${analyticsMonths[0]} through ${analyticsMonths.at(-1)}">
+    <div class="loss-compare-board" role="table" aria-label="Monthly consumption and oxygen loss rate from ${selectedMonths[0]} through ${selectedMonths.at(-1)}">
       <div class="loss-compare-heading" role="row">
         <span role="columnheader">Month</span>
         <span role="columnheader">Consumption</span>
@@ -5905,7 +5945,7 @@ function renderMonthlyWastageChart(wardTotals) {
   `;
 }
 
-function renderWardMonthlyTotals(wardTotals) {
+function renderWardMonthlyTotals(wardTotals, selectedMonths) {
   const maxTotal = Math.max(1, ...wardTotals.map(item => item.totalTanks));
   document.getElementById("analyticsTable").innerHTML = wardTotals
     .slice()
@@ -5917,7 +5957,7 @@ function renderWardMonthlyTotals(wardTotals) {
           <strong>${item.totalTanks} tanks</strong>
         </div>
         <div class="ward-month-chip-row">
-          ${analyticsMonths.map((month, index) => `
+          ${selectedMonths.map((month, index) => `
             <b style="--chip-accent:${monthAccent(index)}">${month}<em>${item.usage[index]}</em></b>
           `).join("")}
         </div>
@@ -5976,7 +6016,7 @@ function renderSavingsOpportunityChart(wardTotals) {
     }).join("");
 }
 
-function renderTopInsight(id, item, label, tanks, value) {
+function renderTopInsight(id, item, label, tanks, value, selectedMonths) {
   document.getElementById(id).innerHTML = `
     <div class="top-ring" style="--accent:${item.accent}">
       <strong>${item.ward}</strong>
@@ -5985,7 +6025,7 @@ function renderTopInsight(id, item, label, tanks, value) {
     <div class="top-detail">
       <span>Top ward ${label}</span>
       <strong>${currency(value)}</strong>
-      <small>Based on Jan–Jul data through July 28 at ${currency(TANK_COST)} per tank.</small>
+      <small>Based on ${selectedMonths[0]}–${selectedMonths.at(-1)} data at ${currency(TANK_COST)} per tank.</small>
     </div>
   `;
 }

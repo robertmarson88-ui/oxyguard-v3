@@ -558,6 +558,20 @@
             </div>
           </section>
 
+          <section class="analytics-range-bar" aria-label="Analytics month range">
+            <div class="analytics-range-copy">
+              <span>Analytics period</span>
+              <strong id="analyticsRangeLabel">Jan–Jul</strong>
+              <small>Consumption, loss, and cost panels update instantly. Core rule performance remains live.</small>
+            </div>
+            <div class="analytics-range-control">
+              <div class="analytics-range-marks" aria-hidden="true">
+                <span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
+              </div>
+              <input id="analyticsMonthRange" type="range" min="1" max="6" step="1" value="6" aria-label="Select analytics ending month" aria-valuetext="January through July">
+            </div>
+          </section>
+
           <section class="analytics-summary" id="analyticsSummary"></section>
 
           <section class="analytics-rule-section" aria-labelledby="analyticsRuleTitle">
@@ -577,9 +591,9 @@
                 <div class="ward-summary-heading">
                   <div>
                     <h3>Ward Consumption Summary</h3>
-                    <p>July usage, period movement, and Jan–July contribution by ward.</p>
+                    <p id="analyticsWardSummaryCopy">July usage, period movement, and Jan–July contribution by ward.</p>
                   </div>
-                  <div class="ward-summary-period"><span>Reporting period</span><strong>Jan–Jul</strong></div>
+                  <div class="ward-summary-period"><span>Reporting period</span><strong id="analyticsReportingPeriod">Jan–Jul</strong></div>
                 </div>
                 <div id="monthlyUsageChart" class="month-chart"></div>
               </article>

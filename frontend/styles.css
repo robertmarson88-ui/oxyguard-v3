@@ -13859,6 +13859,105 @@ body:not(.login-active) #logoutButton {
   box-shadow: 0 10px 20px rgba(11, 114, 231, 0.22) !important;
 }
 
+#analyticsView .analytics-range-bar {
+  display: grid;
+  grid-template-columns: minmax(230px, .72fr) minmax(420px, 1.8fr);
+  align-items: center;
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 13px 18px;
+  border: 1px solid rgba(16, 109, 187, .16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 10px 24px rgba(7, 45, 79, .06);
+}
+
+#analyticsView .analytics-range-copy {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 3px 10px;
+}
+
+#analyticsView .analytics-range-copy span {
+  color: #668099;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+#analyticsView .analytics-range-copy strong {
+  color: #075ca9;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+#analyticsView .analytics-range-copy small {
+  grid-column: 1 / -1;
+  color: #6b8196;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+#analyticsView .analytics-range-control {
+  display: grid;
+  gap: 7px;
+}
+
+#analyticsView .analytics-range-marks {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  color: #69839c;
+  font-size: 10px;
+  font-weight: 850;
+  text-align: center;
+}
+
+#analyticsView #analyticsMonthRange {
+  --range-progress: 100%;
+  width: 100%;
+  height: 6px;
+  margin: 0;
+  border-radius: 999px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  background: linear-gradient(90deg, #0b72e7 0 var(--range-progress), #dce8f3 var(--range-progress) 100%);
+}
+
+#analyticsView #analyticsMonthRange::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  appearance: none;
+  background: #0b72e7;
+  box-shadow: 0 3px 10px rgba(11, 114, 231, .34);
+}
+
+#analyticsView #analyticsMonthRange::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: #0b72e7;
+  box-shadow: 0 3px 10px rgba(11, 114, 231, .34);
+}
+
+#analyticsView #analyticsMonthRange:focus-visible {
+  box-shadow: 0 0 0 4px rgba(11, 114, 231, .16);
+}
+
+@media (max-width: 760px) {
+  #analyticsView .analytics-range-bar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
 #analyticsView .analytics-summary .summary-card {
   position: relative !important;
   isolation: isolate !important;
