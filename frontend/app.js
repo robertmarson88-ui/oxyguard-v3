@@ -74,13 +74,18 @@ const TANK_COST = CYLINDER_REFILL_COST;
 const YESTERDAY_CONSUMPTION_LITRES = 69077;
 const ESP32_DEVICE_TOTAL = 24;
 const depletionVolumeFloors = {};
-const analyticsMonths = ["Jan", "Feb", "Mar", "Apr", "May"];
-const analyticsData = [
-  { ward: "A&E Ward", accent: colors.ae, usage: [18, 21, 24, 27, 30], leakage: [2, 3, 4, 3, 5] },
-  { ward: "Labour Ward", accent: colors.labour, usage: [14, 16, 17, 18, 20], leakage: [1, 2, 2, 3, 2] },
-  { ward: "Paediatric Ward", accent: colors.paediatric, usage: [20, 22, 26, 29, 34], leakage: [3, 4, 5, 7, 8] },
-  { ward: "Recovery Bay", accent: colors.recovery, usage: [10, 12, 13, 15, 16], leakage: [1, 1, 2, 2, 3] },
-  { ward: "Nurse Station", accent: colors.nurse, usage: [4, 5, 5, 6, 7], leakage: [0, 0, 1, 1, 1] }
+let analyticsMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+let analyticsData = [
+  { ward: "A&E Ward", accent: colors.ae, usage: [18, 21, 24, 27, 30, 32, 35], leakage: [2, 3, 4, 3, 5, 5, 6] },
+  { ward: "Labour Ward", accent: colors.labour, usage: [14, 16, 17, 18, 20, 21, 23], leakage: [1, 2, 2, 3, 2, 3, 3] },
+  { ward: "Paediatric Ward", accent: colors.paediatric, usage: [20, 22, 26, 29, 34, 36, 39], leakage: [3, 4, 5, 7, 8, 8, 9] },
+  { ward: "Recovery Bay", accent: colors.recovery, usage: [10, 12, 13, 15, 16, 17, 18], leakage: [1, 1, 2, 2, 3, 3, 3] },
+  { ward: "Nurse Station", accent: colors.nurse, usage: [4, 5, 5, 6, 7, 8, 9], leakage: [0, 0, 1, 1, 1, 1, 1] }
+];
+let analyticsRulePerformance = [
+  { rule_key: "ghost_flow", active_detections: 8, detection_share: 44.44, oxygen_at_risk_litres: 126, cost_exposure_jmd: 28500, recoverable_value_jmd: 19950, as_of_date: "2026-07-28" },
+  { rule_key: "unauthorized_bed_usage", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 88, cost_exposure_jmd: 21000, recoverable_value_jmd: 14700, as_of_date: "2026-07-28" },
+  { rule_key: "residual_gas", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 241, cost_exposure_jmd: 52500, recoverable_value_jmd: 36750, as_of_date: "2026-07-28" }
 ];
 const dashboardBaselineAlertsByWard = {
   ae: { activeAlerts: 0, critical: 0, warning: 0 },
@@ -953,6 +958,7 @@ function showApp() {
   }
   loadDatabaseAlerts();
   loadWardCardStatuses();
+  void loadAnalyticsSnapshot();
 }
 
 async function logout() {
@@ -997,6 +1003,40 @@ async function loadDatabaseAlerts() {
   } catch {
     databaseAlertsLoaded = false;
   }
+}
+
+async function loadAnalyticsSnapshot() {
+  if (!currentUser?.accessToken) return;
+  try {
+    const response = await fetch("/api/analytics", {
+      cache: "no-store",
+      headers: { authorization: `Bearer ${currentUser.accessToken}` }
+    });
+    if (!response.ok) return;
+    const snapshot = await response.json();
+    if (Array.isArray(snapshot.months) && snapshot.months.length) analyticsMonths = snapshot.months;
+    if (Array.isArray(snapshot.wards) && snapshot.wards.length) {
+      analyticsData = snapshot.wards.map(ward => ({
+        ward: ward.ward,
+        accent: analyticsAccentForWard(ward.ward),
+        usage: ward.usage.map(Number),
+        leakage: ward.leakage.map(Number)
+      }));
+    }
+    if (Array.isArray(snapshot.rules) && snapshot.rules.length) analyticsRulePerformance = snapshot.rules;
+    if (activeView === "analytics") renderAnalytics();
+  } catch {
+    // Keep the July 28 fallback snapshot available when the database is offline.
+  }
+}
+
+function analyticsAccentForWard(wardName) {
+  const value = String(wardName || "").toLowerCase();
+  if (value.includes("a&e")) return colors.ae;
+  if (value.includes("labour")) return colors.labour;
+  if (value.includes("paediatric")) return colors.paediatric;
+  if (value.includes("recovery")) return colors.recovery;
+  return colors.nurse;
 }
 
 async function loadWardCardStatuses() {
@@ -5711,6 +5751,7 @@ function renderAnalyticsRuleSummary() {
   const incidents = getAlertIncidentRows();
   const rules = [
     {
+      key: "ghost_flow",
       type: "Ghost Flow",
       code: "GF",
       tone: "ghost",
@@ -5718,6 +5759,7 @@ function renderAnalyticsRuleSummary() {
       action: "Verify patient occupancy and close oxygen supply."
     },
     {
+      key: "unauthorized_bed_usage",
       type: "Unauthorized Bed Usage",
       code: "ID",
       tone: "unauthorized",
@@ -5725,6 +5767,7 @@ function renderAnalyticsRuleSummary() {
       action: "Verify patient assignment and investigate oxygen usage."
     },
     {
+      key: "residual_gas",
       type: "Residual Gas",
       code: "O₂",
       tone: "residual",
@@ -5734,12 +5777,24 @@ function renderAnalyticsRuleSummary() {
   ];
 
   target.innerHTML = rules.map(rule => {
-    const ruleIncidents = incidents.filter(item => item.type === rule.type);
-    const active = ruleIncidents.length;
-    const detectionShare = (active / Math.max(1, incidents.length)) * 100;
-    const oxygenAtRisk = ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedOxygenWaste)) ? Number(item.estimatedOxygenWaste) : 0), 0);
-    const financialExposure = ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedFinancialLoss)) ? Number(item.estimatedFinancialLoss) : 0), 0);
-    const recoverableValue = ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.potentialSavings)) ? Number(item.potentialSavings) : 0), 0);
+    const snapshot = analyticsRulePerformance.find(item => item.rule_key === rule.key);
+    const aliases = rule.key === "unauthorized_bed_usage"
+      ? ["Unauthorized Bed Usage", "Unauthorized Usage"]
+      : rule.key === "residual_gas"
+        ? ["Residual Gas", "Residual Gas Waste"]
+        : [rule.type];
+    const ruleIncidents = incidents.filter(item => aliases.includes(item.type));
+    const active = snapshot ? Number(snapshot.active_detections) : ruleIncidents.length;
+    const detectionShare = snapshot ? Number(snapshot.detection_share) : (active / Math.max(1, incidents.length)) * 100;
+    const oxygenAtRisk = snapshot
+      ? Number(snapshot.oxygen_at_risk_litres)
+      : ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedOxygenWaste)) ? Number(item.estimatedOxygenWaste) : 0), 0);
+    const financialExposure = snapshot
+      ? Number(snapshot.cost_exposure_jmd)
+      : ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedFinancialLoss)) ? Number(item.estimatedFinancialLoss) : 0), 0);
+    const recoverableValue = snapshot
+      ? Number(snapshot.recoverable_value_jmd)
+      : ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.potentialSavings)) ? Number(item.potentialSavings) : 0), 0);
     return `
       <article class="analytics-rule-card ${rule.tone} ${active ? "has-active" : "is-clear"}">
         <div class="analytics-rule-card-head">
@@ -5770,7 +5825,7 @@ function renderMonthlyUsageChart(wardTotals) {
   document.getElementById("monthlyUsageChart").innerHTML = `
     <div class="ward-summary-board" aria-label="Ward oxygen consumption summary">
       <div class="ward-summary-columns" aria-hidden="true">
-        <span>Ward</span><span>Jan–May trend</span><span>May</span><span>Change</span><span>Share</span>
+        <span>Ward</span><span>${analyticsMonths[0]}–${analyticsMonths.at(-1)} trend</span><span>${analyticsMonths.at(-1)}</span><span>Change</span><span>Share</span>
       </div>
       ${wardTotals.slice().sort((a, b) => b.usage.at(-1) - a.usage.at(-1)).map(ward => {
         const firstMonth = ward.usage[0];
@@ -5792,13 +5847,13 @@ function renderMonthlyUsageChart(wardTotals) {
               <div><strong>${ward.ward}</strong><span>${ward.totalTanks} tanks total</span></div>
             </div>
             <div class="ward-summary-spark">
-              <svg viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="none" shape-rendering="geometricPrecision" role="img" aria-label="${ward.ward} moved from ${firstMonth} tanks in January to ${latestMonth} tanks in May">
+              <svg viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="none" shape-rendering="geometricPrecision" role="img" aria-label="${ward.ward} moved from ${firstMonth} tanks in ${analyticsMonths[0]} to ${latestMonth} tanks in ${analyticsMonths.at(-1)}">
                 <polyline points="${points}" fill="none" stroke="${ward.accent}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
                 <line x1="${lastX}" y1="${lastY}" x2="${lastX}" y2="${lastY}" stroke="${ward.accent}" stroke-width="7" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
               </svg>
             </div>
-            <div class="ward-summary-latest"><span>May</span><strong>${latestMonth}</strong><small>tanks</small></div>
-            <div class="ward-summary-change ${change >= 0 ? "is-up" : "is-down"}"><span>vs Jan</span><strong>${change >= 0 ? "+" : ""}${change}</strong></div>
+            <div class="ward-summary-latest"><span>${analyticsMonths.at(-1)}</span><strong>${latestMonth}</strong><small>tanks</small></div>
+            <div class="ward-summary-change ${change >= 0 ? "is-up" : "is-down"}"><span>vs ${analyticsMonths[0]}</span><strong>${change >= 0 ? "+" : ""}${change}</strong></div>
             <div class="ward-summary-share">
               <div><span>Share</span><strong>${share}%</strong></div>
               <i><b style="width:${share}%;"></b></i>
@@ -5827,7 +5882,7 @@ function renderMonthlyWastageChart(wardTotals) {
       <div><span>Oxygen loss</span><strong>${totalLeakage} tanks</strong></div>
       <div><span>Latest loss rate</span><strong>${monthlyTotals.at(-1).leakageRate}%</strong></div>
     </div>
-    <div class="loss-compare-board" role="table" aria-label="Monthly consumption and oxygen loss rate from January through May">
+    <div class="loss-compare-board" role="table" aria-label="Monthly consumption and oxygen loss rate from ${analyticsMonths[0]} through ${analyticsMonths.at(-1)}">
       <div class="loss-compare-heading" role="row">
         <span role="columnheader">Month</span>
         <span role="columnheader">Consumption</span>
@@ -5930,7 +5985,7 @@ function renderTopInsight(id, item, label, tanks, value) {
     <div class="top-detail">
       <span>Top ward ${label}</span>
       <strong>${currency(value)}</strong>
-      <small>Based on Jan-May historical data at ${currency(TANK_COST)} per tank.</small>
+      <small>Based on Jan–Jul data through July 28 at ${currency(TANK_COST)} per tank.</small>
     </div>
   `;
 }

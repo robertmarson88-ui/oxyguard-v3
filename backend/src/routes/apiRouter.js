@@ -134,6 +134,13 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "GET" && apiPath === "/analytics") {
+      const session = requireAuthorized(req, res, auth, "view_logs");
+      if (!session) return true;
+      sendJson(res, 200, await getAnalyticsSnapshot(db));
+      return true;
+    }
+
     if (req.method === "GET" && apiPath === "/ward-card-statuses") {
       const session = requireAuthorized(req, res, auth, "view_logs");
       if (!session) return true;
@@ -1027,6 +1034,72 @@ function buildOrderSummary(db) {
     },
     replacement_tanks: visibleReplacementTanks
   };
+}
+
+async function getAnalyticsSnapshot(db) {
+  const fallback = {
+    source: "demo",
+    as_of_date: "2026-07-28",
+    months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
+    wards: [
+      { ward: "A&E Ward", usage: [18, 21, 24, 27, 30, 32, 35], leakage: [2, 3, 4, 3, 5, 5, 6] },
+      { ward: "Labour Ward", usage: [14, 16, 17, 18, 20, 21, 23], leakage: [1, 2, 2, 3, 2, 3, 3] },
+      { ward: "Paediatric Ward", usage: [20, 22, 26, 29, 34, 36, 39], leakage: [3, 4, 5, 7, 8, 8, 9] },
+      { ward: "Recovery Bay", usage: [10, 12, 13, 15, 16, 17, 18], leakage: [1, 1, 2, 2, 3, 3, 3] },
+      { ward: "Nurse Station", usage: [4, 5, 5, 6, 7, 8, 9], leakage: [0, 0, 1, 1, 1, 1, 1] }
+    ],
+    rules: [
+      { rule_key: "ghost_flow", active_detections: 8, detection_share: 44.44, oxygen_at_risk_litres: 126, cost_exposure_jmd: 28500, recoverable_value_jmd: 19950, as_of_date: "2026-07-28" },
+      { rule_key: "unauthorized_bed_usage", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 88, cost_exposure_jmd: 21000, recoverable_value_jmd: 14700, as_of_date: "2026-07-28" },
+      { rule_key: "residual_gas", active_detections: 5, detection_share: 27.78, oxygen_at_risk_litres: 241, cost_exposure_jmd: 52500, recoverable_value_jmd: 36750, as_of_date: "2026-07-28" }
+    ]
+  };
+
+  if (!db.pgPool) return fallback;
+
+  try {
+    const [monthlyResult, rulesResult] = await Promise.all([
+      db.pgPool.query(
+        `select m.period_month, w.ward_name, m.tanks_consumed, m.tanks_lost
+         from public.analytics_monthly_ward m
+         join public.wards w on w.ward_id = m.ward_id
+         where m.period_month between date '2026-01-01' and date '2026-07-01'
+         order by m.period_month, w.ward_name`
+      ),
+      db.pgPool.query(
+        `select rule_key, alert_type, active_detections, detection_share,
+                oxygen_at_risk_litres, cost_exposure_jmd, recoverable_value_jmd,
+                rule_logic, as_of_date
+         from public.analytics_rule_performance
+         where as_of_date = (select max(as_of_date) from public.analytics_rule_performance)
+         order by rule_key`
+      )
+    ]);
+
+    const monthFormatter = new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" });
+    const periods = [...new Set(monthlyResult.rows.map(row => String(row.period_month).slice(0, 10)))];
+    const months = periods.map(period => monthFormatter.format(new Date(`${period}T00:00:00Z`)));
+    const wardNames = [...new Set(monthlyResult.rows.map(row => row.ward_name))];
+    const wards = wardNames.map(ward => {
+      const rows = monthlyResult.rows.filter(row => row.ward_name === ward);
+      return {
+        ward,
+        usage: periods.map(period => Number(rows.find(row => String(row.period_month).slice(0, 10) === period)?.tanks_consumed || 0)),
+        leakage: periods.map(period => Number(rows.find(row => String(row.period_month).slice(0, 10) === period)?.tanks_lost || 0))
+      };
+    });
+
+    return {
+      source: "supabase",
+      as_of_date: rulesResult.rows[0]?.as_of_date || "2026-07-28",
+      months: months.length ? months : fallback.months,
+      wards: wards.length ? wards : fallback.wards,
+      rules: rulesResult.rows.length ? rulesResult.rows : fallback.rules
+    };
+  } catch (error) {
+    console.warn(`OxyGuard analytics snapshot query failed: ${String(error?.message || error)}`);
+    return fallback;
+  }
 }
 
 function normalizeWardName(name) {
