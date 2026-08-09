@@ -2387,6 +2387,7 @@ async function saveIncidentAction(alertId, action, note = "", clearAlert = false
     }
     activeIncidentResponseEditorId = "";
     await loadDatabaseAlerts();
+    if (clearAlert) await loadWardCardStatuses();
     renderAll();
   } catch (error) {
     window.alert(error.message || "Action could not be saved.");

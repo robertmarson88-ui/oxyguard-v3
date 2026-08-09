@@ -973,6 +973,10 @@ async function saveAlertResolutionAction(db, res, alertId, user, action, note, i
     }
   }
 
+  if (clearAlert) {
+    await clearMatchingWardCardStatus(db, alert, user.user_id, savedAt);
+  }
+
   const label = allowedActions.get(normalizedAction);
   const detail = `Alert #${alertId}; ${label}${resolutionNote ? `: ${resolutionNote}` : ""}; ${clearAlert ? "saved and cleared" : "action saved"}`;
   await addAuditLog(db, user, clearAlert ? "Alert Cleared" : "Alert Response Saved", truncateAuditDetail(detail), ipAddress);
@@ -982,6 +986,43 @@ async function saveAlertResolutionAction(db, res, alertId, user, action, note, i
     message: clearAlert ? "Action saved to the audit log and alert cleared." : "Action saved to the database and audit log.",
     alert
   });
+}
+
+async function clearMatchingWardCardStatus(db, alert, userId, updatedAt) {
+  const wardMap = {
+    x001: ["labour", "bed-22"],
+    x002: ["ae", "bed-07"],
+    x003: ["recovery", "tank-r1"],
+    x004: ["nurse", "bed-32"],
+    x005: ["paediatrics", "bed-12"]
+  };
+  const wardId = String(alert.ward_id || "").trim().toLowerCase();
+  const mapped = wardMap[wardId];
+  if (!mapped) return;
+
+  const [wardKey, fallbackAssetKey] = mapped;
+  const rawAsset = String(alert.bed_id || alert.device_id || "").trim().toLowerCase();
+  const normalizedAsset = rawAsset.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const knownAsset = db.ward_card_statuses?.find(item =>
+    item.ward_key === wardKey && (item.asset_key === normalizedAsset || item.asset_key.replace(/-/g, "") === normalizedAsset.replace(/-/g, ""))
+  );
+  const assetKey = knownAsset?.asset_key || fallbackAssetKey;
+
+  if (db.pgPool) {
+    await db.pgPool.query(
+      `insert into public.ward_card_statuses (ward_key, asset_key, status, updated_by, updated_at)
+       values ($1, $2, 'Normal', $3, $4)
+       on conflict (ward_key, asset_key)
+       do update set status = 'Normal', updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
+      [wardKey, assetKey, String(userId), updatedAt]
+    );
+  }
+
+  db.ward_card_statuses ||= [];
+  const existing = db.ward_card_statuses.find(item => item.ward_key === wardKey && item.asset_key === assetKey);
+  const saved = { ward_key: wardKey, asset_key: assetKey, status: "Normal", updated_by: String(userId), updated_at: updatedAt };
+  if (existing) Object.assign(existing, saved);
+  else db.ward_card_statuses.push(saved);
 }
 
 export function escalateUnacknowledgedAlerts(db) {
