@@ -74,14 +74,38 @@ const TANK_COST = CYLINDER_REFILL_COST;
 const YESTERDAY_CONSUMPTION_LITRES = 69077;
 const ESP32_DEVICE_TOTAL = 24;
 const depletionVolumeFloors = {};
-const analyticsMonths = ["Jan", "Feb", "Mar", "Apr", "May"];
-const analyticsData = [
-  { ward: "A&E Ward", accent: colors.ae, usage: [18, 21, 24, 27, 30], leakage: [2, 3, 4, 3, 5] },
-  { ward: "Labour Ward", accent: colors.labour, usage: [14, 16, 17, 18, 20], leakage: [1, 2, 2, 3, 2] },
-  { ward: "Paediatric Ward", accent: colors.paediatric, usage: [20, 22, 26, 29, 34], leakage: [3, 4, 5, 7, 8] },
-  { ward: "Recovery Bay", accent: colors.recovery, usage: [10, 12, 13, 15, 16], leakage: [1, 1, 2, 2, 3] },
-  { ward: "Nurse Station", accent: colors.nurse, usage: [4, 5, 5, 6, 7], leakage: [0, 0, 1, 1, 1] }
+let analyticsMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"];
+let analyticsRangeEnd = analyticsMonths.length - 1;
+let analyticsData = [
+  { ward: "A&E Ward", accent: colors.ae, usage: [18, 21, 24, 27, 30, 32, 35], leakage: [2, 3, 4, 3, 5, 5, 6] },
+  { ward: "Labour Ward", accent: colors.labour, usage: [14, 16, 17, 18, 20, 21, 23], leakage: [1, 2, 2, 3, 2, 3, 3] },
+  { ward: "Paediatric Ward", accent: colors.paediatric, usage: [20, 22, 26, 29, 34, 36, 39], leakage: [3, 4, 5, 7, 8, 8, 9] },
+  { ward: "Recovery Bay", accent: colors.recovery, usage: [10, 12, 13, 15, 16, 17, 18], leakage: [1, 1, 2, 2, 3, 3, 3] },
+  { ward: "Nurse Station", accent: colors.nurse, usage: [4, 5, 5, 6, 7, 8, 9], leakage: [0, 0, 1, 1, 1, 1, 1] }
 ];
+let analyticsRulePerformance = buildAnalyticsRuleHistory();
+
+function buildAnalyticsRuleHistory() {
+  const periods = [
+    ["2026-01-31", [8, 7, 11], [31, 27, 42], [128, 119, 495], [28800, 26600, 107800]],
+    ["2026-02-28", [17, 15, 23], [31, 27, 42], [272, 255, 1035], [61200, 57000, 225400]],
+    ["2026-03-31", [27, 24, 36], [31, 28, 41], [432, 408, 1620], [97200, 91200, 352800]],
+    ["2026-04-30", [38, 32, 50], [32, 27, 42], [608, 544, 2250], [136800, 121600, 490000]],
+    ["2026-05-31", [50, 39, 62], [33, 26, 41], [800, 663, 2790], [180000, 148200, 607600]],
+    ["2026-06-30", [60, 48, 75], [33, 26, 41], [960, 816, 3375], [216000, 182400, 735000]],
+    ["2026-07-28", [69, 56, 86], [33, 27, 41], [1104, 952, 3870], [248400, 212800, 842800]]
+  ];
+  const keys = ["ghost_flow", "unauthorized_bed_usage", "residual_gas"];
+  return periods.flatMap(([asOfDate, detections, shares, oxygenRisk, exposure]) => keys.map((ruleKey, index) => ({
+    rule_key: ruleKey,
+    active_detections: detections[index],
+    detection_share: shares[index],
+    oxygen_at_risk_litres: oxygenRisk[index],
+    cost_exposure_jmd: exposure[index],
+    recoverable_value_jmd: Math.round(exposure[index] * 0.7),
+    as_of_date: asOfDate
+  })));
+}
 const dashboardBaselineAlertsByWard = {
   ae: { activeAlerts: 0, critical: 0, warning: 0 },
   nurse: { activeAlerts: 0, critical: 0, warning: 0 },
@@ -224,6 +248,8 @@ let activeView = "report";
 let timers = [];
 let currentUser = null;
 const incidentResponseDrafts = new Map();
+const incidentActionDrafts = new Map();
+const simulatorAlertTargets = new Map();
 let activeIncidentResponseEditorId = "";
 let pipelineFilter = "";
 let depletionStatusFilter = "all";
@@ -262,6 +288,8 @@ let adminDeviceRows = [
 let simulatorEvents = [];
 let simulatorDeviceSequence = Math.floor(Date.now() / 1000) % 1000;
 let simulatorPresetInitialized = false;
+let auditCaptureInitialized = false;
+let lastCapturedAudit = { signature: "", at: 0 };
 let auditLogDialogRows = [];
 let auditLogDialogRequestId = 0;
 let adminAuditRequestId = 0;
@@ -320,6 +348,7 @@ function tank(name, serial, station, pressure, flowRate, options = {}) {
     highFlowAlert: false,
     fixedFlow: options.fixedFlow ?? false,
     readOnly: options.readOnly ?? false,
+    cylinderStatus: options.cylinderStatus ?? (options.active === false ? "EMPTY" : "ACTIVE"),
     alertType: "",
     alertMessage: ""
   };
@@ -334,6 +363,10 @@ function start() {
   setupLogin();
   document.getElementById("resetData").addEventListener("click", resetState);
   document.getElementById("refreshAnalytics").addEventListener("click", renderAnalytics);
+  document.getElementById("analyticsMonthRange")?.addEventListener("input", event => {
+    analyticsRangeEnd = Math.max(1, Math.min(analyticsMonths.length - 1, Number(event.target.value)));
+    renderAnalytics();
+  });
   document.getElementById("protocolDetails")?.addEventListener("click", () => {
     window.alert("Protocol details: automated replenishment is triggered when projected depletion falls below the safety buffer.");
   });
@@ -359,7 +392,7 @@ function start() {
   document.getElementById("simulatorForm")?.addEventListener("submit", submitSimulatorEvent);
   document.getElementById("simulatorAlertType")?.addEventListener("change", applySimulatorPreset);
   document.getElementById("simulatorWard")?.addEventListener("change", populateSimulatorTanks);
-  document.getElementById("simulatorTank")?.addEventListener("change", syncSimulatorTankLocation);
+  document.getElementById("simulatorTank")?.addEventListener("change", () => syncSimulatorTankLocation(false));
   ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume", "simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorEmrStatus"].forEach(id => {
     const input = document.getElementById(id);
     const handleChange = () => {
@@ -403,6 +436,7 @@ function start() {
   setupDepletionFilters();
   setupReportGenerator();
   setupPipelineFilters();
+  setupGlobalAuditCapture();
   document.querySelectorAll("[data-view]").forEach(button => {
     button.addEventListener("click", () => setView(button.dataset.view));
   });
@@ -953,6 +987,7 @@ function showApp() {
   }
   loadDatabaseAlerts();
   loadWardCardStatuses();
+  void loadAnalyticsSnapshot();
 }
 
 async function logout() {
@@ -997,6 +1032,44 @@ async function loadDatabaseAlerts() {
   } catch {
     databaseAlertsLoaded = false;
   }
+}
+
+async function loadAnalyticsSnapshot() {
+  if (!currentUser?.accessToken) return;
+  try {
+    const response = await fetch("/api/analytics", {
+      cache: "no-store",
+      headers: { authorization: `Bearer ${currentUser.accessToken}` }
+    });
+    if (!response.ok) return;
+    const snapshot = await response.json();
+    if (Array.isArray(snapshot.months) && snapshot.months.length) {
+      analyticsMonths = snapshot.months;
+      analyticsRangeEnd = analyticsMonths.length - 1;
+    }
+    if (Array.isArray(snapshot.wards) && snapshot.wards.length) {
+      analyticsData = snapshot.wards.map(ward => ({
+        ward: ward.ward,
+        accent: analyticsAccentForWard(ward.ward),
+        usage: ward.usage.map(Number),
+        leakage: ward.leakage.map(Number)
+      }));
+    }
+    if (Array.isArray(snapshot.rules) && snapshot.rules.length) analyticsRulePerformance = snapshot.rules;
+    if (activeView === "analytics") renderAnalytics();
+    if (activeView === "report") renderReport();
+  } catch {
+    // Keep the July 28 fallback snapshot available when the database is offline.
+  }
+}
+
+function analyticsAccentForWard(wardName) {
+  const value = String(wardName || "").toLowerCase();
+  if (value.includes("a&e")) return colors.ae;
+  if (value.includes("labour")) return colors.labour;
+  if (value.includes("paediatric")) return colors.paediatric;
+  if (value.includes("recovery")) return colors.recovery;
+  return colors.nurse;
 }
 
 async function loadWardCardStatuses() {
@@ -1045,7 +1118,8 @@ async function loadDatabaseConnectionStatus() {
 }
 
 function mapDatabaseAlertRow(alert, index) {
-  const ward = getWardLabelFromDevice(alert.device_id);
+  const target = simulatorAlertTargets.get(String(alert.alert_id));
+  const ward = getWardLabelFromDevice(alert.device_id, alert.ward_id);
   const priority = mapAlertPriority(alert.severity);
   const type = formatAlertType(alert.alert_type);
   return {
@@ -1055,6 +1129,7 @@ function mapDatabaseAlertRow(alert, index) {
     type,
     priority,
     asset: alert.device_id || `Sensor ${index + 1}`,
+    tankSerial: target?.serial || "",
     status: alert.status === "escalated" ? "Escalated" : alert.status === "acknowledged" ? "Acknowledged" : priority === "Critical" ? "Awaiting Response" : "Investigating",
     assigned: alert.supervisor_notified ? "Supervisor" : ["residual_gas_waste", "ghost_flow", "unauthorized_bed_usage", "device_offline", "sensor_fault"].includes(alert.alert_type) || priority === "Critical" ? "Facilities" : "Nurse Station",
     remainingVolume: alert.remaining_volume == null ? null : Number(alert.remaining_volume),
@@ -1063,11 +1138,16 @@ function mapDatabaseAlertRow(alert, index) {
     estimatedFinancialLoss: alert.estimated_financial_loss == null ? null : Number(alert.estimated_financial_loss),
     potentialSavings: alert.potential_savings == null ? null : Number(alert.potential_savings),
     recommendedAction: alert.recommended_action || getRecommendedAlertAction(type),
+    savedAction: alert.resolution_action || "",
+    savedNote: alert.resolution_note || "",
     source: "database"
   };
 }
 
-function getWardLabelFromDevice(deviceId = "") {
+function getWardLabelFromDevice(deviceId = "", wardId = "") {
+  const wardNames = { X001: "Labour Ward", X002: "A&E Ward", X003: "Recovery Bay", X004: "Nurse Station", X005: "Paediatric Ward" };
+  const mappedWard = wardNames[String(wardId || "").trim().toUpperCase()];
+  if (mappedWard) return mappedWard;
   const value = String(deviceId).toLowerCase();
   if (value.includes("icu") || value.includes("ae") || value.includes("a&e")) return "A&E Ward";
   if (value.includes("paed") || value.includes("c1") || value.includes("c2") || value.includes("c3")) return "Paediatric Ward";
@@ -1338,20 +1418,16 @@ function renderRealTimeAlert() {
               ${alertPill(row.priority)}
             </div>
             <div class="incident-location"><span>Location</span><strong>${row.ward}</strong><small>${row.asset}</small></div>
+            <div class="incident-location"><span>Tank serial #</span><strong>${row.tankSerial || "Pending assignment"}</strong></div>
             <div class="incident-action">${formatAlertImpact(row)}</div>
+            ${savedIncidentActionCell(row)}
             <div class="incident-state"><span>Current status</span>${alertStatus(row.status)}<small>Assigned to ${row.assigned}</small></div>
             ${canRespond ? incidentResponseControls(row) : ""}
           </article>
         `).join("")}
       </div>
     ` : `<div class="nurse-empty-state">No active incidents. New detections will appear here automatically.</div>`;
-    incidentTarget.querySelectorAll("[data-incident-response]").forEach(button => {
-      button.addEventListener("click", () => {
-        const note = button.closest("[data-incident-form]")?.querySelector(".incident-response-input")?.value || "";
-        respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
-      });
-    });
-    incidentTarget.querySelectorAll(".incident-response-input").forEach(protectIncidentResponseInput);
+    bindIncidentActionControls(incidentTarget);
   }
 
   const mapTarget = document.getElementById("alertPipelineMap");
@@ -1447,13 +1523,19 @@ function populateSimulatorTanks() {
   if (selectedWard.tanks.some(tankItem => tankItem.name === currentTankName)) {
     tankSelect.value = currentTankName;
   }
-  syncSimulatorTankLocation();
+  syncSimulatorTankLocation(true);
 }
 
-function syncSimulatorTankLocation() {
+function syncSimulatorTankLocation(preserveCylinderStatus = true) {
   const tankItem = getSimulatorSelectedTank();
   const location = document.getElementById("simulatorLocation");
   if (tankItem && location) location.value = tankItem.station;
+  const cylinderStatus = document.getElementById("simulatorCylinderStatus");
+  if (tankItem && cylinderStatus && !preserveCylinderStatus) {
+    cylinderStatus.value = tankItem.cylinderStatus || (tankItem.active ? "ACTIVE" : "EMPTY");
+  }
+  const serial = document.getElementById("simulatorTankSerial");
+  if (tankItem && serial) serial.value = tankItem.serial || "Pending hospital validation";
 }
 
 function applySimulatorPreset(updateMessage = true, resetValues = true) {
@@ -1476,12 +1558,14 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
   document.getElementById("simulatorDurationField").hidden = !(isGhostFlow || isUnauthorized || isDeviceOffline);
   document.getElementById("simulatorBreathingVarianceField").hidden = !isGhostFlow;
   document.getElementById("simulatorEmrStatusField").hidden = !isUnauthorized;
-  ["simulatorCylinderStatusField", "simulatorCylinderCapacityField", "simulatorConsumedVolumeField"].forEach(id => {
+  ["simulatorCylinderCapacityField", "simulatorConsumedVolumeField"].forEach(id => {
     const field = document.getElementById(id);
     if (field) field.hidden = !isResidualGas;
   });
+  const serialField = document.getElementById("simulatorTankSerialField");
+  if (serialField) serialField.hidden = !isResidualGas;
   const presets = {
-    "Ghost Flow": { prescribed: 0, live: 1.2, patient: "OFF", severity: "High" },
+    "Ghost Flow": { prescribed: 0, live: 1.2, patient: "OFF", severity: "Medium" },
     "Unauthorized Usage": { prescribed: 0, live: 2, patient: "OFF", severity: "High" },
     "Residual Gas": { prescribed: 0, live: 0.2, patient: "OFF", severity: "Medium" },
     "Device Offline": { prescribed: 0, live: 0, patient: "OFF", severity: "Critical" },
@@ -1549,7 +1633,7 @@ function renderSimulatorRulePreview() {
           <span><small>Flow Rate</small><strong>${formatFlow(ruleFlowRate)}</strong></span>
           <span><small>Breathing Variance</small><strong>${breathingVariance.toFixed(3)}</strong></span>
           <span><small>Duration</small><strong>${duration} min</strong></span>
-          <span><small>Severity</small><strong>High</strong></span>
+          <span><small>Severity</small><strong>${ghostFlowSeverityFromDuration(duration)}</strong></span>
         </div>`
     : alertType === "Unauthorized Usage"
       ? `<div class="simulator-reading-grid">
@@ -1618,6 +1702,14 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
   return rules[alertType] || rules["Ghost Flow"];
 }
 
+function ghostFlowSeverityFromDuration(durationMinutes) {
+  const minutes = Number(durationMinutes) || 0;
+  if (minutes > 29) return "Critical";
+  if (minutes >= 21) return "High";
+  if (minutes >= 11) return "Medium";
+  return "Below threshold";
+}
+
 async function submitSimulatorEvent(event) {
   event.preventDefault();
   const tankItem = getSimulatorSelectedTank();
@@ -1628,7 +1720,7 @@ async function submitSimulatorEvent(event) {
   const prescribed = Number(document.getElementById("simulatorPrescribedFlow").value || 0);
   const live = Number(document.getElementById("simulatorLiveReading").value || 0);
   const patientStatus = document.getElementById("simulatorPatientStatus").value;
-  const severity = document.getElementById("simulatorSeverity").value;
+  let severity = document.getElementById("simulatorSeverity").value;
   const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "REPLACED";
   const cylinderCapacity = Number(document.getElementById("simulatorCylinderCapacity")?.value || 0);
   const consumedVolume = Number(document.getElementById("simulatorConsumedVolume")?.value || 0);
@@ -1640,13 +1732,18 @@ async function submitSimulatorEvent(event) {
   const createdAt = new Date().toISOString();
   const sendButton = document.getElementById("simulatorSendButton");
 
+  if (alertType === "Ghost Flow") {
+    severity = ghostFlowSeverityFromDuration(duration);
+    document.getElementById("simulatorSeverity").value = severity;
+  }
+
   if (alertType === "Residual Gas") {
     if (cylinderCapacity <= 0 || consumedVolume < 0) {
       updateSimulatorApiStatus("Enter a valid cylinder capacity and consumed volume.", "warn");
       return;
     }
-    if (cylinderStatus !== "REPLACED") {
-      updateSimulatorApiStatus("Residual Gas requires Cylinder Status = REPLACED.", "warn");
+    if (!["EMPTY", "REPLACED"].includes(cylinderStatus)) {
+      updateSimulatorApiStatus("Residual Gas Cylinder Status must be EMPTY or REPLACED.", "warn");
       return;
     }
     if (consumedVolume <= cylinderCapacity * 0.9) {
@@ -1689,13 +1786,37 @@ async function submitSimulatorEvent(event) {
 
   const effectiveLive = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? ruleFlowRate : live;
 
-  applySimulatorEventToTank(tankItem, { alertType, prescribed, live: effectiveLive, patientStatus, severity, location });
+  const effectiveCapacity = cylinderCapacity > 0 ? cylinderCapacity : tankItem.maxVolume;
+  const effectiveConsumed = cylinderStatus === "EMPTY"
+    ? effectiveCapacity
+    : cylinderStatus === "ACTIVE"
+      ? Math.max(0, effectiveCapacity - tankItem.volumeRemaining)
+      : Math.min(effectiveCapacity, Math.max(0, consumedVolume));
+
+  applySimulatorEventToTank(tankItem, {
+    alertType,
+    prescribed,
+    live: effectiveLive,
+    patientStatus,
+    severity,
+    location,
+    cylinderStatus,
+    cylinderCapacity: effectiveCapacity,
+    consumedVolume: effectiveConsumed
+  });
   if (sendButton) {
     sendButton.disabled = true;
     sendButton.textContent = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? "Sending 4 Readings..." : "Sending...";
   }
   updateSimulatorApiStatus(`Running ${alertType} rule against the telemetry API...`, "ready");
-  const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, effectiveLive, createdAt, { cylinderStatus, cylinderCapacity, consumedVolume, breathingVariance, duration, emrStatus });
+  const telemetryResult = await postSimulatorTelemetry(ward, tankItem, alertType, effectiveLive, createdAt, {
+    cylinderStatus,
+    cylinderCapacity: effectiveCapacity,
+    consumedVolume: effectiveConsumed,
+    breathingVariance,
+    duration,
+    emrStatus
+  });
   if (sendButton) {
     sendButton.disabled = false;
     sendButton.textContent = "Send Test Reading";
@@ -1707,6 +1828,7 @@ async function submitSimulatorEvent(event) {
     location,
     alertType,
     severity,
+    cylinderStatus,
     live: effectiveLive,
     prescribed,
     apiStatus: telemetryResult.ok ? "API logged" : "Screen only"
@@ -1716,8 +1838,16 @@ async function submitSimulatorEvent(event) {
   if (telemetryResult.ok && getSimulatorExpectedAlertType(alertType)) {
     void recordAuditEvent("Simulator Alert Sent", `${alertType} sent for ${ward.name} / ${tankItem.name}`);
   }
+  if (telemetryResult.ok) {
+    void recordAuditEvent("Cylinder Status Updated", `${ward.name} / ${tankItem.name}: ${cylinderStatus}`);
+  }
 
   if (telemetryResult.alerts.length) {
+    telemetryResult.alerts.forEach(alert => {
+      if (Number.isFinite(Number(alert?.alert_id))) {
+        simulatorAlertTargets.set(String(alert.alert_id), { wardId: ward.id, tankName: tankItem.name, serial: tankItem.serial || "" });
+      }
+    });
     const receivedRows = telemetryResult.alerts.map(mapDatabaseAlertRow);
     const receivedIds = new Set(receivedRows.map(row => String(row.id || row.asset)));
     databaseAlertRows = [
@@ -1739,6 +1869,9 @@ async function submitSimulatorEvent(event) {
 }
 
 function applySimulatorEventToTank(tankItem, simulation) {
+  tankItem.cylinderStatus = simulation.cylinderStatus || tankItem.cylinderStatus || "ACTIVE";
+  tankItem.maxVolume = Number(simulation.cylinderCapacity) || tankItem.maxVolume;
+  tankItem.volumeRemaining = Math.max(0, tankItem.maxVolume - (Number(simulation.consumedVolume) || 0));
   tankItem.active = simulation.alertType !== "Device Offline";
   tankItem.occupied = simulation.patientStatus === "ON";
   tankItem.flowRate = simulation.live;
@@ -1762,6 +1895,16 @@ function applySimulatorEventToTank(tankItem, simulation) {
     tankItem.fixedFlow = false;
   } else {
     wastage = Math.max(wastage, simulation.severity === "Critical" ? 18 : simulation.severity === "High" ? 14 : 9);
+  }
+  if (tankItem.cylinderStatus === "EMPTY") {
+    tankItem.active = false;
+    tankItem.volumeRemaining = 0;
+    tankItem.flowRate = 0;
+    tankItem.stationFlowRate = 0;
+  } else if (tankItem.cylinderStatus === "REPLACED") {
+    tankItem.active = false;
+  } else if (tankItem.cylinderStatus === "ACTIVE" && simulation.alertType !== "Device Offline") {
+    tankItem.active = true;
   }
 }
 
@@ -1865,6 +2008,10 @@ function updateSimulatorCriteriaFeedback(selectedAlertType) {
       const message = "Duration must be at least 11 minutes.";
       outstanding.push(message);
       setValidity("simulatorDuration", message);
+    } else {
+      const severity = ghostFlowSeverityFromDuration(duration);
+      const severitySelect = document.getElementById("simulatorSeverity");
+      if (severitySelect && severity !== "Below threshold") severitySelect.value = severity;
     }
   } else if (alertType === "Unauthorized Usage") {
     const emrStatus = document.getElementById("simulatorEmrStatus")?.value || "";
@@ -1887,8 +2034,8 @@ function updateSimulatorCriteriaFeedback(selectedAlertType) {
     const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "";
     const capacity = Number(document.getElementById("simulatorCylinderCapacity")?.value);
     const consumed = Number(document.getElementById("simulatorConsumedVolume")?.value);
-    if (cylinderStatus !== "REPLACED") {
-      const message = "Cylinder status must be REPLACED.";
+    if (!["EMPTY", "REPLACED"].includes(cylinderStatus)) {
+      const message = "Cylinder status must be EMPTY or REPLACED.";
       outstanding.push(message);
       setValidity("simulatorCylinderStatus", message);
     }
@@ -1926,7 +2073,7 @@ function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, create
   const requestedDuration = Number(cylinder.duration);
   const minimumDuration = alertType === "Device Offline" ? 10 : 11;
   const duration = Number.isFinite(requestedDuration) && requestedDuration >= minimumDuration ? requestedDuration : minimumDuration;
-  const offsets = [duration, duration * 0.55, duration * 0.1, 0];
+  const offsets = [duration, Math.max(0, duration - 0.5), Math.max(0, duration - 0.1), 0];
   const durationRule = ["Ghost Flow", "Unauthorized Usage"].includes(alertType);
   const timestamps = durationRule
     ? offsets.map(minutes => new Date(endTime.getTime() - minutes * 60000).toISOString())
@@ -1939,13 +2086,13 @@ function buildSimulatorTelemetryReadings(ward, deviceId, alertType, live, create
       ward_id: getSimulatorWardId(ward),
       flow_rate: Number(live),
       operational_status: getSimulatorOperationalStatus(alertType, live),
-      timestamp
+      timestamp,
+      cylinder_capacity: Number(cylinder.cylinderCapacity),
+      consumed_volume: Number(cylinder.consumedVolume),
+      cylinder_status: cylinder.cylinderStatus || "ACTIVE"
     };
     if (alertType === "Residual Gas") {
       Object.assign(payload, {
-        cylinder_capacity: Number(cylinder.cylinderCapacity),
-        consumed_volume: Number(cylinder.consumedVolume),
-        cylinder_status: cylinder.cylinderStatus,
         breathing_variance: 0.03,
         emr_status: "OCCUPIED"
       });
@@ -2051,7 +2198,7 @@ function renderSimulatorLog() {
         <time>${item.time}</time>
         <div>
           <strong>${item.alertType}</strong>
-          <span>${item.ward} | ${item.tank} | ${item.location}</span>
+          <span>${item.ward} | ${item.tank} | ${item.location} | Cylinder ${item.cylinderStatus || "ACTIVE"}</span>
         </div>
         <b class="${item.severity.toLowerCase()}">${item.severity}</b>
         <small>${item.apiStatus}</small>
@@ -2093,25 +2240,25 @@ function requiresServerAuthenticatedSession() {
 }
 
 function canRespondToIncident() {
-  return getActivePermissionKey() === "nurse-supervisor"
-    && Boolean(currentUser?.permissions?.includes("resolve_alert") || currentUser?.accessToken);
+  // A dashboard permission preview must not grant operational alert controls.
+  // These actions require an actual Nurse Manager session from the server.
+  const actualRole = normalizePermissionRole(currentUser?.role || currentUser?.label);
+  return actualRole === "nurse-supervisor"
+    && Boolean(currentUser?.permissions?.includes("resolve_alert"));
 }
 
 function isEditingIncidentResponse() {
   return Boolean(activeIncidentResponseEditorId)
-    || document.activeElement?.classList?.contains("incident-response-input");
+    || document.activeElement?.classList?.contains("incident-response-input")
+    || document.activeElement?.classList?.contains("incident-action-select");
 }
 
-function protectIncidentResponseInput(input) {
-  const editorId = input.closest("[data-incident-form]")?.dataset.incidentForm || "";
+function protectIncidentResponseControl(control) {
+  const editorId = control.closest("[data-incident-form]")?.dataset.incidentForm || "";
   const activate = () => { activeIncidentResponseEditorId = editorId; };
-  input.addEventListener("pointerdown", activate);
-  input.addEventListener("focus", activate);
-  input.addEventListener("input", () => {
-    activate();
-    incidentResponseDrafts.set(editorId, input.value);
-  });
-  input.addEventListener("blur", () => {
+  control.addEventListener("pointerdown", activate);
+  control.addEventListener("focus", activate);
+  control.addEventListener("blur", () => {
     window.setTimeout(() => {
       const focusedEditorId = document.activeElement?.closest?.("[data-incident-form]")?.dataset.incidentForm || "";
       if (focusedEditorId !== editorId) activeIncidentResponseEditorId = "";
@@ -2119,18 +2266,146 @@ function protectIncidentResponseInput(input) {
   });
 }
 
+function protectIncidentResponseInput(input) {
+  const editorId = input.closest("[data-incident-form]")?.dataset.incidentForm || "";
+  protectIncidentResponseControl(input);
+  input.addEventListener("input", () => {
+    activeIncidentResponseEditorId = editorId;
+    incidentResponseDrafts.set(editorId, input.value);
+  });
+}
+
 function incidentResponseControls(row) {
   if (!Number.isFinite(Number(row.id))) return '<span class="incident-response-note">Syncing</span>';
+  const savedAction = String(row.savedAction || "");
+  const savedNote = String(row.savedNote || "");
+  const savedLabel = {
+    manual_valve_turn_off: "Manual valve turn off",
+    flow_meter_malfunction: "Flow meter malfunction",
+    no_patient_connected: "No patient connected",
+    other: "Other"
+  }[savedAction] || "";
   return `
     <div class="incident-response-actions" data-incident-form="${row.id}">
-      <label class="incident-note-label" for="incident-note-${row.id}">Response note</label>
-      <textarea id="incident-note-${row.id}" class="incident-response-input" maxlength="50" rows="2" placeholder="Add acknowledgement note (50 characters)" aria-label="Acknowledgement note">${escapeHtml(incidentResponseDrafts.get(String(row.id)) || "")}</textarea>
+      <label class="incident-note-label" for="incident-action-${row.id}">Action taken</label>
+      <select id="incident-action-${row.id}" class="incident-action-select" data-saved-action="${escapeHtml(savedAction)}" aria-label="Action taken for alert ${row.id}">
+        <option value="">Select action</option>
+        <option value="manual_valve_turn_off">Manual valve turn off</option>
+        <option value="flow_meter_malfunction">Flow meter malfunction</option>
+        <option value="no_patient_connected">No patient connected</option>
+        <option value="other">Other</option>
+      </select>
+      <textarea id="incident-note-${row.id}" class="incident-response-input" maxlength="100" rows="2" placeholder="Describe other action (100 characters)" aria-label="Other action details" hidden>${escapeHtml(incidentResponseDrafts.get(String(row.id)) || savedNote)}</textarea>
       <div class="incident-response-buttons">
-        <button type="button" class="incident-response-button acknowledge" data-incident-response="acknowledge" data-alert-id="${row.id}">Acknowledge</button>
-        <button type="button" class="incident-response-button clear" data-incident-response="resolve" data-alert-id="${row.id}">Clear alert</button>
+        <button type="button" class="incident-response-button" data-save-alert-action data-alert-id="${row.id}" data-clear-alert="false">Save action</button>
+        <button type="button" class="incident-response-button clear" data-save-alert-action data-alert-id="${row.id}" data-clear-alert="true">Save & clear alert</button>
       </div>
     </div>
   `;
+}
+
+function savedIncidentActionCell(row) {
+  const action = String(row.savedAction || "");
+  const note = String(row.savedNote || "");
+  const label = {
+    manual_valve_turn_off: "Manual valve turn off",
+    flow_meter_malfunction: "Flow meter malfunction",
+    no_patient_connected: "No patient connected",
+    other: "Other"
+  }[action];
+  return `<div class="incident-saved-action"><span>Saved action</span>${label
+    ? `<strong>${escapeHtml(label)}</strong>${note ? `<small>${escapeHtml(note)}</small>` : ""}`
+    : "<small>No action saved</small>"}</div>`;
+}
+
+function bindIncidentActionControls(container) {
+  if (!container) return;
+  container.querySelectorAll(".incident-action-select").forEach(select => {
+    const editorId = select.closest("[data-incident-form]")?.dataset.incidentForm || "";
+    select.value = incidentActionDrafts.get(editorId) || select.dataset.savedAction || "";
+    const syncOtherField = () => {
+      const form = select.closest("[data-incident-form]");
+      const note = form?.querySelector(".incident-response-input");
+      if (!note) return;
+      note.hidden = select.value !== "other";
+      note.required = select.value === "other";
+      if (note.hidden) note.value = "";
+    };
+    protectIncidentResponseControl(select);
+    select.addEventListener("change", () => {
+      incidentActionDrafts.set(editorId, select.value);
+      syncOtherField();
+    });
+    syncOtherField();
+  });
+  container.querySelectorAll("[data-save-alert-action]").forEach(button => {
+    button.addEventListener("click", () => {
+      const form = button.closest("[data-incident-form]");
+      const action = form?.querySelector(".incident-action-select")?.value || "";
+      const note = form?.querySelector(".incident-response-input")?.value || "";
+      saveIncidentAction(Number(button.dataset.alertId), action, note, button.dataset.clearAlert === "true");
+    });
+  });
+  container.querySelectorAll(".incident-response-input").forEach(protectIncidentResponseInput);
+}
+
+async function saveIncidentAction(alertId, action, note = "", clearAlert = false) {
+  if (!Number.isFinite(alertId) || !canRespondToIncident()) return;
+  if (!action) {
+    window.alert("Select the action taken before saving.");
+    return;
+  }
+  note = String(note || "").trim();
+  if (note.length > 100) {
+    window.alert("Action notes must be 100 characters or fewer.");
+    return;
+  }
+  if (action === "other" && !note) {
+    window.alert("Describe the other action taken.");
+    return;
+  }
+  if (!hasServerToken()) {
+    window.alert("Your Nurse Manager session has expired. Please sign in again before saving an action.");
+    return;
+  }
+  try {
+    const response = await fetch(`/api/alerts/${alertId}/action`, {
+      method: "POST",
+      headers: authHeaders(true),
+      body: JSON.stringify({ action, note, clear_alert: clearAlert })
+    });
+    const result = await response.json();
+    if (isInvalidBearerTokenError(response, result)) {
+      clearInvalidServerToken();
+      throw new Error("Your session has expired. Please sign in again as Nurse Manager.");
+    }
+    if (!response.ok) throw new Error(result?.message || "Action could not be saved.");
+    if (clearAlert) {
+      clearSimulatorAlertTarget(alertId);
+      incidentResponseDrafts.delete(String(alertId));
+      incidentActionDrafts.delete(String(alertId));
+    }
+    activeIncidentResponseEditorId = "";
+    await loadDatabaseAlerts();
+    renderAll();
+  } catch (error) {
+    window.alert(error.message || "Action could not be saved.");
+  }
+}
+
+function clearSimulatorAlertTarget(alertId) {
+  const target = simulatorAlertTargets.get(String(alertId));
+  if (!target) return;
+  const ward = wards.find(item => item.id === target.wardId);
+  const tank = ward?.tanks.find(item => item.name === target.tankName);
+  if (tank) {
+    tank.alertType = "Normal";
+    tank.alertMessage = "";
+    tank.highFlowAlert = false;
+    tank.leakageAlert = false;
+    tank.fixedFlow = false;
+  }
+  simulatorAlertTargets.delete(String(alertId));
 }
 
 async function respondToIncident(alertId, action, note = "") {
@@ -2188,12 +2463,15 @@ function assignmentResult(value) {
 }
 
 function getAlertWardCards() {
-  return [
+  const cards = [
     { key: "ae", ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [wardAlertRow("bed-05", "Bed 05", "PT-0005", "On", "4.0", "4.0", "Normal"), wardAlertRow("bed-06", "Bed 06", "PT-0006", "On", "3.5", "3.8", "Normal"), wardAlertRow("bed-07", "Bed 07", "PT-0007", "Off", "0.0", "2.8", "Normal")] },
     { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "2.5", "2.5", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "4.0", "5.2", "Normal")] },
     { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "4.0", "4.1", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "0.0", "0.0", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "0.0", "-", "Normal")] },
-    { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "4.0", "3.9", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "0.0", "0.0", "Normal")] }
+    { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "4.0", "3.9", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "0.0", "0.0", "Normal")] },
+    { key: "maternity", ward: "Maternity Ward", pressure: 49, totalFlow: 5.4, rows: [wardAlertRow("bed-25", "Bed 25", "PT-0025", "On", "3.0", "3.1", "Normal"), wardAlertRow("bed-26", "Bed 26", "PT-0026", "On", "2.5", "2.3", "Normal"), wardAlertRow("bed-27", "Bed 27", "PT-0027", "Off", "0.0", "0.0", "Normal")] },
+    { key: "nurse", ward: "Nurse Station", pressure: 48, totalFlow: 1.2, rows: [wardAlertRow("bed-30", "Bed 30", "PT-0030", "On", "1.0", "1.2", "Normal"), wardAlertRow("bed-31", "Bed 31", "PT-0031", "Off", "0.0", "0.0", "Normal"), wardAlertRow("bed-32", "Bed 32", "PT-0032", "Off", "0.0", "0.0", "Normal")] }
   ];
+  return cards.sort((left, right) => Number(cardHasActiveAlert(right)) - Number(cardHasActiveAlert(left)));
 }
 
 function wardAlertRow(assetKey, asset, patientId, patientFlag, setValue, flow, defaultStatus) {
@@ -2205,7 +2483,14 @@ function wardStatusKey(wardKey, assetKey) {
 }
 
 function getWardRowStatus(card, row) {
-  return getLiveWardIncidentStatus(card, row) || normalizeWardIncidentStatus(row.defaultStatus) || "Normal";
+  const liveStatus = getLiveWardIncidentStatus(card, row);
+  if (liveStatus) return liveStatus;
+  const savedStatus = wardCardStatusOverrides.get(wardStatusKey(card.key, row.assetKey));
+  return normalizeWardIncidentStatus(savedStatus) || normalizeWardIncidentStatus(row.defaultStatus) || "Normal";
+}
+
+function cardHasActiveAlert(card) {
+  return card.rows.some(row => getWardRowStatus(card, row) !== "Normal");
 }
 
 function normalizeWardIncidentStatus(status = "") {
@@ -2250,8 +2535,9 @@ function renderWardStatusControl(card, row, editable = false) {
 }
 
 function renderAlertWardCard(card) {
+  const hasAlert = cardHasActiveAlert(card);
   return `
-    <article class="alert-panel alert-ward-panel" data-ward-key="${card.key}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="Open large ${card.ward} table">
+    <article class="alert-panel alert-ward-panel${hasAlert ? " has-active-alert" : ""}" data-ward-key="${card.key}" tabindex="0" role="button" aria-haspopup="dialog" aria-label="Open large ${card.ward} table">
       <div class="alert-panel-head">
         <h3>${card.ward}</h3>
         <span class="live-dot">Live</span>
@@ -2259,7 +2545,7 @@ function renderAlertWardCard(card) {
       <table class="alert-data-table compact">
         <thead><tr><th>Bed / Tank</th><th>Patient Flag</th><th>Set Value</th><th>Flow</th><th>Status</th></tr></thead>
         <tbody>${card.rows.map(row => `
-          <tr>
+          <tr class="${getWardRowStatus(card, row) !== "Normal" ? "ward-alert-row" : ""}">
             <td><b>${row.asset}</b><small>${row.patientId}</small></td>
             <td>${assignmentFlag(row.patientFlag)}</td>
             <td>${row.setValue}</td>
@@ -2293,7 +2579,7 @@ function renderAlertWardDialog(cardKey) {
       <table class="alert-data-table ward-alert-dialog-table">
         <thead><tr><th>Bed / Tank</th><th>Patient ID</th><th>Patient Flag</th><th>Set Value</th><th>Live Flow</th><th>Status</th></tr></thead>
         <tbody>${card.rows.map(row => `
-          <tr>
+          <tr class="${getWardRowStatus(card, row) !== "Normal" ? "ward-alert-row" : ""}">
             <td><b>${row.asset}</b></td>
             <td>${row.patientId}</td>
             <td>${assignmentFlag(row.patientFlag)}</td>
@@ -2645,6 +2931,33 @@ function authHeaders(includeContentType = true) {
   return headers;
 }
 
+function setupGlobalAuditCapture() {
+  if (auditCaptureInitialized) return;
+  auditCaptureInitialized = true;
+  const capture = (verb, element) => {
+    if (!currentUser || !hasServerToken() || !element) return;
+    if (element.closest("#loginCard") || element.matches('[type="password"], #loginMfaCode')) return;
+    const label = String(
+      element.dataset?.view
+      || element.getAttribute?.("aria-label")
+      || element.name
+      || element.id
+      || element.textContent
+      || element.tagName
+    ).replace(/\s+/g, " ").trim().slice(0, 70);
+    if (!label) return;
+    const detail = `${verb}: ${label}`.slice(0, 100);
+    const signature = `${verb}|${label}`;
+    const now = Date.now();
+    if (lastCapturedAudit.signature === signature && now - lastCapturedAudit.at < 1200) return;
+    lastCapturedAudit = { signature, at: now };
+    void recordAuditEvent("User Activity", detail);
+  };
+  document.addEventListener("click", event => capture("Activated", event.target.closest("button, a, [data-view], [role='button']")), true);
+  document.addEventListener("change", event => capture("Changed", event.target.closest("select, input, textarea")), true);
+  document.addEventListener("submit", event => capture("Submitted", event.target), true);
+}
+
 async function recordAuditEvent(action, details, options = {}) {
   if (!hasServerToken()) return false;
   const endpoint = options.endpoint || "/api/audit-events";
@@ -2940,14 +3253,14 @@ function renderReport() {
   const criticalOverview = getCriticalAlertOverview(alertRows);
   const patientAlertSummary = getPatientAlertSummary(activeTanks);
   const wastageCostLabel = criticalIncidentImpact.count
-    ? `${currency(wastageCost)}&nbsp;Est.&nbsp;Cost&nbsp;|&nbsp;${criticalIncidentImpact.count}&nbsp;Critical&nbsp;Alert${criticalIncidentImpact.count === 1 ? "" : "s"}`
-    : "No active critical-alert wastage";
+    ? `${currency(wastageCost)}&nbsp;Exposure&nbsp;|&nbsp;${criticalIncidentImpact.count}&nbsp;Core&nbsp;Detection${criticalIncidentImpact.count === 1 ? "" : "s"}`
+    : "No cumulative core-rule exposure";
 
   document.getElementById("reportSummary").innerHTML = [
     reportSummaryCard("Average Flow", `${avgFlowValue}&nbsp;Litre/Min`, "Across active wards", colors.green, "spark"),
-    reportSummaryCard("Estimated Wastage (Today)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
+    reportSummaryCard("Oxygen at Risk (YTD)", `${wastageTodayLitres.toLocaleString()}&nbsp;Litre`, wastageCostLabel, colors.yellow, "warn"),
     reportSummaryCard("Active Patients", patientAlertSummary.total, `${patientAlertSummary.alertCount} Patient Alert${patientAlertSummary.alertCount === 1 ? "" : "s"}`, colors.purple, "people"),
-    reportSummaryCard("Critical Alerts", criticalOverview.total, "Matches overview active alerts", colors.red, "alert"),
+    reportSummaryCard("Core Detections (YTD)", criticalOverview.total, "Matches cumulative rule overview", colors.red, "alert"),
     reportSummaryCard("Offline Devices", esp32Status.offline, `${esp32Status.online} / ${esp32Status.total} ESP32 Online`, colors.navy, "wifi")
   ].join("");
 
@@ -2992,14 +3305,14 @@ function renderReport() {
   renderAlertsByWard();
 
   updateDepletionFilterButtons();
-  const depletionRows = getTankDepletionMonitoringRows(activeTanks, depletionStatusFilter);
+  const depletionRows = getTankDepletionMonitoringRows(allTanks, depletionStatusFilter);
 
   const depletionTarget = document.getElementById("depletionTable");
   const depletionTableRows = depletionRows.length
     ? depletionRows.slice(0, 5).map(item => item.row)
     : dashboardBaselineDepletionRows[depletionStatusFilter] || dashboardBaselineDepletionRows.all;
   if (depletionTarget) depletionTarget.innerHTML = tableHtml(
-    ["Ward", "Tank", "Serial #", "Volume", "Est. Depletion", "Status"],
+    ["Ward", "Tank", "Serial #", "Tank Volume", "Depleted Volume", "Remaining", "Est. Depletion", "Tank Status"],
     depletionTableRows
   );
 }
@@ -3046,21 +3359,17 @@ function renderNurseActiveAlerts(alertRows) {
   if (!target) return;
   const rows = alertRows.map(row => [
     `${row.ward} / ${row.asset}`,
+    row.tankSerial || "Pending assignment",
     row.type,
     alertPill(row.priority),
     formatAlertImpact(row),
+    savedIncidentActionCell(row),
     canRespondToIncident() ? incidentResponseControls(row) : ""
   ]);
   target.innerHTML = rows.length
-    ? tableHtml(["Ward / Bed", "Alert", "Priority", "Recommended Action", "Response"], rows)
+    ? tableHtml(["Ward / Bed", "Tank Serial #", "Alert", "Priority", "Recommended Action", "Saved Action", "Response"], rows)
     : `<div class="nurse-empty-state">No active incidents. New alerts will appear here for nurse response.</div>`;
-  target.querySelectorAll("[data-incident-response]").forEach(button => {
-    button.addEventListener("click", () => {
-      const note = button.closest("[data-incident-form]")?.querySelector(".incident-response-input")?.value || "";
-      respondToIncident(Number(button.dataset.alertId), button.dataset.incidentResponse, note);
-    });
-  });
-  target.querySelectorAll(".incident-response-input").forEach(protectIncidentResponseInput);
+  bindIncidentActionControls(target);
   if (count) count.textContent = `${rows.length} active`;
 }
 
@@ -3312,7 +3621,9 @@ function getTankDepletionMonitoringRows(activeTanks, statusFilter = "all") {
   return activeTanks
     .map(t => {
       const percent = Math.round((t.volumeRemaining * 100) / t.maxVolume);
+      const depletedVolume = Math.max(0, t.maxVolume - t.volumeRemaining);
       const status = tankDepletionStatus(t);
+      const cylinderStatus = getCylinderOperationalStatus(t);
       return {
         tank: t,
         status,
@@ -3321,9 +3632,11 @@ function getTankDepletionMonitoringRows(activeTanks, statusFilter = "all") {
           t.wardName,
           t.name,
           t.serial,
-          `${t.volumeRemaining} L (${percent}%)`,
+          `${t.maxVolume.toLocaleString()} L`,
+          `${depletedVolume.toLocaleString()} L`,
+          `${t.volumeRemaining.toLocaleString()} L (${percent}%)`,
           estimateDepletion(t),
-          badge(status.label, status.tone)
+          badge(cylinderStatus.label, cylinderStatus.tone)
         ]
       };
     })
@@ -3393,6 +3706,19 @@ function getEsp32DeviceStatus() {
 }
 
 function getCriticalAlertOverview() {
+  const latestRuleRows = getLatestRulePerformance();
+  if (latestRuleRows.length) {
+    const countFor = key => Number(latestRuleRows.find(item => item.rule_key === key)?.active_detections || 0);
+    const cards = [
+      ["Ghost Flow", countFor("ghost_flow"), "GF"],
+      ["Unauthorized", countFor("unauthorized_bed_usage"), "ID"],
+      ["Residual Gas", countFor("residual_gas"), "O2"]
+    ];
+    return {
+      cards,
+      total: cards.reduce((sum, [, value]) => sum + value, 0)
+    };
+  }
   const incidents = getAlertIncidentRows();
   const liveGhostFlow = incidents.filter(row => row.type === "Ghost Flow").length;
   const unauthorized = incidents.filter(row => row.type === "Unauthorized Bed Usage").length;
@@ -3456,7 +3782,15 @@ function formatAlertImpact(row) {
 }
 
 function getCriticalIncidentImpact() {
-  // Keep this in lockstep with the Critical Alerts Overview card.
+  const latestRuleRows = getLatestRulePerformance();
+  if (latestRuleRows.length) {
+    return {
+      count: latestRuleRows.reduce((total, row) => total + Number(row.active_detections || 0), 0),
+      estimatedWaste: Math.round(latestRuleRows.reduce((total, row) => total + Number(row.oxygen_at_risk_litres || 0), 0)),
+      estimatedCost: Math.round(latestRuleRows.reduce((total, row) => total + Number(row.cost_exposure_jmd || 0), 0))
+    };
+  }
+  // Fall back to unresolved incidents when no cumulative snapshot is available.
   const incidents = getAlertIncidentRows().filter(row => ["Ghost Flow", "Unauthorized Bed Usage", "Residual Gas"].includes(row.type));
   const estimatedWaste = Math.round(incidents.reduce((total, row) => {
     const value = Number(row.estimatedOxygenWaste);
@@ -3495,7 +3829,7 @@ function renderCriticalOverview(overview) {
       <div>
         <span>${label}</span>
         <strong>${value}</strong>
-        <small>${value ? "Active" : "Clear"}</small>
+        <small>${value ? "YTD" : "Clear"}</small>
       </div>
       <b>${icon}</b>
     </article>
@@ -4778,6 +5112,7 @@ function getReportVolumePercent(t) {
 
 function tankDepletionStatus(t) {
   const percent = getReportVolumePercent(t);
+  if (String(t.cylinderStatus || "").toUpperCase() === "EMPTY" || Number(t.volumeRemaining) <= 0) return { key: "critical", label: "Empty", tone: "bad" };
   if (percent < 10 || t.highFlowAlert) return { key: "critical", label: "Empty", tone: "bad" };
   if (percent < 30 || t.leakageAlert) return { key: "warning", label: "Moderate", tone: "warn" };
   return { key: "normal", label: "Full", tone: "good" };
@@ -5660,7 +5995,16 @@ function renderAnalytics() {
   const summary = document.getElementById("analyticsSummary");
   if (!summary) return;
 
-  const wardTotals = analyticsData.map(ward => {
+  const safeRangeEnd = Math.max(1, Math.min(analyticsMonths.length - 1, analyticsRangeEnd));
+  const selectedMonths = analyticsMonths.slice(0, safeRangeEnd + 1);
+  const selectedData = analyticsData.map(ward => ({
+    ...ward,
+    usage: ward.usage.slice(0, safeRangeEnd + 1),
+    leakage: ward.leakage.slice(0, safeRangeEnd + 1)
+  }));
+  updateAnalyticsRangeControl(selectedMonths, safeRangeEnd);
+
+  const wardTotals = selectedData.map(ward => {
     const totalTanks = sumValues(ward.usage);
     const leakageTanks = sumValues(ward.leakage);
     return {
@@ -5678,96 +6022,238 @@ function renderAnalytics() {
   const totalLeakageCost = sumValues(wardTotals.map(item => item.leakageCost));
   const topConsumption = [...wardTotals].sort((a, b) => b.totalTanks - a.totalTanks)[0];
   const topWastage = [...wardTotals].sort((a, b) => b.leakageCost - a.leakageCost)[0];
+  const leakageRate = (totalLeakageTanks / Math.max(1, totalTanks)) * 100;
+  const averageMonthlyUse = totalTanks / selectedMonths.length;
+  const recoverableSavings = Math.round(totalLeakageCost * 0.7);
 
   summary.innerHTML = [
-    reportSummaryCard("Tank Usage", totalTanks, "Jan-May total tanks", colors.ae),
-    reportSummaryCard("Usage Cost", currency(totalUsageCost), "Jan-May oxygen spend", colors.green, "dot", {
-      hover: `Usage Cost: ${currency(totalUsageCost)}. Refill cost of ${currency(CYLINDER_REFILL_COST)} per 100 lb cylinder applied monthly.`
+    reportSummaryCard("Total consumption", `${totalTanks} tanks`, `${averageMonthlyUse.toFixed(1)} tanks per month`, colors.ae),
+    reportSummaryCard("Leakage rate", `${leakageRate.toFixed(1)}%`, `${totalLeakageTanks} tanks lost across all wards`, colors.orange),
+    reportSummaryCard("Loss exposure", currency(totalLeakageCost), `${currency(CYLINDER_REFILL_COST)} per refill-equivalent tank`, colors.red, "dot", {
+      hover: `Loss exposure: ${currency(totalLeakageCost)} based on ${totalLeakageTanks} estimated tanks lost.`
     }),
-    reportSummaryCard("Wasted Tanks", totalLeakageTanks, "Estimated leakage tanks", colors.red),
-    reportSummaryCard("Wastage Cost", currency(totalLeakageCost), "Estimated loss value", colors.red, "dot", {
-      hover: `Wastage Cost: ${currency(totalLeakageCost)}. Estimated wasted refill value at ${currency(CYLINDER_REFILL_COST)} per 100 lb cylinder.`
+    reportSummaryCard("Recoverable value", currency(recoverableSavings), "Estimated savings if loss is reduced by 70%", colors.green, "dot", {
+      hover: `Recoverable value: ${currency(recoverableSavings)} if the current leakage loss is reduced by 70%.`
     })
   ].join("");
 
-  document.getElementById("monthlyUsageLegend").innerHTML = analyticsLegend(wardTotals);
-  renderMonthlyUsageChart(wardTotals);
-  renderMonthlyWastageChart(wardTotals);
-  renderTopInsight("topConsumption", topConsumption, "consumption", topConsumption.totalTanks, topConsumption.usageCost);
-  renderTopInsight("topWastage", topWastage, "leakage wastage", topWastage.leakageTanks, topWastage.leakageCost);
-  renderLeakageRateChart(wardTotals);
+  renderMonthlyUsageChart(wardTotals, selectedMonths);
+  renderMonthlyWastageChart(wardTotals, selectedMonths);
+  renderTopInsight("topConsumption", topConsumption, "consumption", topConsumption.totalTanks, topConsumption.usageCost, selectedMonths);
+  renderTopInsight("topWastage", topWastage, "leakage wastage", topWastage.leakageTanks, topWastage.leakageCost, selectedMonths);
   renderCostExposureChart(wardTotals);
-  renderUsageTrendChart(wardTotals);
   renderSavingsOpportunityChart(wardTotals);
+  renderAnalyticsRuleSummary(safeRangeEnd);
 
-  renderWardMonthlyTotals(wardTotals);
+  renderWardMonthlyTotals(wardTotals, selectedMonths);
 }
 
-function renderMonthlyUsageChart(wardTotals) {
-  document.getElementById("monthlyUsageChart").innerHTML = analyticsMonths.map((month, index) => {
-    const monthTotal = sumValues(wardTotals.map(item => item.usage[index]));
-    const monthCost = monthTotal * TANK_COST;
+function getCylinderOperationalStatus(tankItem) {
+  const status = String(tankItem.cylinderStatus || "").toUpperCase();
+  if (status === "EMPTY" || Number(tankItem.volumeRemaining) <= 0) return { label: "Empty", tone: "bad" };
+  if (status === "REPLACED") return { label: "Replaced", tone: "warn" };
+  return { label: "Active", tone: "good" };
+}
+
+function updateAnalyticsRangeControl(selectedMonths, rangeEnd) {
+  const firstMonth = selectedMonths[0];
+  const lastMonth = selectedMonths.at(-1);
+  const periodLabel = `${firstMonth}–${lastMonth}`;
+  const slider = document.getElementById("analyticsMonthRange");
+  const label = document.getElementById("analyticsRangeLabel");
+  const period = document.getElementById("analyticsReportingPeriod");
+  const summaryCopy = document.getElementById("analyticsWardSummaryCopy");
+  const ruleCopy = document.getElementById("analyticsRulePeriodCopy");
+  const marks = document.querySelector(".analytics-range-marks");
+
+  if (label) label.textContent = periodLabel;
+  if (period) period.textContent = periodLabel;
+  if (summaryCopy) summaryCopy.textContent = `${lastMonth} usage, period movement, and ${periodLabel} contribution by ward.`;
+  if (ruleCopy) ruleCopy.textContent = `Cumulative detections, oxygen risk, and financial exposure through ${lastMonth}.`;
+  if (marks) marks.innerHTML = analyticsMonths.slice(1).map(month => `<span>${month}</span>`).join("");
+  if (slider) {
+    const maximum = Math.max(1, analyticsMonths.length - 1);
+    slider.max = String(maximum);
+    slider.value = String(rangeEnd);
+    slider.setAttribute("aria-valuetext", `${analyticsMonths[0]} through ${lastMonth}`);
+    slider.style.setProperty("--range-progress", `${((rangeEnd - 1) / Math.max(1, maximum - 1)) * 100}%`);
+  }
+}
+
+function renderAnalyticsRuleSummary(rangeEnd = analyticsRangeEnd) {
+  const target = document.getElementById("analyticsRuleSummary");
+  if (!target) return;
+
+  const incidents = getAlertIncidentRows();
+  const rules = [
+    {
+      key: "ghost_flow",
+      type: "Ghost Flow",
+      code: "GF",
+      tone: "ghost",
+      trigger: "Flow above 0.5 LPM with breathing variance below 0.01 for at least 11 minutes.",
+      action: "Verify patient occupancy and close oxygen supply."
+    },
+    {
+      key: "unauthorized_bed_usage",
+      type: "Unauthorized Bed Usage",
+      code: "ID",
+      tone: "unauthorized",
+      trigger: "An inactive EMR bed consumes at least 2.0 LPM for at least 11 minutes.",
+      action: "Verify patient assignment and investigate oxygen usage."
+    },
+    {
+      key: "residual_gas",
+      type: "Residual Gas",
+      code: "O₂",
+      tone: "residual",
+      trigger: "A replaced cylinder reports more than 90% utilization.",
+      action: "Review cylinder replacement procedures."
+    }
+  ];
+
+  target.innerHTML = rules.map(rule => {
+    const snapshot = getRulePerformanceForMonth(rule.key, rangeEnd);
+    const aliases = rule.key === "unauthorized_bed_usage"
+      ? ["Unauthorized Bed Usage", "Unauthorized Usage"]
+      : rule.key === "residual_gas"
+        ? ["Residual Gas", "Residual Gas Waste"]
+        : [rule.type];
+    const ruleIncidents = incidents.filter(item => aliases.includes(item.type));
+    const active = snapshot ? Number(snapshot.active_detections) : ruleIncidents.length;
+    const detectionShare = snapshot ? Number(snapshot.detection_share) : (active / Math.max(1, incidents.length)) * 100;
+    const oxygenAtRisk = snapshot
+      ? Number(snapshot.oxygen_at_risk_litres)
+      : ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedOxygenWaste)) ? Number(item.estimatedOxygenWaste) : 0), 0);
+    const financialExposure = snapshot
+      ? Number(snapshot.cost_exposure_jmd)
+      : ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.estimatedFinancialLoss)) ? Number(item.estimatedFinancialLoss) : 0), 0);
+    const recoverableValue = snapshot
+      ? Number(snapshot.recoverable_value_jmd)
+      : ruleIncidents.reduce((total, item) => total + (Number.isFinite(Number(item.potentialSavings)) ? Number(item.potentialSavings) : 0), 0);
     return `
-      <div class="month-card">
-        <div class="month-metric">
-          <strong>${month}</strong>
-          <span>${monthTotal} tanks</span>
-          <em>${currency(monthCost)}</em>
+      <article class="analytics-rule-card ${rule.tone} ${active ? "has-active" : "is-clear"}">
+        <div class="analytics-rule-card-head">
+          <span class="analytics-rule-code">${rule.code}</span>
+        <span class="analytics-rule-status">${active ? `${active} YTD` : "Clear"}</span>
         </div>
-        <div class="month-visual">
-          <div class="stacked-bar" title="${month}: ${monthTotal} tanks used">
-            ${wardTotals.map(item => {
-              const width = Math.max(5, Math.round((item.usage[index] / Math.max(1, monthTotal)) * 100));
-              return `<i style="width:${width}%; background:${item.accent}" title="${item.ward}: ${item.usage[index]} tanks"></i>`;
-            }).join("")}
-          </div>
-          <div class="month-breakdown">
-            ${wardTotals.map(item => `
-              <span>
-                <i style="background:${item.accent}"></i>
-                ${item.ward.replace(" Ward", "")}: <b>${item.usage[index]}</b>
-              </span>
-            `).join("")}
-          </div>
-        </div>
-      </div>
+        <h4>${rule.type}</h4>
+        <div class="analytics-rule-primary"><strong>${active}</strong><span>cumulative detection${active === 1 ? "" : "s"}</span></div>
+        <div class="analytics-rule-meter" aria-label="${detectionShare.toFixed(0)} percent of cumulative rule detections"><i style="width:${Math.max(active ? 8 : 0, detectionShare)}%"></i></div>
+        <dl class="analytics-rule-metrics">
+          <div><dt>Detection share</dt><dd>${active ? `${detectionShare.toFixed(0)}%` : "0%"}</dd></div>
+          <div><dt>Oxygen at risk</dt><dd>${oxygenAtRisk.toLocaleString(undefined, { maximumFractionDigits: 1 })} L</dd></div>
+          <div><dt>Cost exposure</dt><dd>${currency(financialExposure)}</dd></div>
+          <div><dt>Recoverable value</dt><dd>${currency(recoverableValue)}</dd></div>
+        </dl>
+        <div class="analytics-rule-action"><span>Rule logic</span><strong>${rule.trigger}</strong></div>
+      </article>
     `;
   }).join("");
 }
 
-function renderMonthlyWastageChart(wardTotals) {
-  const monthlyTotals = analyticsMonths.map((month, index) => {
+function getRulePerformanceForMonth(ruleKey, rangeEnd) {
+  const targetMonth = Math.max(1, Math.min(12, Number(rangeEnd) + 1));
+  return analyticsRulePerformance
+    .filter(item => item.rule_key === ruleKey && new Date(`${String(item.as_of_date).slice(0, 10)}T00:00:00Z`).getUTCMonth() + 1 === targetMonth)
+    .sort((a, b) => String(b.as_of_date).localeCompare(String(a.as_of_date)))[0] || null;
+}
+
+function getLatestRulePerformance() {
+  const latestDate = analyticsRulePerformance.reduce((latest, item) => String(item.as_of_date) > latest ? String(item.as_of_date) : latest, "");
+  return analyticsRulePerformance.filter(item => String(item.as_of_date) === latestDate);
+}
+
+function renderMonthlyUsageChart(wardTotals, selectedMonths) {
+  const totalUsage = sumValues(wardTotals.map(ward => ward.totalTanks));
+  const chartWidth = 480;
+  const chartHeight = 32;
+  const padding = { top: 4, right: 4, bottom: 4, left: 4 };
+
+  document.getElementById("monthlyUsageChart").innerHTML = `
+    <div class="ward-summary-board" aria-label="Ward oxygen consumption summary">
+      <div class="ward-summary-columns" aria-hidden="true">
+        <span>Ward</span><span>${selectedMonths[0]}–${selectedMonths.at(-1)} trend</span><span>${selectedMonths.at(-1)}</span><span>Change</span><span>Share</span>
+      </div>
+      ${wardTotals.slice().sort((a, b) => b.usage.at(-1) - a.usage.at(-1)).map(ward => {
+        const firstMonth = ward.usage[0];
+        const latestMonth = ward.usage[ward.usage.length - 1];
+        const change = latestMonth - firstMonth;
+        const maximumUsage = Math.max(...ward.usage);
+        const minimumUsage = Math.min(...ward.usage);
+        const usageRange = Math.max(1, maximumUsage - minimumUsage);
+        const pointX = index => Math.round(padding.left + (index * (chartWidth - padding.left - padding.right)) / Math.max(1, selectedMonths.length - 1));
+        const pointY = value => Math.round((padding.top + ((maximumUsage - value) / usageRange) * (chartHeight - padding.top - padding.bottom)) * 2) / 2;
+        const points = ward.usage.map((value, index) => `${pointX(index)},${pointY(value)}`).join(" ");
+        const share = Math.round((ward.totalTanks / Math.max(1, totalUsage)) * 100);
+        const lastX = pointX(ward.usage.length - 1);
+        const lastY = pointY(latestMonth);
+        return `
+          <div class="ward-summary-row" style="--ward-accent:${ward.accent}">
+            <div class="ward-summary-ward">
+              <i></i>
+              <div><strong>${ward.ward}</strong><span>${ward.totalTanks} tanks total</span></div>
+            </div>
+            <div class="ward-summary-spark">
+              <svg viewBox="0 0 ${chartWidth} ${chartHeight}" preserveAspectRatio="none" shape-rendering="geometricPrecision" role="img" aria-label="${ward.ward} moved from ${firstMonth} tanks in ${selectedMonths[0]} to ${latestMonth} tanks in ${selectedMonths.at(-1)}">
+                <polyline points="${points}" fill="none" stroke="${ward.accent}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>
+                <line x1="${lastX}" y1="${lastY}" x2="${lastX}" y2="${lastY}" stroke="${ward.accent}" stroke-width="7" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+              </svg>
+            </div>
+            <div class="ward-summary-latest"><span>${selectedMonths.at(-1)}</span><strong>${latestMonth}</strong><small>tanks</small></div>
+            <div class="ward-summary-change ${change >= 0 ? "is-up" : "is-down"}"><span>vs ${selectedMonths[0]}</span><strong>${change >= 0 ? "+" : ""}${change}</strong></div>
+            <div class="ward-summary-share">
+              <div><span>Share</span><strong>${share}%</strong></div>
+              <i><b style="width:${share}%;"></b></i>
+            </div>
+          </div>`;
+      }).join("")}
+    </div>
+  `;
+}
+
+function renderMonthlyWastageChart(wardTotals, selectedMonths) {
+  const monthlyTotals = selectedMonths.map((month, index) => {
     const usage = sumValues(wardTotals.map(item => item.usage[index]));
     const leakage = sumValues(wardTotals.map(item => item.leakage[index]));
     const leakageRate = Math.round((leakage / Math.max(1, usage)) * 100);
     return { month, usage, leakage, leakageRate, leakageCost: leakage * TANK_COST };
   });
-  const maxUsage = Math.max(1, ...monthlyTotals.map(item => item.usage));
-  const maxLeakage = Math.max(1, ...monthlyTotals.map(item => item.leakage));
-  document.getElementById("monthlyWastageChart").innerHTML = analyticsMonths.map((month, index) => {
-    const item = monthlyTotals[index];
-    return `
-      <div class="leakage-compare-row" style="--month-accent:${monthAccent(index)}">
-        <div class="leakage-compare-month">
-          <strong>${month}</strong>
-          <span>${item.leakageRate}% leakage rate</span>
-        </div>
-        <div class="leakage-compare-bars">
-          <div class="compare-track usage" title="${month}: ${item.usage} tanks used">
-            <span style="width:${Math.max(8, Math.round((item.usage / maxUsage) * 100))}%"></span>
-            <b>${item.usage} used</b>
-          </div>
-          <div class="compare-track leakage" title="${month}: ${item.leakage} tanks wasted">
-            <span style="width:${Math.max(8, Math.round((item.leakage / maxLeakage) * 100))}%"></span>
-            <b>${item.leakage} wasted | ${currency(item.leakageCost)}</b>
-          </div>
-        </div>
+  const totalUsage = sumValues(monthlyTotals.map(item => item.usage));
+  const totalLeakage = sumValues(monthlyTotals.map(item => item.leakage));
+  const usageMax = Math.ceil(Math.max(...monthlyTotals.map(item => item.usage)) / 20) * 20;
+  const rateMax = Math.max(20, Math.ceil(Math.max(...monthlyTotals.map(item => item.leakageRate)) / 5) * 5);
+
+  document.getElementById("monthlyWastageChart").innerHTML = `
+    <div class="loss-line-summary">
+      <div><span>Total consumption</span><strong>${totalUsage} tanks</strong></div>
+      <div><span>Oxygen loss</span><strong>${totalLeakage} tanks</strong></div>
+      <div><span>Latest loss rate</span><strong>${monthlyTotals.at(-1).leakageRate}%</strong></div>
+    </div>
+    <div class="loss-compare-board" role="table" aria-label="Monthly consumption and oxygen loss rate from ${selectedMonths[0]} through ${selectedMonths.at(-1)}">
+      <div class="loss-compare-heading" role="row">
+        <span role="columnheader">Month</span>
+        <span role="columnheader">Consumption</span>
+        <span role="columnheader">Loss rate</span>
       </div>
-    `;
-  }).join("");
+      ${monthlyTotals.map(item => `
+        <div class="loss-compare-month-row" role="row">
+          <strong class="loss-compare-month" role="cell">${item.month}</strong>
+          <div class="loss-compare-metric usage" role="cell">
+            <div><span>Oxygen used</span><strong>${item.usage} <small>tanks</small></strong></div>
+            <i><b style="width:${Math.max(8, (item.usage / usageMax) * 100)}%"></b></i>
+          </div>
+          <div class="loss-compare-metric loss" role="cell">
+            <div><span>Estimated loss</span><strong>${item.leakageRate}<small>%</small></strong></div>
+            <i><b style="width:${Math.max(8, (item.leakageRate / rateMax) * 100)}%"></b></i>
+          </div>
+        </div>
+      `).join("")}
+    </div>
+  `;
 }
 
-function renderWardMonthlyTotals(wardTotals) {
+function renderWardMonthlyTotals(wardTotals, selectedMonths) {
   const maxTotal = Math.max(1, ...wardTotals.map(item => item.totalTanks));
   document.getElementById("analyticsTable").innerHTML = wardTotals
     .slice()
@@ -5779,13 +6265,14 @@ function renderWardMonthlyTotals(wardTotals) {
           <strong>${item.totalTanks} tanks</strong>
         </div>
         <div class="ward-month-chip-row">
-          ${analyticsMonths.map((month, index) => `
+          ${selectedMonths.map((month, index) => `
             <b style="--chip-accent:${monthAccent(index)}">${month}<em>${item.usage[index]}</em></b>
           `).join("")}
         </div>
         <div class="ward-total-costs">
-          <span>Usage <strong>${currency(item.usageCost)}</strong></span>
-          <span>Wastage <strong>${currency(item.leakageCost)}</strong></span>
+          <span>Spend <strong>${currency(item.usageCost)}</strong></span>
+          <span>Loss rate <strong>${((item.leakageTanks / Math.max(1, item.totalTanks)) * 100).toFixed(1)}%</strong></span>
+          <span>Recoverable <strong>${currency(Math.round(item.leakageCost * 0.7))}</strong></span>
         </div>
       </article>
     `).join("");
@@ -5793,23 +6280,6 @@ function renderWardMonthlyTotals(wardTotals) {
 
 function monthAccent(index) {
   return ["#0b72e7", "#7c3aed", "#06a6d8", "#10a37f", "#f97316"][index % 5];
-}
-
-function renderLeakageRateChart(wardTotals) {
-  const maxRate = Math.max(1, ...wardTotals.map(item => (item.leakageTanks / Math.max(1, item.totalTanks)) * 100));
-  document.getElementById("leakageRateChart").innerHTML = wardTotals
-    .slice()
-    .sort((a, b) => (b.leakageTanks / b.totalTanks) - (a.leakageTanks / a.totalTanks))
-    .map(item => {
-      const rate = (item.leakageTanks / Math.max(1, item.totalTanks)) * 100;
-      return `
-        <div class="analytics-rate-row">
-          <span><i style="background:${item.accent}"></i>${item.ward}</span>
-          <div><b style="width:${Math.max(8, Math.round((rate / maxRate) * 100))}%; background:${item.accent}"></b></div>
-          <strong>${rate.toFixed(1)}%</strong>
-        </div>
-      `;
-    }).join("");
 }
 
 function renderCostExposureChart(wardTotals) {
@@ -5835,27 +6305,6 @@ function renderCostExposureChart(wardTotals) {
     }).join("");
 }
 
-function renderUsageTrendChart(wardTotals) {
-  const monthlyTotals = analyticsMonths.map((month, index) => sumValues(wardTotals.map(item => item.usage[index])));
-  const maxTotal = Math.max(1, ...monthlyTotals);
-  document.getElementById("usageTrendChart").innerHTML = `
-    <div class="trend-bars">
-      ${monthlyTotals.map((value, index) => {
-        const previous = index === 0 ? value : monthlyTotals[index - 1];
-        const delta = index === 0 ? 0 : value - previous;
-        return `
-          <div class="trend-bar">
-            <strong>${value}</strong>
-            <span style="height:${Math.max(12, Math.round((value / maxTotal) * 66))}px"></span>
-            <small>${analyticsMonths[index]}</small>
-            <em class="${delta >= 0 ? "up" : "down"}">${index === 0 ? "base" : `${delta >= 0 ? "+" : ""}${delta}`}</em>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  `;
-}
-
 function renderSavingsOpportunityChart(wardTotals) {
   const maxLeakageCost = Math.max(1, ...wardTotals.map(item => item.leakageCost));
   document.getElementById("savingsOpportunityChart").innerHTML = wardTotals
@@ -5875,7 +6324,7 @@ function renderSavingsOpportunityChart(wardTotals) {
     }).join("");
 }
 
-function renderTopInsight(id, item, label, tanks, value) {
+function renderTopInsight(id, item, label, tanks, value, selectedMonths) {
   document.getElementById(id).innerHTML = `
     <div class="top-ring" style="--accent:${item.accent}">
       <strong>${item.ward}</strong>
@@ -5884,7 +6333,7 @@ function renderTopInsight(id, item, label, tanks, value) {
     <div class="top-detail">
       <span>Top ward ${label}</span>
       <strong>${currency(value)}</strong>
-      <small>Based on Jan-May historical data at ${currency(TANK_COST)} per tank.</small>
+      <small>Based on ${selectedMonths[0]}–${selectedMonths.at(-1)} data at ${currency(TANK_COST)} per tank.</small>
     </div>
   `;
 }

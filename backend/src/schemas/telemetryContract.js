@@ -1,5 +1,5 @@
 export const operationalStatuses = new Set(["normal", "warning", "critical", "hardware_fault"]);
-export const cylinderStatuses = new Set(["IN_USE", "REPLACED"]);
+export const cylinderStatuses = new Set(["ACTIVE", "EMPTY", "REPLACED", "IN_USE"]);
 
 export function validateTelemetryPayload(payload) {
   const errors = [];
@@ -53,7 +53,7 @@ export function validateTelemetryPayload(payload) {
       errors.push("consumed_volume must not exceed cylinder_capacity");
     }
     if (typeof data.cylinder_status !== "string" || !cylinderStatuses.has(data.cylinder_status)) {
-      errors.push("cylinder_status must be IN_USE or REPLACED");
+      errors.push("cylinder_status must be ACTIVE, EMPTY, REPLACED, or IN_USE");
     }
   }
 

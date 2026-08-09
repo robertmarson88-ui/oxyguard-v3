@@ -121,7 +121,9 @@ async function ensureOperationalSchema(pool) {
        add column if not exists status varchar(30) not null default 'active',
        add column if not exists acknowledged_at timestamptz,
        add column if not exists escalated_at timestamptz,
-       add column if not exists supervisor_notified boolean not null default false`
+       add column if not exists supervisor_notified boolean not null default false,
+       add column if not exists resolution_action varchar(50),
+       add column if not exists resolution_note varchar(100)`
   );
   await pool.query(
     `create table if not exists public.ward_card_statuses (
@@ -342,6 +344,7 @@ async function loadSupabaseTables(pool) {
     alerts_has_recommended_action: alertResult.hasRecommendedAction,
     alerts_has_required_fields: alertResult.hasRequiredFields,
     alerts_has_escalation_fields: alertResult.hasEscalationFields,
+    alerts_has_resolution_fields: alertResult.hasResolutionFields,
     audit_logs: auditLogs,
     audit_log_columns: [...auditLogColumns]
   };
@@ -375,14 +378,17 @@ async function loadAlerts(pool) {
   const hasRecommendedAction = columns.has("recommended_action");
   const requiredFields = ["timestamp", "ward_id", "bed_id", "status"];
   const escalationFields = ["acknowledged_at", "escalated_at", "supervisor_notified"];
+  const resolutionFields = ["resolution_action", "resolution_note"];
   const hasRequiredFields = requiredFields.every(column => columns.has(column));
   const hasEscalationFields = escalationFields.every(column => columns.has(column));
+  const hasResolutionFields = resolutionFields.every(column => columns.has(column));
   const selections = [
     ...(hasLogId ? ["log_id"] : []),
     ...(hasResidualFields ? residualColumns : []),
     ...(hasRecommendedAction ? ["recommended_action"] : []),
     ...(hasRequiredFields ? requiredFields : []),
-    ...(hasEscalationFields ? escalationFields : [])
+    ...(hasEscalationFields ? escalationFields : []),
+    ...(hasResolutionFields ? resolutionFields : [])
   ];
   const optionalSelection = selections.length ? `, ${selections.join(", ")}` : "";
   const rows = await queryRows(
@@ -390,7 +396,7 @@ async function loadAlerts(pool) {
     `select alert_id, device_id, alert_type, severity, is_resolved, resolved_by, resolved_at, created_at${optionalSelection}
      from public.alerts order by alert_id`
   );
-  return { rows, hasLogId, hasResidualFields, hasRecommendedAction, hasRequiredFields, hasEscalationFields };
+  return { rows, hasLogId, hasResidualFields, hasRecommendedAction, hasRequiredFields, hasEscalationFields, hasResolutionFields };
 }
 
 function createDemoAuditLogs({ numericUserIds = false, userIds = [] } = {}) {

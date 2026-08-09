@@ -134,6 +134,13 @@ export function createApiHandler({ db, nurseStationDataPath }) {
       return true;
     }
 
+    if (req.method === "GET" && apiPath === "/analytics") {
+      const session = requireAuthorized(req, res, auth, "view_logs");
+      if (!session) return true;
+      sendJson(res, 200, await getAnalyticsSnapshot(db));
+      return true;
+    }
+
     if (req.method === "GET" && apiPath === "/ward-card-statuses") {
       const session = requireAuthorized(req, res, auth, "view_logs");
       if (!session) return true;
@@ -162,6 +169,24 @@ export function createApiHandler({ db, nurseStationDataPath }) {
         console.warn(`OxyGuard audit log query failed: ${String(error?.message || error)}`);
         sendJson(res, 500, { ok: false, message: "Audit logs could not be loaded from the database." });
       }
+      return true;
+    }
+
+    const actionMatch = apiPath.match(/^\/alerts\/(\d+)\/action$/);
+    if (req.method === "POST" && actionMatch) {
+      const session = requireNurseManager(req, res, auth);
+      if (!session) return true;
+      const payload = await readJson(req);
+      await saveAlertResolutionAction(
+        db,
+        res,
+        Number(actionMatch[1]),
+        session.user,
+        payload.action,
+        payload.note,
+        getClientIp(req),
+        payload.clear_alert === true
+      );
       return true;
     }
 
@@ -207,34 +232,24 @@ export function createApiHandler({ db, nurseStationDataPath }) {
 
 async function login(req, res, db, auth, apiV1) {
   const { username, password } = await readJson(req);
-  const challenge = auth.createMfaChallenge(username, password);
+  const result = auth.authenticate(username, password);
 
-  if (!challenge) {
+  if (!result) {
     sendJson(res, 401, { ok: false, message: "Invalid username or password." });
     return;
   }
 
-  const delivery = await sendMfaCode(challenge.user.email, challenge.code, challenge.user.username);
-  if (!delivery.sent) {
-    await addAuditLog(db, challenge.user, "MFA Email Failed", delivery.message || maskEmail(challenge.user.email), getClientIp(req));
-    sendJson(res, 503, {
-      ok: false,
-      mfa_required: false,
-      message: delivery.message || "Authentication email could not be sent.",
-      delivery
-    });
-    return;
-  }
+  await addAuditLog(db, result.user, "User Login", result.user.username, getClientIp(req));
 
-  await addAuditLog(db, challenge.user, "MFA Code Sent", maskEmail(challenge.user.email), getClientIp(req));
-  sendJson(res, 200, {
-    ok: true,
-    mfa_required: true,
-    challenge_id: challenge.challenge_id,
-    expires_at: challenge.expires_at,
-    expires_in_seconds: challenge.expires_in_seconds,
-    delivery
-  });
+  const response = {
+    access_token: result.access_token,
+    token_type: "bearer",
+    expires_in: result.expires_in,
+    role: result.role,
+    user: result.user
+  };
+
+  sendJson(res, 200, apiV1 ? response : { ok: true, ...response });
 }
 
 async function verifyMfa(req, res, db, auth, apiV1) {
@@ -367,9 +382,16 @@ async function createTelemetry(req, res, db) {
     alerts: result.alerts
   });
 
-  if (result.alert) {
-    const actor = getSystemAuditActor(db);
-    const target = `${result.alert.alert_type} on ${result.alert.device_id} (${result.alert.severity})`;
+  const actor = getSystemAuditActor(db);
+  await addAuditLog(
+    db,
+    actor,
+    "Telemetry Logged",
+    `${result.telemetry_log.device_id}; ${result.telemetry_log.flow_rate ?? "null"} LPM; ${result.telemetry_log.operational_status}`,
+    getClientIp(req)
+  );
+  for (const alert of result.alerts || []) {
+    const target = `${alert.alert_type} on ${alert.device_id} (${alert.severity})`;
     await addAuditLog(db, actor, "Alert Created", target, getClientIp(req));
   }
 }
@@ -848,7 +870,7 @@ async function recordClientAuditEvent(req, res, db, actor) {
   const payload = await readJson(req);
   const action = String(payload.action || "").trim();
   const details = truncateAuditDetail(payload.details || "Recorded");
-  const allowedActions = new Set(["Dashboard Access", "Report Download", "Configuration Change", "Simulator Alert Sent"]);
+  const allowedActions = new Set(["Dashboard Access", "Report Generated", "Report Download", "Configuration Change", "Simulator Alert Sent", "User Activity", "Alert Action", "Cylinder Status Updated"]);
 
   if (!allowedActions.has(action)) {
     sendJson(res, 400, { ok: false, message: "Unsupported audit action." });
@@ -894,15 +916,93 @@ async function acknowledgeAlert(db, res, alertId, user, note, ipAddress = null) 
   sendJson(res, 200, { ok: true, status: "success", alert });
 }
 
+async function saveAlertResolutionAction(db, res, alertId, user, action, note, ipAddress = null, clearAlert = false) {
+  const alert = db.alerts.find(item => item.alert_id === alertId);
+  if (!alert) {
+    sendJson(res, 404, { ok: false, message: "Alert not found." });
+    return;
+  }
+
+  const allowedActions = new Map([
+    ["manual_valve_turn_off", "Manual valve turn off"],
+    ["flow_meter_malfunction", "Flow meter malfunction"],
+    ["no_patient_connected", "No patient connected"],
+    ["other", "Other"]
+  ]);
+  const normalizedAction = String(action || "").trim().toLowerCase();
+  const resolutionNote = String(note || "").trim();
+  if (!allowedActions.has(normalizedAction)) {
+    sendJson(res, 400, { ok: false, message: "Select a valid action taken." });
+    return;
+  }
+  if (resolutionNote.length > 100) {
+    sendJson(res, 400, { ok: false, message: "Action notes must be 100 characters or fewer." });
+    return;
+  }
+  if (normalizedAction === "other" && !resolutionNote) {
+    sendJson(res, 400, { ok: false, message: "Describe the other action taken." });
+    return;
+  }
+
+  const savedAt = new Date().toISOString();
+  alert.resolution_action = normalizedAction;
+  alert.resolution_note = resolutionNote || null;
+  if (clearAlert) {
+    alert.is_resolved = true;
+    alert.resolved_by = user.user_id;
+    alert.resolved_at = savedAt;
+    alert.acknowledged_at = alert.acknowledged_at || savedAt;
+    alert.status = "resolved";
+  }
+
+  if (db.pgPool) {
+    if (clearAlert) {
+      await db.pgPool.query(
+        `update public.alerts
+         set resolution_action = $1, resolution_note = $2, is_resolved = true,
+             resolved_by = $3, resolved_at = $4,
+             acknowledged_at = coalesce(acknowledged_at, $4), status = 'resolved'
+         where alert_id = $5`,
+        [normalizedAction, alert.resolution_note, user.user_id, savedAt, alertId]
+      );
+    } else {
+      await db.pgPool.query(
+        `update public.alerts set resolution_action = $1, resolution_note = $2 where alert_id = $3`,
+        [normalizedAction, alert.resolution_note, alertId]
+      );
+    }
+  }
+
+  const label = allowedActions.get(normalizedAction);
+  const detail = `Alert #${alertId}; ${label}${resolutionNote ? `: ${resolutionNote}` : ""}; ${clearAlert ? "saved and cleared" : "action saved"}`;
+  await addAuditLog(db, user, clearAlert ? "Alert Cleared" : "Alert Response Saved", truncateAuditDetail(detail), ipAddress);
+  sendJson(res, 200, {
+    ok: true,
+    status: "success",
+    message: clearAlert ? "Action saved to the audit log and alert cleared." : "Action saved to the database and audit log.",
+    alert
+  });
+}
+
 export function escalateUnacknowledgedAlerts(db) {
   const now = Date.now();
   const severityOrder = ["low", "medium", "high", "critical"];
   db.alerts.forEach(alert => {
-    if (alert.is_resolved || alert.acknowledged_at || alert.escalated_at) return;
+    if (alert.is_resolved || alert.acknowledged_at) return;
     const createdAt = Date.parse(alert.timestamp || alert.created_at);
-    if (!Number.isFinite(createdAt) || now - createdAt < 10 * 60000) return;
-    const currentIndex = severityOrder.indexOf(String(alert.severity || "").toLowerCase());
-    alert.severity = severityOrder[Math.min(severityOrder.length - 1, Math.max(0, currentIndex) + 1)];
+    if (!Number.isFinite(createdAt)) return;
+    const ageMinutes = Math.floor((now - createdAt) / 60000);
+    let nextSeverity;
+    if (alert.alert_type === "ghost_flow") {
+      const qualifyingDuration = 11 + Math.max(0, ageMinutes);
+      nextSeverity = qualifyingDuration > 29 ? "critical" : qualifyingDuration >= 21 ? "high" : "medium";
+    } else {
+      if (alert.escalated_at || ageMinutes < 10) return;
+      const currentIndex = severityOrder.indexOf(String(alert.severity || "").toLowerCase());
+      nextSeverity = severityOrder[Math.min(severityOrder.length - 1, Math.max(0, currentIndex) + 1)];
+    }
+    if (nextSeverity === String(alert.severity || "").toLowerCase()) return;
+    alert.severity = nextSeverity;
     alert.status = "escalated";
     alert.escalated_at = new Date(now).toISOString();
     alert.supervisor_notified = true;
@@ -1037,6 +1137,90 @@ function buildOrderSummary(db) {
     },
     replacement_tanks: visibleReplacementTanks
   };
+}
+
+async function getAnalyticsSnapshot(db) {
+  const fallback = {
+    source: "demo",
+    as_of_date: "2026-07-28",
+    months: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
+    wards: [
+      { ward: "A&E Ward", usage: [18, 21, 24, 27, 30, 32, 35], leakage: [2, 3, 4, 3, 5, 5, 6] },
+      { ward: "Labour Ward", usage: [14, 16, 17, 18, 20, 21, 23], leakage: [1, 2, 2, 3, 2, 3, 3] },
+      { ward: "Paediatric Ward", usage: [20, 22, 26, 29, 34, 36, 39], leakage: [3, 4, 5, 7, 8, 8, 9] },
+      { ward: "Recovery Bay", usage: [10, 12, 13, 15, 16, 17, 18], leakage: [1, 1, 2, 2, 3, 3, 3] },
+      { ward: "Nurse Station", usage: [4, 5, 5, 6, 7, 8, 9], leakage: [0, 0, 1, 1, 1, 1, 1] }
+    ],
+    rules: buildFallbackRuleHistory()
+  };
+
+  if (!db.pgPool) return fallback;
+
+  try {
+    const [monthlyResult, rulesResult] = await Promise.all([
+      db.pgPool.query(
+        `select m.period_month, w.ward_name, m.tanks_consumed, m.tanks_lost
+         from public.analytics_monthly_ward m
+         join public.wards w on w.ward_id = m.ward_id
+         where m.period_month between date '2026-01-01' and date '2026-07-01'
+         order by m.period_month, w.ward_name`
+      ),
+      db.pgPool.query(
+        `select rule_key, alert_type, active_detections, detection_share,
+                oxygen_at_risk_litres, cost_exposure_jmd, recoverable_value_jmd,
+                rule_logic, as_of_date
+         from public.analytics_rule_performance
+         where as_of_date between date '2026-01-01' and date '2026-07-31'
+         order by as_of_date, rule_key`
+      )
+    ]);
+
+    const monthFormatter = new Intl.DateTimeFormat("en", { month: "short", timeZone: "UTC" });
+    const periods = [...new Set(monthlyResult.rows.map(row => String(row.period_month).slice(0, 10)))];
+    const months = periods.map(period => monthFormatter.format(new Date(`${period}T00:00:00Z`)));
+    const wardNames = [...new Set(monthlyResult.rows.map(row => row.ward_name))];
+    const wards = wardNames.map(ward => {
+      const rows = monthlyResult.rows.filter(row => row.ward_name === ward);
+      return {
+        ward,
+        usage: periods.map(period => Number(rows.find(row => String(row.period_month).slice(0, 10) === period)?.tanks_consumed || 0)),
+        leakage: periods.map(period => Number(rows.find(row => String(row.period_month).slice(0, 10) === period)?.tanks_lost || 0))
+      };
+    });
+
+    return {
+      source: "supabase",
+      as_of_date: rulesResult.rows.at(-1)?.as_of_date || "2026-07-28",
+      months: months.length ? months : fallback.months,
+      wards: wards.length ? wards : fallback.wards,
+      rules: rulesResult.rows.length ? rulesResult.rows : fallback.rules
+    };
+  } catch (error) {
+    console.warn(`OxyGuard analytics snapshot query failed: ${String(error?.message || error)}`);
+    return fallback;
+  }
+}
+
+function buildFallbackRuleHistory() {
+  const periods = [
+    ["2026-01-31", [8, 7, 11], [31, 27, 42], [128, 119, 495], [28800, 26600, 107800]],
+    ["2026-02-28", [17, 15, 23], [31, 27, 42], [272, 255, 1035], [61200, 57000, 225400]],
+    ["2026-03-31", [27, 24, 36], [31, 28, 41], [432, 408, 1620], [97200, 91200, 352800]],
+    ["2026-04-30", [38, 32, 50], [32, 27, 42], [608, 544, 2250], [136800, 121600, 490000]],
+    ["2026-05-31", [50, 39, 62], [33, 26, 41], [800, 663, 2790], [180000, 148200, 607600]],
+    ["2026-06-30", [60, 48, 75], [33, 26, 41], [960, 816, 3375], [216000, 182400, 735000]],
+    ["2026-07-28", [69, 56, 86], [33, 27, 41], [1104, 952, 3870], [248400, 212800, 842800]]
+  ];
+  const keys = ["ghost_flow", "unauthorized_bed_usage", "residual_gas"];
+  return periods.flatMap(([asOfDate, detections, shares, oxygenRisk, exposure]) => keys.map((ruleKey, index) => ({
+    rule_key: ruleKey,
+    active_detections: detections[index],
+    detection_share: shares[index],
+    oxygen_at_risk_litres: oxygenRisk[index],
+    cost_exposure_jmd: exposure[index],
+    recoverable_value_jmd: Math.round(exposure[index] * 0.7),
+    as_of_date: asOfDate
+  })));
 }
 
 function normalizeWardName(name) {

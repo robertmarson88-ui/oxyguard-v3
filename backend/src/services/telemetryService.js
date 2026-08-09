@@ -90,7 +90,7 @@ export async function detectOfflineDevices(db, now = new Date()) {
 
 function evaluateAlerts(db, log) {
   const alerts = [];
-  if (log.cylinder_status === "REPLACED" && log.consumed_volume > (0.9 * log.cylinder_capacity)) {
+  if (["EMPTY", "REPLACED"].includes(log.cylinder_status) && log.consumed_volume > (0.9 * log.cylinder_capacity)) {
     const remainingVolume = round(log.cylinder_capacity - log.consumed_volume, 2);
     const unusedPercentage = round(remainingVolume / log.cylinder_capacity, 6);
     const financialLoss = round(remainingVolume * OXYGEN_COST_PER_LITRE, 2);
@@ -108,7 +108,7 @@ function evaluateAlerts(db, log) {
     sample.flow_rate > 0.5 && sample.breathing_variance < 0.01
   ));
   if (ghostFlowDuration >= MINIMUM_RULE_DURATION_MINUTES && !hasActiveAlert(db, log.device_id, "ghost_flow")) {
-    alerts.push(createAlert(db, log, "ghost_flow", "high", {
+    alerts.push(createAlert(db, log, "ghost_flow", ghostFlowSeverity(ghostFlowDuration), {
       recommended_action: GHOST_FLOW_RECOMMENDATION
     }));
   }
@@ -138,6 +138,12 @@ function evaluateAlerts(db, log) {
     }));
   }
   return alerts;
+}
+
+function ghostFlowSeverity(durationMinutes) {
+  if (durationMinutes > 29) return "critical";
+  if (durationMinutes >= 21) return "high";
+  return "medium";
 }
 
 function createAlert(db, log, alertType, severity, details = {}) {

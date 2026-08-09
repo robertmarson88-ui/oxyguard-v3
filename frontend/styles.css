@@ -13713,7 +13713,7 @@ body:not(.login-active) #logoutButton {
 .incident-list { display: grid; gap: 9px; }
 .active-incident-row {
   display: grid;
-  grid-template-columns: minmax(130px, 0.9fr) minmax(125px, 0.75fr) minmax(190px, 1.3fr) minmax(130px, 0.8fr);
+  grid-template-columns: minmax(120px, 0.85fr) minmax(120px, 0.75fr) minmax(125px, 0.75fr) minmax(190px, 1.25fr) minmax(150px, 1fr) minmax(130px, 0.8fr);
   gap: 12px;
   align-items: start;
   padding: 12px;
@@ -13729,6 +13729,10 @@ body:not(.login-active) #logoutButton {
 .incident-location small, .incident-state small { display: block; margin-top: 4px; color: #60758c; font-size: 10px; line-height: 1.25; }
 .incident-action .recommended-action-text { min-width: 0; font-size: 11px; line-height: 1.35; }
 .incident-action .recommended-action-text strong { font-size: 10px; }
+.incident-saved-action { min-width: 0; }
+.incident-saved-action > span { display: block; margin-bottom: 4px; color: #667d96; font-size: 9px; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+.incident-saved-action strong { display: block; color: #166534; font-size: 11px; line-height: 1.35; }
+.incident-saved-action small { display: block; color: #60758c; font-size: 10px; line-height: 1.3; }
 .incident-state { min-width: 0; }
 .active-incident-row .incident-response-actions { grid-column: 1 / -1; min-width: 0; padding-top: 2px; border-top: 1px solid #e7eef5; }
 @media (max-width: 900px) {
@@ -13857,6 +13861,105 @@ body:not(.login-active) #logoutButton {
   color: #ffffff !important;
   font-weight: 900 !important;
   box-shadow: 0 10px 20px rgba(11, 114, 231, 0.22) !important;
+}
+
+#analyticsView .analytics-range-bar {
+  display: grid;
+  grid-template-columns: minmax(230px, .72fr) minmax(420px, 1.8fr);
+  align-items: center;
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 13px 18px;
+  border: 1px solid rgba(16, 109, 187, .16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, .9);
+  box-shadow: 0 10px 24px rgba(7, 45, 79, .06);
+}
+
+#analyticsView .analytics-range-copy {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 3px 10px;
+}
+
+#analyticsView .analytics-range-copy span {
+  color: #668099;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+#analyticsView .analytics-range-copy strong {
+  color: #075ca9;
+  font-size: 17px;
+  font-weight: 950;
+}
+
+#analyticsView .analytics-range-copy small {
+  grid-column: 1 / -1;
+  color: #6b8196;
+  font-size: 10.5px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+#analyticsView .analytics-range-control {
+  display: grid;
+  gap: 7px;
+}
+
+#analyticsView .analytics-range-marks {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  color: #69839c;
+  font-size: 10px;
+  font-weight: 850;
+  text-align: center;
+}
+
+#analyticsView #analyticsMonthRange {
+  --range-progress: 100%;
+  width: 100%;
+  height: 6px;
+  margin: 0;
+  border-radius: 999px;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+  background: linear-gradient(90deg, #0b72e7 0 var(--range-progress), #dce8f3 var(--range-progress) 100%);
+}
+
+#analyticsView #analyticsMonthRange::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  appearance: none;
+  background: #0b72e7;
+  box-shadow: 0 3px 10px rgba(11, 114, 231, .34);
+}
+
+#analyticsView #analyticsMonthRange::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: 4px solid #fff;
+  border-radius: 50%;
+  background: #0b72e7;
+  box-shadow: 0 3px 10px rgba(11, 114, 231, .34);
+}
+
+#analyticsView #analyticsMonthRange:focus-visible {
+  box-shadow: 0 0 0 4px rgba(11, 114, 231, .16);
+}
+
+@media (max-width: 760px) {
+  #analyticsView .analytics-range-bar {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
 }
 
 #analyticsView .analytics-summary .summary-card {
@@ -14142,6 +14245,891 @@ body:not(.login-active) .topbar .datetime .clock-date {
   border-radius: 50% !important;
   background: linear-gradient(135deg, #0b72e7, #10a37f) !important;
   box-shadow: 0 0 0 4px rgba(11, 114, 231, 0.10) !important;
+}
+
+/* Compact ward consumption summary */
+#analyticsView .ward-summary-heading { align-items: flex-start; display: flex; gap: 18px; justify-content: space-between; margin-bottom: 12px; }
+#analyticsView .ward-summary-heading h3 { margin-bottom: 4px !important; }
+#analyticsView .ward-summary-heading p { color: #69839c; font-size: .7rem; font-weight: 650; line-height: 1.45; margin: 0; }
+#analyticsView .ward-summary-period { background: #eef6ff; border: 1px solid #d9eafa; border-radius: 10px; display: grid; min-width: 102px; padding: 7px 10px; text-align: right; }
+#analyticsView .ward-summary-period span { color: #718ba4; font-size: .55rem; font-weight: 850; letter-spacing: .04em; text-transform: uppercase; }
+#analyticsView .ward-summary-period strong { color: #075ca9; font-size: .78rem; margin-top: 2px; }
+#analyticsView .ward-summary-board { border: 1px solid #dce9f5; border-radius: 13px; overflow: hidden; }
+#analyticsView .ward-summary-columns,
+#analyticsView .ward-summary-row { align-items: center; display: grid; gap: 12px; grid-template-columns: minmax(142px, 1.25fr) minmax(120px, 1fr) 58px 68px minmax(80px, .8fr); }
+#analyticsView .ward-summary-columns { background: #f3f8fc; color: #6c849b; font-size: .56rem; font-weight: 900; letter-spacing: .055em; padding: 7px 12px; text-transform: uppercase; }
+#analyticsView .ward-summary-row { background: #fff; border-top: 1px solid #e6eef6; min-height: 58px; padding: 8px 12px; }
+#analyticsView .ward-summary-row:hover { background: #fafdff; }
+#analyticsView .ward-summary-ward { align-items: center; display: flex; gap: 9px; min-width: 0; }
+#analyticsView .ward-summary-ward > i { background: var(--ward-accent); border-radius: 50%; box-shadow: 0 0 0 4px color-mix(in srgb, var(--ward-accent) 12%, white); flex: 0 0 9px; height: 9px; width: 9px; }
+#analyticsView .ward-summary-ward div { display: grid; min-width: 0; }
+#analyticsView .ward-summary-ward strong { color: #0a3c67; font-size: .76rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#analyticsView .ward-summary-ward span { color: #7890a7; font-size: .58rem; font-weight: 750; margin-top: 2px; }
+#analyticsView .ward-summary-spark { height: 32px; }
+#analyticsView .ward-summary-spark svg { display: block; height: 100%; overflow: visible; width: 100%; shape-rendering: geometricPrecision; }
+#analyticsView .ward-summary-latest { align-items: baseline; display: flex; flex-wrap: wrap; gap: 2px 4px; }
+#analyticsView .ward-summary-latest span,
+#analyticsView .ward-summary-change span,
+#analyticsView .ward-summary-share span { color: #8095a9; font-size: .54rem; font-weight: 850; text-transform: uppercase; }
+#analyticsView .ward-summary-latest strong { color: #062f55; font-size: 1.05rem; line-height: 1; }
+#analyticsView .ward-summary-latest small { color: #8095a9; font-size: .52rem; font-weight: 750; }
+#analyticsView .ward-summary-change { align-items: flex-start; display: grid; gap: 3px; justify-items: start; }
+#analyticsView .ward-summary-change strong { border-radius: 7px; font-size: .68rem; font-weight: 900; padding: 4px 7px; }
+#analyticsView .ward-summary-change.is-up strong { background: #eaf8f1; color: #087a55; }
+#analyticsView .ward-summary-change.is-down strong { background: #fff1ef; color: #c84734; }
+#analyticsView .ward-summary-share { display: grid; gap: 5px; }
+#analyticsView .ward-summary-share div { align-items: center; display: flex; justify-content: space-between; }
+#analyticsView .ward-summary-share strong { color: #315c82; font-size: .67rem; }
+#analyticsView .ward-summary-share > i { background: #edf3f8; border-radius: 999px; display: block; height: 5px; overflow: hidden; }
+#analyticsView .ward-summary-share > i b { background: var(--ward-accent); border-radius: inherit; display: block; height: 100%; min-width: 6px; }
+@media (max-width: 560px) {
+  #analyticsView .ward-summary-heading { align-items: stretch; flex-direction: column; gap: 9px; }
+  #analyticsView .ward-summary-period { align-items: center; display: flex; justify-content: space-between; text-align: left; }
+  #analyticsView .ward-summary-columns { display: none; }
+  #analyticsView .ward-summary-row { gap: 8px 12px; grid-template-columns: minmax(0, 1fr) 54px 65px; grid-template-areas: "ward latest change" "trend trend share"; padding: 11px 12px; }
+  #analyticsView .ward-summary-ward { grid-area: ward; }
+  #analyticsView .ward-summary-spark { grid-area: trend; }
+  #analyticsView .ward-summary-latest { grid-area: latest; }
+  #analyticsView .ward-summary-change { grid-area: change; }
+  #analyticsView .ward-summary-share { grid-area: share; }
+}
+
+/* Decision-first analytics: values have context, and the trend is readable at a glance. */
+#analyticsView .analytics-summary .summary-card:nth-child(2) {
+  --kpi-accent: #f59e0b;
+}
+
+#analyticsView .analytics-summary .summary-card:nth-child(3) {
+  --kpi-accent: #dc2626;
+}
+
+#analyticsView .analytics-summary .summary-card:nth-child(4) {
+  --kpi-accent: #059669;
+}
+
+#analyticsView .analytics-rule-section {
+  max-width: 1280px;
+  margin: 18px auto 20px;
+  padding: 18px;
+  border: 1px solid #d8e7f3;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fcff, #ffffff 58%);
+  box-shadow: 0 12px 28px rgba(6, 41, 73, .07);
+}
+
+#analyticsView .analytics-rule-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 14px;
+}
+
+#analyticsView .analytics-rule-heading span {
+  display: block;
+  color: #0b72e7;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+#analyticsView .analytics-rule-heading h3 {
+  margin: 3px 0 0;
+  color: #092f54;
+  font-size: 19px;
+}
+
+#analyticsView .analytics-rule-heading p {
+  max-width: 380px;
+  margin: 0;
+  color: #587087;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+#analyticsView .analytics-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+#analyticsView .analytics-rule-card {
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--rule-border);
+  border-radius: 13px;
+  background: linear-gradient(155deg, #fff, var(--rule-wash));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+}
+
+#analyticsView .analytics-rule-card.ghost { --rule-border: #fdcaca; --rule-wash: #fff7f7; --rule-accent: #dc2626; }
+#analyticsView .analytics-rule-card.unauthorized { --rule-border: #fde3ae; --rule-wash: #fffaf0; --rule-accent: #b45309; }
+#analyticsView .analytics-rule-card.residual { --rule-border: #bce8e0; --rule-wash: #f2fdf9; --rule-accent: #047857; }
+
+#analyticsView .analytics-rule-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#analyticsView .analytics-rule-code {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--rule-accent);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+#analyticsView .analytics-rule-status {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #eaf8f1;
+  color: #087443;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+#analyticsView .analytics-rule-card.has-active .analytics-rule-status {
+  background: #fff0e5;
+  color: #b54708;
+}
+
+#analyticsView .analytics-rule-card h4 {
+  margin: 13px 0 5px;
+  color: #113755;
+  font-size: 15px;
+}
+
+#analyticsView .analytics-rule-primary {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+#analyticsView .analytics-rule-primary strong {
+  color: var(--rule-accent);
+  font-size: 29px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+#analyticsView .analytics-rule-primary span {
+  color: #62778c;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+#analyticsView .analytics-rule-meter {
+  height: 6px;
+  margin: 12px 0;
+  overflow: hidden;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--rule-accent) 12%, #e8f0f6);
+}
+
+#analyticsView .analytics-rule-meter i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--rule-accent);
+  transition: width 180ms ease;
+}
+
+#analyticsView .analytics-rule-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+#analyticsView .analytics-rule-metrics div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--rule-border) 65%, #fff);
+  border-radius: 8px;
+  background: rgba(255,255,255,.6);
+}
+
+#analyticsView .analytics-rule-metrics dt {
+  color: #73879a;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+#analyticsView .analytics-rule-metrics dd {
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: #173c5b;
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#analyticsView .analytics-rule-action {
+  margin-top: 14px;
+  padding-top: 11px;
+  border-top: 1px solid color-mix(in srgb, var(--rule-border) 80%, #fff);
+}
+
+#analyticsView .analytics-rule-action span,
+#analyticsView .analytics-rule-action strong { display: block; }
+#analyticsView .analytics-rule-action span { color: #71859a; font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+#analyticsView .analytics-rule-action strong { margin-top: 3px; color: #244865; font-size: 11px; line-height: 1.35; }
+
+/* Compact monthly consumption strip: one decision-ready card per month. */
+#analyticsView #monthlyUsageChart.month-chart {
+  grid-template-columns: repeat(5, minmax(142px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-card {
+  display: flex !important;
+  min-height: 154px;
+  padding: 14px !important;
+  flex-direction: column;
+  gap: 10px !important;
+  border: 1px solid #d9e8f5 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(155deg, #ffffff, #f4faff) !important;
+  box-shadow: 0 8px 18px rgba(10, 55, 92, .06) !important;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-card.is-latest {
+  border-color: #8bc5f2 !important;
+  background: linear-gradient(155deg, #f1f9ff, #ffffff) !important;
+  box-shadow: 0 10px 22px rgba(11, 114, 231, .12) !important;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-head,
+#analyticsView #monthlyUsageChart .consumption-month-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-head > span {
+  color: #0c416f;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .08em;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-head small {
+  color: #70859a;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: right;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-total {
+  color: #072f57;
+  font-size: 28px;
+  font-weight: 950;
+  letter-spacing: -.04em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-total em {
+  color: #54708b;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+#analyticsView #monthlyUsageChart .month-visual { margin-top: auto; gap: 0 !important; }
+
+#analyticsView #monthlyUsageChart .stacked-bar {
+  height: 14px !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #e3eef7 !important;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-foot {
+  color: #5c748b;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+#analyticsView #monthlyUsageChart .consumption-month-foot span:first-child { color: #0b72e7; }
+
+/* Usage versus loss: dual-axis line chart keeps both trends readable. */
+#analyticsView .analytics-leakage-card .month-chart {
+  display: block !important;
+}
+
+#analyticsView .loss-line-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#analyticsView .loss-line-summary > div {
+  padding: 9px 11px;
+  border: 1px solid #dce9f5;
+  border-radius: 10px;
+  background: #f9fcff;
+}
+
+#analyticsView .loss-line-summary span,
+#analyticsView .loss-line-summary strong { display: block; }
+#analyticsView .loss-line-summary span { color: #70859a; font-size: 9px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+#analyticsView .loss-line-summary strong { margin-top: 3px; color: #103a5d; font-size: 16px; font-variant-numeric: tabular-nums; }
+#analyticsView .loss-line-summary > div:nth-child(2) strong { color: #d94a27; }
+#analyticsView .loss-line-summary > div:nth-child(3) strong { color: #b45309; }
+
+#analyticsView .loss-line-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0 0 8px 4px;
+  color: #46637d;
+  font-size: 10px;
+  font-weight: 850;
+}
+
+#analyticsView .loss-line-legend span { display: inline-flex; align-items: center; gap: 6px; }
+#analyticsView .loss-line-legend i { width: 20px; height: 3px; border-radius: 999px; }
+#analyticsView .loss-line-legend i.usage { background: #1687f5; }
+#analyticsView .loss-line-legend i.loss { background: #ef4444; }
+
+#analyticsView .loss-line-chart {
+  height: 250px;
+  padding: 8px 3px 0;
+  border: 1px solid #dce9f5;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfdff, #f3f9ff);
+}
+
+#analyticsView .loss-line-chart svg { display: block; width: 100%; height: 100%; overflow: visible; }
+#analyticsView .loss-grid-line { stroke: #d7e6f2; stroke-width: 1; stroke-dasharray: 3 5; }
+#analyticsView .loss-axis-label { fill: #7890a4; font-size: 10px; font-weight: 800; }
+#analyticsView .loss-axis-rate { fill: #d65b40; }
+#analyticsView .loss-usage-area { fill: url(#usageAreaFill); }
+#analyticsView .loss-usage-line { fill: none; stroke: #1687f5; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+#analyticsView .loss-rate-line { fill: none; stroke: #ef4444; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+#analyticsView .loss-usage-point { fill: #fff; stroke: #1687f5; stroke-width: 3; }
+#analyticsView .loss-rate-point { fill: #fff; stroke: #ef4444; stroke-width: 3; }
+#analyticsView .loss-usage-value { fill: #1268b7; font-size: 11px; font-weight: 950; }
+#analyticsView .loss-rate-value { fill: #cc3b26; font-size: 10px; font-weight: 900; }
+#analyticsView .loss-month-label { fill: #526f88; font-size: 11px; font-weight: 900; }
+
+/* Grouped vertical bars for monthly consumption versus oxygen-loss rate. */
+#analyticsView .loss-bar-chart {
+  padding: 12px 14px 10px;
+  border: 1px solid #dce9f5;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfdff, #f3f9ff);
+}
+
+#analyticsView .loss-bar-scale {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 8px 8px;
+  color: #6a8196;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+#analyticsView .loss-bar-body {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 34px;
+  gap: 7px;
+  align-items: stretch;
+}
+
+#analyticsView .loss-bar-axis {
+  display: flex;
+  min-height: 218px;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 1px 0 22px;
+  color: #6e8599;
+  font-size: 9px;
+  font-weight: 800;
+  text-align: right;
+}
+
+#analyticsView .loss-bar-axis.rate-axis {
+  color: #d15d46;
+  text-align: left;
+}
+
+#analyticsView .loss-bar-plot {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(72px, 1fr));
+  gap: 12px;
+  min-height: 218px;
+  padding: 0 4px;
+  border-bottom: 1px solid #cddfeb;
+  background: repeating-linear-gradient(to top, transparent 0 42px, #e2edf5 43px 44px);
+}
+
+#analyticsView .loss-bar-group {
+  display: grid;
+  grid-template-rows: 1fr 22px;
+  min-width: 0;
+  align-items: end;
+}
+
+#analyticsView .loss-bars {
+  display: flex;
+  height: 182px;
+  align-items: end;
+  justify-content: center;
+  gap: 9px;
+}
+
+#analyticsView .loss-bar-column {
+  display: grid;
+  grid-template-rows: 20px 1fr 15px;
+  width: min(38%, 46px);
+  min-width: 24px;
+  align-items: end;
+  justify-items: center;
+}
+
+#analyticsView .loss-bar-column strong { color: #24506f; font-size: 11px; font-weight: 950; font-variant-numeric: tabular-nums; }
+#analyticsView .loss-bar-column small { color: #71879b; font-size: 8px; font-weight: 850; text-transform: uppercase; }
+
+#analyticsView .loss-bar-column i {
+  display: block;
+  width: 100%;
+  min-height: 12px;
+  align-self: end;
+  border-radius: 7px 7px 2px 2px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.42);
+}
+
+#analyticsView .loss-bar-column.usage i { background: linear-gradient(180deg, #55b2ff, #1679df); }
+#analyticsView .loss-bar-column.loss i { background: linear-gradient(180deg, #ff9878, #ed3f2b); }
+#analyticsView .loss-bar-column.loss strong { color: #d94a2e; }
+
+#analyticsView .loss-bar-group > b {
+  align-self: end;
+  padding-top: 6px;
+  color: #49667f;
+  font-size: 11px;
+  font-weight: 900;
+  text-align: center;
+}
+
+@media (max-width: 620px) {
+  #analyticsView .loss-line-summary { grid-template-columns: 1fr; }
+  #analyticsView .loss-line-chart { height: 220px; }
+  #analyticsView .loss-bar-plot { gap: 5px; min-height: 195px; }
+  #analyticsView .loss-bar-axis { min-height: 195px; font-size: 8px; }
+  #analyticsView .loss-bars { height: 162px; gap: 5px; }
+  #analyticsView .loss-bar-column strong { font-size: 9px; }
+}
+
+/* Crisp compact usage-versus-loss comparison */
+#analyticsView .analytics-leakage-card {
+  padding: 12px 14px !important;
+}
+
+#analyticsView .analytics-leakage-card > h3 {
+  margin-bottom: 10px !important;
+}
+
+#analyticsView .loss-line-summary {
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#analyticsView .loss-line-summary > div {
+  padding: 8px 10px;
+}
+
+#analyticsView .loss-line-summary span {
+  font-size: 10px;
+  line-height: 1.25;
+}
+
+#analyticsView .loss-line-summary strong {
+  margin-top: 2px;
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+#analyticsView .loss-compare-board {
+  overflow: hidden;
+  border: 1px solid #d7e6f2;
+  border-radius: 12px;
+  background: #fff;
+  color: #153d60;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#analyticsView .loss-compare-heading,
+#analyticsView .loss-compare-month-row {
+  display: grid;
+  grid-template-columns: 70px repeat(2, minmax(0, 1fr));
+  align-items: center;
+  gap: 14px;
+}
+
+#analyticsView .loss-compare-heading {
+  padding: 7px 12px;
+  background: #f2f7fb;
+  color: #637d95;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .055em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+#analyticsView .loss-compare-month-row {
+  min-height: 48px;
+  padding: 7px 12px;
+  border-top: 1px solid #e4edf5;
+}
+
+#analyticsView .loss-compare-month-row:hover {
+  background: #fafdff;
+}
+
+#analyticsView .loss-compare-month {
+  color: #153f63;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+#analyticsView .loss-compare-metric {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+#analyticsView .loss-compare-metric > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+#analyticsView .loss-compare-metric span {
+  overflow: hidden;
+  color: #6f879d;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#analyticsView .loss-compare-metric strong {
+  color: #1268b7;
+  font-size: 13px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+#analyticsView .loss-compare-metric strong small {
+  font-size: 9px;
+  font-weight: 850;
+}
+
+#analyticsView .loss-compare-metric > i {
+  display: block;
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e8f0f6;
+}
+
+#analyticsView .loss-compare-metric > i b {
+  display: block;
+  height: 100%;
+  min-width: 7px;
+  border-radius: inherit;
+  background: #1687f5;
+}
+
+#analyticsView .loss-compare-metric.loss strong {
+  color: #d94a2e;
+}
+
+#analyticsView .loss-compare-metric.loss > i {
+  background: #fae9e5;
+}
+
+#analyticsView .loss-compare-metric.loss > i b {
+  background: #ef5a42;
+}
+
+@media (min-width: 621px) {
+  #analyticsView .loss-compare-board {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  #analyticsView .loss-compare-heading {
+    display: none;
+  }
+
+  #analyticsView .loss-compare-month-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: start;
+    gap: 9px;
+    min-height: 0;
+    padding: 9px 10px 10px;
+    border-top: 0;
+    border-left: 1px solid #e4edf5;
+  }
+
+  #analyticsView .loss-compare-heading + .loss-compare-month-row {
+    border-left: 0;
+  }
+
+  #analyticsView .loss-compare-month {
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e9f0f6;
+  }
+}
+
+@media (max-width: 620px) {
+  #analyticsView .loss-line-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #analyticsView .loss-compare-heading,
+  #analyticsView .loss-compare-month-row {
+    grid-template-columns: 48px repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+
+  #analyticsView .loss-compare-heading,
+  #analyticsView .loss-compare-month-row {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+
+  #analyticsView .loss-compare-metric span {
+    display: none;
+  }
+}
+
+@media (max-width: 430px) {
+  #analyticsView .loss-line-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Ward-by-month matrix: make every ward value directly comparable. */
+#analyticsView #monthlyUsageChart.month-chart {
+  display: block !important;
+}
+
+#analyticsView .consumption-matrix {
+  display: grid;
+  grid-template-columns: minmax(130px, 1.25fr) repeat(5, minmax(82px, 1fr));
+  overflow: hidden;
+  border: 1px solid #d8e7f3;
+  border-radius: 12px;
+  background: #fff;
+}
+
+#analyticsView .consumption-matrix-header,
+#analyticsView .consumption-matrix-ward,
+#analyticsView .consumption-matrix-value,
+#analyticsView .consumption-matrix-total {
+  min-width: 0;
+  padding: 10px 12px;
+  border-right: 1px solid #e2edf6;
+  border-bottom: 1px solid #e2edf6;
+}
+
+#analyticsView .consumption-matrix-header {
+  background: #f2f8fd;
+  color: #52708b;
+  font-size: 10px;
+  font-weight: 850;
+  text-align: center;
+}
+
+#analyticsView .consumption-matrix-header strong,
+#analyticsView .consumption-matrix-header span { display: block; }
+#analyticsView .consumption-matrix-header strong { color: #0b426f; font-size: 12px; }
+#analyticsView .consumption-matrix-header span { margin-top: 2px; font-size: 9px; }
+
+#analyticsView .consumption-matrix .is-current { background: #eef8ff; }
+
+#analyticsView .matrix-ward-label {
+  padding-left: 15px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+}
+
+#analyticsView .consumption-matrix-ward {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #153c5d;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+#analyticsView .consumption-matrix-ward i {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 8px;
+  border-radius: 50%;
+}
+
+#analyticsView .consumption-matrix-value {
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+#analyticsView .consumption-matrix-value::before {
+  position: absolute;
+  inset: auto 10px 6px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--ward-accent) var(--usage-share), #eaf1f7 var(--usage-share));
+  content: "";
+}
+
+#analyticsView .consumption-matrix-value strong,
+#analyticsView .consumption-matrix-value span,
+#analyticsView .consumption-matrix-total strong,
+#analyticsView .consumption-matrix-total span { display: block; }
+
+#analyticsView .consumption-matrix-value strong { color: #123d60; font-size: 15px; font-variant-numeric: tabular-nums; }
+#analyticsView .consumption-matrix-value span { margin-top: 2px; color: #70869a; font-size: 9px; font-weight: 800; }
+
+#analyticsView .consumption-matrix-total {
+  border-bottom: 0;
+  background: #f8fbfd;
+  color: #0d426e;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+#analyticsView .consumption-matrix-total strong { font-size: 15px; font-variant-numeric: tabular-nums; }
+#analyticsView .consumption-matrix-total span { margin-top: 2px; color: #0b72e7; font-size: 9px; }
+
+@media (max-width: 760px) {
+  #analyticsView .consumption-matrix { min-width: 630px; }
+  #analyticsView #monthlyUsageChart.month-chart { overflow-x: auto; padding-bottom: 4px; }
+}
+
+@media (max-width: 1100px) {
+  #analyticsView #monthlyUsageChart.month-chart { grid-template-columns: repeat(3, minmax(150px, 1fr)) !important; }
+}
+
+@media (max-width: 620px) {
+  #analyticsView #monthlyUsageChart.month-chart { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  #analyticsView #monthlyUsageChart .consumption-month-card { min-height: 145px; padding: 12px !important; }
+  #analyticsView #monthlyUsageChart .consumption-month-card:last-child { grid-column: 1 / -1; }
+}
+
+#analyticsView .analytics-trend-chart {
+  min-height: 0 !important;
+  padding: 4px 2px 0;
+}
+
+#analyticsView .trend-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+#analyticsView .trend-summary > div {
+  padding: 10px 12px;
+  border: 1px solid #dce9f5;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+#analyticsView .trend-summary span,
+#analyticsView .trend-summary strong {
+  display: block;
+}
+
+#analyticsView .trend-summary span {
+  color: #61758b;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+
+#analyticsView .trend-summary strong {
+  margin-top: 3px;
+  color: #0c355b;
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+#analyticsView .trend-summary strong.up { color: #b45309; }
+#analyticsView .trend-summary strong.down { color: #0f766e; }
+
+#analyticsView .trend-line-wrap {
+  height: 190px;
+  padding: 8px 6px 0;
+  border: 1px solid #dce9f5;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #fbfdff, #f3f9ff);
+}
+
+#analyticsView .trend-line-wrap svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+#analyticsView .trend-axis { stroke: #bdd4e7; stroke-width: 1; }
+#analyticsView .trend-line { fill: none; stroke: #0b72e7; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+#analyticsView .trend-point { fill: #fff; stroke: #0b72e7; stroke-width: 3; }
+#analyticsView .trend-label { fill: #5d7187; font-size: 12px; font-weight: 800; }
+#analyticsView .trend-value { fill: #0c355b; font-size: 12px; font-weight: 900; }
+
+#analyticsView .ward-total-costs {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+#analyticsView .ward-total-costs span:nth-child(2) strong { color: #b45309; }
+#analyticsView .ward-total-costs span:nth-child(3) strong { color: #047857; }
+
+@media (max-width: 760px) {
+  #analyticsView .analytics-rule-heading { display: block; }
+  #analyticsView .analytics-rule-heading p { margin-top: 7px; }
+  #analyticsView .analytics-rule-grid { grid-template-columns: 1fr; }
+
+  #analyticsView .trend-summary,
+  #analyticsView .ward-total-costs {
+    grid-template-columns: 1fr !important;
+  }
+
+  #analyticsView .trend-line-wrap { height: 174px; }
 }
 
 #analyticsView .month-card,
@@ -14548,5 +15536,184 @@ body:not(.login-active) .sidebar > .side-button[hidden] {
     max-width: 100% !important;
     min-width: 0 !important;
     margin-left: 0 !important;
+  }
+}
+
+/* Analytics: balanced card spacing and priority insight accents. */
+#analyticsView .analytics-grid {
+  gap: 14px !important;
+}
+#analyticsView .analytics-main-column,
+#analyticsView .analytics-side-column {
+  gap: 14px !important;
+}
+#analyticsView .analytics-main-column > .report-card,
+#analyticsView .analytics-side-column > .report-card {
+  padding: 14px !important;
+  border-radius: 12px !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(1) {
+  border-color: #9fdcf2 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #f0fbff 56%, #e2f7ff 100%) !important;
+  box-shadow: inset 4px 0 0 #0ea5e9, 0 8px 20px rgba(14, 165, 233, 0.08) !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(1) h3::before {
+  background: linear-gradient(135deg, #0877d1, #22c7dd) !important;
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.11) !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(1) .top-ring {
+  --accent: #0ea5e9 !important;
+  background-color: #dff5fc !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(1) .top-detail span {
+  color: #0877a8 !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(1) .top-detail strong {
+  color: #064f74 !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(2) {
+  border-color: #ffc2b4 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #fff7f3 56%, #ffebe4 100%) !important;
+  box-shadow: inset 4px 0 0 #ef5a42, 0 8px 20px rgba(239, 90, 66, 0.08) !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(2) h3::before {
+  background: linear-gradient(135deg, #df3f2c, #ff8b5e) !important;
+  box-shadow: 0 0 0 4px rgba(239, 90, 66, 0.11) !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(2) .top-ring {
+  --accent: #ef5a42 !important;
+  background-color: #ffe8e1 !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(2) .top-detail span {
+  color: #c74631 !important;
+}
+#analyticsView .analytics-side-column > .report-card:nth-child(2) .top-detail strong {
+  color: #8f2e20 !important;
+}
+
+@media (max-width: 760px) {
+  #analyticsView .analytics-grid,
+  #analyticsView .analytics-main-column,
+  #analyticsView .analytics-side-column {
+    gap: 12px !important;
+  }
+  #analyticsView .analytics-main-column > .report-card,
+  #analyticsView .analytics-side-column > .report-card {
+    padding: 14px !important;
+  }
+}
+/* OxyGuard incident response, tank status, and alert-priority enhancements */
+@keyframes oxyguardAlertFlash {
+  0%, 100% { background-color: #fff1f2; box-shadow: inset 4px 0 0 #dc2626; }
+  50% { background-color: #fecaca; box-shadow: inset 4px 0 0 #991b1b, 0 0 0 2px rgba(220, 38, 38, 0.18); }
+}
+
+.alert-ward-cards,
+.nurse-ward-cards {
+  display: flex !important;
+  grid-template-columns: none !important;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-gutter: stable;
+  padding: 4px 4px 14px;
+}
+
+.alert-ward-cards .alert-ward-panel,
+.nurse-ward-cards .alert-ward-panel {
+  flex: 0 0 min(520px, 88vw) !important;
+  min-width: min(520px, 88vw) !important;
+  scroll-snap-align: start;
+}
+
+.alert-ward-panel.has-active-alert {
+  border: 2px solid #dc2626 !important;
+  order: -1;
+}
+
+.ward-alert-row,
+#nurseActiveAlerts tbody tr {
+  animation: oxyguardAlertFlash 1.15s ease-in-out infinite;
+  color: #7f1d1d;
+}
+
+/* Ward alerts are table rows. Preserve the table layout while retaining the
+   red flashing state; the generic ward-alert-row grid rule is for list items. */
+.alert-ward-panel .alert-data-table tr.ward-alert-row,
+.ward-alert-dialog-table tr.ward-alert-row {
+  display: table-row !important;
+  color: #7f1d1d;
+}
+
+.alert-ward-panel .alert-data-table tr.ward-alert-row > td,
+.ward-alert-dialog-table tr.ward-alert-row > td {
+  display: table-cell !important;
+  animation: oxyguardAlertFlash 1.15s ease-in-out infinite;
+  vertical-align: middle;
+}
+
+.incident-response-actions {
+  min-width: 220px;
+  display: grid;
+  gap: 7px;
+}
+
+.incident-action-select,
+.incident-response-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  padding: 7px 9px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+}
+
+.incident-response-input[hidden] {
+  display: none !important;
+}
+
+.saved-incident-action {
+  display: grid;
+  gap: 2px;
+  padding: 7px 9px;
+  border: 1px solid #b7e4c7;
+  border-radius: 7px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.saved-incident-action span {
+  color: #365c44;
+}
+
+.incident-response-button.clear {
+  width: 100%;
+  background: #b91c1c;
+  color: #fff;
+  border: 0;
+  border-radius: 7px;
+  padding: 8px 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#depletionTable {
+  overflow-x: auto;
+}
+
+#depletionTable table {
+  min-width: 980px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ward-alert-row,
+  #nurseActiveAlerts tbody tr {
+    animation: none;
+    background: #fee2e2;
+    box-shadow: inset 4px 0 0 #dc2626;
   }
 }

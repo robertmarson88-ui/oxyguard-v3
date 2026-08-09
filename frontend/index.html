@@ -274,7 +274,7 @@
             </article>
 
             <article class="report-card v5-critical-overview">
-              <h3>Critical Alerts Overview</h3>
+              <h3>Core Rule Performance (YTD)</h3>
               <div id="criticalOverviewCards" class="critical-overview-grid"></div>
               <div class="card-toolbar tight">
                 <h3>Active Detection Alerts</h3>
@@ -549,8 +549,8 @@
         <section class="analytics view" id="analyticsView">
           <section class="report-head">
             <div>
-              <h2>Oxygen Intelligence Analytics</h2>
-              <p>A focused financial and operational view of ward usage, wastage, leakage cost, and savings opportunity.</p>
+              <h2>OXYGEN INTELLIGENCE ANALYTICS</h2>
+              <p>Track consumption, loss rate, and cost exposure across wards. Updated through July 28, 2026.</p>
             </div>
             <div class="report-actions">
               <span>100 lb Refill: JMD 7,500 | New Cylinder: JMD 48,000</span>
@@ -558,48 +558,70 @@
             </div>
           </section>
 
+          <section class="analytics-range-bar" aria-label="Analytics month range">
+            <div class="analytics-range-copy">
+              <span>Analytics period</span>
+              <strong id="analyticsRangeLabel">Jan–Jul</strong>
+              <small>Consumption, loss, cost, and cumulative rule performance update together.</small>
+            </div>
+            <div class="analytics-range-control">
+              <div class="analytics-range-marks" aria-hidden="true">
+                <span>Feb</span><span>Mar</span><span>Apr</span><span>May</span><span>Jun</span><span>Jul</span>
+              </div>
+              <input id="analyticsMonthRange" type="range" min="1" max="6" step="1" value="6" aria-label="Select analytics ending month" aria-valuetext="January through July">
+            </div>
+          </section>
+
           <section class="analytics-summary" id="analyticsSummary"></section>
+
+          <section class="analytics-rule-section" aria-labelledby="analyticsRuleTitle">
+            <div class="analytics-rule-heading">
+              <div>
+                <span>Cumulative detection coverage</span>
+                <h3 id="analyticsRuleTitle">Core rule performance</h3>
+              </div>
+              <p id="analyticsRulePeriodCopy">Cumulative detections and exposure through July.</p>
+            </div>
+            <div class="analytics-rule-grid" id="analyticsRuleSummary"></div>
+          </section>
 
           <section class="analytics-grid">
             <div class="analytics-main-column">
-              <article class="report-card analytics-wide">
-                <h3>Monthly Tank Usage by Ward</h3>
-                <div id="monthlyUsageLegend" class="monthly-usage-legend" aria-label="Ward colour key"></div>
+              <article class="report-card analytics-wide analytics-ward-summary-card">
+                <div class="ward-summary-heading">
+                  <div>
+                    <h3>Ward Consumption Summary</h3>
+                    <p id="analyticsWardSummaryCopy">July usage, period movement, and Jan–July contribution by ward.</p>
+                  </div>
+                  <div class="ward-summary-period"><span>Reporting period</span><strong id="analyticsReportingPeriod">Jan–Jul</strong></div>
+                </div>
                 <div id="monthlyUsageChart" class="month-chart"></div>
               </article>
               <article class="report-card analytics-wide analytics-leakage-card">
-                <h3>Monthly Leakage Wastage Summary</h3>
+                <h3>Usage vs. Oxygen Loss</h3>
                 <div id="monthlyWastageChart" class="month-chart"></div>
               </article>
-              <article class="report-card analytics-wide">
-                <h3>Leakage Rate by Ward</h3>
-                <div id="leakageRateChart" class="analytics-compare-chart"></div>
-              </article>
-              <article class="report-card analytics-wide">
-                <h3>Usage Trend Analysis</h3>
-                <div id="usageTrendChart" class="analytics-trend-chart"></div>
-              </article>
               <article class="report-card analytics-wide analytics-totals-card">
-                <h3>Ward Monthly Totals</h3>
+                <h3>Ward Performance Detail</h3>
                 <div id="analyticsTable" class="analytics-total-board"></div>
               </article>
             </div>
 
             <aside class="analytics-side-column">
               <article class="report-card">
-                <h3>Top Ward Consumption</h3>
+                <h3>Highest Consumption Exposure</h3>
                 <div id="topConsumption" class="top-insight"></div>
               </article>
               <article class="report-card">
-                <h3>Top Ward Wastage</h3>
+                <h3>Largest Loss Hotspot</h3>
                 <div id="topWastage" class="top-insight"></div>
               </article>
               <article class="report-card">
-                <h3>Cost Exposure</h3>
+                <h3>Total Cost Exposure</h3>
                 <div id="costExposureChart" class="analytics-cost-chart"></div>
               </article>
               <article class="report-card">
-                <h3>Savings Opportunity</h3>
+                <h3>Recoverable Value</h3>
                 <div id="savingsOpportunityChart" class="analytics-savings-chart"></div>
               </article>
             </aside>
@@ -667,11 +689,18 @@
                   <input id="simulatorPrescribedFlow" type="number" min="0" max="100" step="0.1" value="3" />
                 </label>
 
-                <label id="simulatorCylinderStatusField" hidden>
+                <label id="simulatorCylinderStatusField">
                   Cylinder Status
                   <select id="simulatorCylinderStatus">
+                    <option value="ACTIVE">ACTIVE</option>
+                    <option value="EMPTY">EMPTY</option>
                     <option value="REPLACED">REPLACED</option>
                   </select>
+                </label>
+
+                <label id="simulatorTankSerialField" hidden>
+                  Tank Serial Number
+                  <input id="simulatorTankSerial" type="text" readonly aria-readonly="true" />
                 </label>
 
                 <label id="simulatorCylinderCapacityField" hidden>
@@ -715,13 +744,8 @@
                 </label>
 
                 <label>
-                  Severity
-                  <select id="simulatorSeverity">
-                    <option value="Critical">Critical</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+                  Severity (automatically set)
+                  <input id="simulatorSeverity" type="text" value="Medium" readonly aria-readonly="true" />
                 </label>
 
                 <div class="simulator-actions">
