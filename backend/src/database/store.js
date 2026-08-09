@@ -276,15 +276,28 @@ export function getDatabaseConnectionString() {
 
 async function connectPostgres(Pool, connectionString) {
   const ssl = process.env.DATABASE_SSL === "false" ? false : { rejectUnauthorized: false };
+  const poolOptions = {
+    connectionString,
+    max: Number(process.env.DATABASE_POOL_MAX) || 3,
+    idleTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 10_000
+  };
+  let pool;
   try {
-    const pool = new Pool({ connectionString, ssl });
+    pool = new Pool({ ...poolOptions, ssl });
     await pool.query("select 1");
     return pool;
   } catch (error) {
+    await pool?.end().catch(() => {});
     if (!String(error.message || "").toLowerCase().includes("ssl")) throw error;
-    const pool = new Pool({ connectionString, ssl: false });
-    await pool.query("select 1");
-    return pool;
+    const fallbackPool = new Pool({ ...poolOptions, ssl: false });
+    try {
+      await fallbackPool.query("select 1");
+      return fallbackPool;
+    } catch (fallbackError) {
+      await fallbackPool.end().catch(() => {});
+      throw fallbackError;
+    }
   }
 }
 
