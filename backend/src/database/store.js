@@ -139,15 +139,15 @@ async function ensureOperationalSchema(pool) {
     `insert into public.ward_card_statuses (ward_key, asset_key, status) values
        ('ae', 'bed-05', 'Normal'),
        ('ae', 'bed-06', 'Normal'),
-       ('ae', 'bed-07', 'Ghost Flow'),
+       ('ae', 'bed-07', 'Normal'),
        ('paediatrics', 'bed-10', 'Normal'),
-       ('paediatrics', 'bed-11', 'Supply Failure'),
-       ('paediatrics', 'bed-12', 'Flow Anomaly'),
+       ('paediatrics', 'bed-11', 'Normal'),
+       ('paediatrics', 'bed-12', 'Normal'),
        ('recovery', 'bed-15', 'Normal'),
        ('recovery', 'bed-16', 'Normal'),
-       ('recovery', 'tank-r1', 'Leakage'),
+       ('recovery', 'tank-r1', 'Normal'),
        ('labour', 'bed-20', 'Normal'),
-       ('labour', 'bed-21', 'Supply Failure'),
+       ('labour', 'bed-21', 'Normal'),
        ('labour', 'bed-22', 'Normal')
      on conflict (ward_key, asset_key) do nothing`
   );

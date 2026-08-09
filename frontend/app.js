@@ -2486,8 +2486,7 @@ function wardStatusKey(wardKey, assetKey) {
 function getWardRowStatus(card, row) {
   const liveStatus = getLiveWardIncidentStatus(card, row);
   if (liveStatus) return liveStatus;
-  const savedStatus = wardCardStatusOverrides.get(wardStatusKey(card.key, row.assetKey));
-  return normalizeWardIncidentStatus(savedStatus) || normalizeWardIncidentStatus(row.defaultStatus) || "Normal";
+  return "Normal";
 }
 
 function cardHasActiveAlert(card) {
@@ -2509,7 +2508,10 @@ function normalizeWardLabel(value = "") {
 function getLiveWardIncidentStatus(card, row) {
   const rowIdentifiers = [row.assetKey, row.asset, row.patientId]
     .map(value => String(value).toLowerCase().replace(/[^a-z0-9]/g, ""));
-  const wardIncidents = getAlertIncidentRows().filter(alert => normalizeWardLabel(alert.ward) === normalizeWardLabel(card.ward));
+  const wardIncidents = getAlertIncidentRows().filter(alert =>
+    simulatorAlertTargets.has(String(alert.id))
+    && normalizeWardLabel(alert.ward) === normalizeWardLabel(card.ward)
+  );
   const apiIncident = wardIncidents.find(alert => {
     const alertAsset = String(alert.asset || "").toLowerCase().replace(/[^a-z0-9]/g, "");
     return rowIdentifiers.some(identifier => identifier && (alertAsset.includes(identifier) || identifier.includes(alertAsset)));
