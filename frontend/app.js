@@ -1728,6 +1728,7 @@ async function submitSimulatorEvent(event) {
   const breathingVariance = Number(document.getElementById("simulatorBreathingVariance")?.value || 0);
   const duration = Number(document.getElementById("simulatorDuration")?.value || 0);
   const emrStatus = document.getElementById("simulatorEmrStatus")?.value || "EMPTY";
+  const tankSerial = document.getElementById("simulatorTankSerial")?.value.trim() || "";
   const location = document.getElementById("simulatorLocation").value.trim() || tankItem.station;
   const createdAt = new Date().toISOString();
   const sendButton = document.getElementById("simulatorSendButton");
@@ -1738,6 +1739,10 @@ async function submitSimulatorEvent(event) {
   }
 
   if (alertType === "Residual Gas") {
+    if (!tankSerial) {
+      updateSimulatorApiStatus("Enter a tank serial number.", "warn");
+      return;
+    }
     if (cylinderCapacity <= 0 || consumedVolume < 0) {
       updateSimulatorApiStatus("Enter a valid cylinder capacity and consumed volume.", "warn");
       return;
@@ -1786,6 +1791,8 @@ async function submitSimulatorEvent(event) {
 
   const effectiveLive = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? ruleFlowRate : live;
 
+  if (alertType === "Residual Gas") tankItem.serial = tankSerial;
+
   const effectiveCapacity = cylinderCapacity > 0 ? cylinderCapacity : tankItem.maxVolume;
   const effectiveConsumed = cylinderStatus === "EMPTY"
     ? effectiveCapacity
@@ -1825,6 +1832,7 @@ async function submitSimulatorEvent(event) {
     time: formatActivityTime(createdAt),
     ward: ward.name,
     tank: tankItem.name,
+    tankSerial: tankItem.serial || "",
     location,
     alertType,
     severity,
