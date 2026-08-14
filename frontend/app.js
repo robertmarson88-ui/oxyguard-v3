@@ -17,8 +17,8 @@ const initialWards = [
     subtitle: "Ward oxygen cylinder cluster",
     accent: colors.ae,
     tanks: [
-      tank("Tank A1", "A1-OXY-1042", "Station 1", 52, 4),
-      tank("Tank A2", "A2-OXY-1186", "Station 2", 50, 3),
+      tank("Tank A1", "A1-OXY-1042", "Station 1", 52, 8.3),
+      tank("Tank A2", "A2-OXY-1186", "Station 2", 50, 9.2),
       tank("Tank A3", "A3-OXY-1221", "Station 3", 48, 0, { active: false, occupied: false })
     ]
   },
@@ -29,7 +29,7 @@ const initialWards = [
     accent: colors.nurse,
     fileBacked: true,
     tanks: [
-      tank("Nurse Station", "NS-FLOW-001", "Nurse Station", 48, 7, { stationFlowRate: 7, readOnly: true, maxVolume: 1200, volumeRemaining: 960 })
+      tank("Nurse Station", "NS-FLOW-001", "Nurse Station", 48, 9.6, { stationFlowRate: 9.6, readOnly: true, maxVolume: 1200, volumeRemaining: 960 })
     ]
   },
   {
@@ -38,8 +38,8 @@ const initialWards = [
     subtitle: "Ward oxygen cylinder cluster",
     accent: colors.paediatric,
     tanks: [
-      tank("Tank C1", "C1-OXY-3017", "Station 1", 47, 2, { volumeRemaining: 900 }),
-      tank("Tank C2", "C2-OXY-3164", "Station 2", 46, 3),
+      tank("Tank C1", "C1-OXY-3017", "Station 1", 47, 8.8, { volumeRemaining: 900 }),
+      tank("Tank C2", "C2-OXY-3164", "Station 2", 46, 8.1),
       tank("Tank C3", "C3-OXY-3298", "Station 3", 45, 6, { active: false, occupied: false })
     ]
   },
@@ -49,8 +49,8 @@ const initialWards = [
     subtitle: "Post-care oxygen recovery area",
     accent: colors.recovery,
     tanks: [
-      tank("Tank R1", "R1-OXY-4106", "Bay 1", 48, 4, { volumeRemaining: 840 }),
-      tank("Tank R2", "R2-OXY-4250", "Bay 2", 47, 5)
+      tank("Tank R1", "R1-OXY-4106", "Bay 1", 48, 9.5, { volumeRemaining: 840 }),
+      tank("Tank R2", "R2-OXY-4250", "Bay 2", 47, 8.6)
     ]
   },
   {
@@ -59,9 +59,9 @@ const initialWards = [
     subtitle: "Ward oxygen cylinder cluster",
     accent: colors.labour,
     tanks: [
-      tank("Tank B1", "B1-OXY-2108", "Station 1", 49, 5),
+      tank("Tank B1", "B1-OXY-2108", "Station 1", 49, 9.1),
       tank("Tank B2", "B2-OXY-2254", "Station 2", 51, 4, { active: false }),
-      tank("Tank B3", "B3-OXY-2390", "Station 3", 47, 12, { stationFlowRate: 4, fixedFlow: true })
+      tank("Tank B3", "B3-OXY-2390", "Station 3", 47, 9.8, { stationFlowRate: 9.8, fixedFlow: true })
     ]
   }
 ];
@@ -1427,7 +1427,7 @@ function renderRealTimeAlert() {
             <div class="incident-location"><span>Tank serial #</span><strong>${row.tankSerial || "Pending assignment"}</strong></div>
             <div class="incident-action">${formatAlertImpact(row)}</div>
             ${savedIncidentActionCell(row)}
-            <div class="incident-state"><span>Current status</span>${alertStatus(row.status)}<small>Assigned to ${row.assigned}</small></div>
+            <div class="incident-state"><span>Current status</span>${alertStatus(row.status)}</div>
             ${canRespond ? incidentResponseControls(row) : ""}
           </article>
         `).join("")}
@@ -1480,13 +1480,18 @@ function renderRealTimeAlert() {
 
   const assignmentTarget = document.getElementById("patientAssignmentPanel");
   if (assignmentTarget) {
-    const rows = [
-      ["Bed 07", "Off", "Flow detected", "Ghost Flow"],
-      ["Bed 11", "On", "No Flow", "Supply Failure"],
-      ["Bed 12", "On", "Abnormal Flow", "Flow Anomaly"],
-      ["Bed 05", "On", "Normal Flow", "Normal"],
-      ["Bed 16", "Off", "No Flow", "Normal"]
-    ];
+    const assignmentBeds = ["bed-07", "bed-11", "bed-12", "bed-05", "bed-16"];
+    const rows = assignmentBeds.map(assetKey => {
+      const card = getAlertWardCards().find(item => item.rows.some(row => row.assetKey === assetKey));
+      const bed = card?.rows.find(row => row.assetKey === assetKey);
+      const correlatedResult = card && bed ? getWardRowStatus(card, bed) : "Normal";
+      return [
+        bed?.asset || assetKey,
+        bed?.patientFlag || "Off",
+        correlatedResult === "Normal" ? "Normal Flow" : `${correlatedResult} detected`,
+        correlatedResult
+      ];
+    });
     assignmentTarget.innerHTML = `
       <table class="alert-data-table compact">
         <thead><tr><th>Bed</th><th>Patient Flag</th><th>Flow Status</th><th>Result</th></tr></thead>
@@ -2527,12 +2532,12 @@ function assignmentResult(value) {
 
 function getAlertWardCards() {
   const cards = [
-    { key: "ae", ward: "A&E Ward", pressure: 50, totalFlow: 6.8, rows: [wardAlertRow("bed-05", "Bed 05", "PT-0005", "On", "4.0", "4.0", "Normal"), wardAlertRow("bed-06", "Bed 06", "PT-0006", "On", "3.5", "3.8", "Normal"), wardAlertRow("bed-07", "Bed 07", "PT-0007", "Off", "0.0", "2.8", "Normal")] },
-    { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 7.7, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "2.5", "2.5", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "4.0", "5.2", "Normal")] },
-    { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 4.1, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "4.0", "4.1", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "0.0", "0.0", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "0.0", "-", "Normal")] },
-    { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 3.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "4.0", "3.9", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "3.0", "0.0", "Normal"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "0.0", "0.0", "Normal")] },
-    { key: "maternity", ward: "Maternity Ward", pressure: 49, totalFlow: 5.4, rows: [wardAlertRow("bed-25", "Bed 25", "PT-0025", "On", "3.0", "3.1", "Normal"), wardAlertRow("bed-26", "Bed 26", "PT-0026", "On", "2.5", "2.3", "Normal"), wardAlertRow("bed-27", "Bed 27", "PT-0027", "Off", "0.0", "0.0", "Normal")] },
-    { key: "nurse", ward: "Nurse Station", pressure: 48, totalFlow: 1.2, rows: [wardAlertRow("bed-30", "Bed 30", "PT-0030", "On", "1.0", "1.2", "Normal"), wardAlertRow("bed-31", "Bed 31", "PT-0031", "Off", "0.0", "0.0", "Normal"), wardAlertRow("bed-32", "Bed 32", "PT-0032", "Off", "0.0", "0.0", "Normal")] }
+    { key: "ae", ward: "A&E Ward", pressure: 50, totalFlow: 8.3, rows: [wardAlertRow("bed-05", "Bed 05", "PT-0005", "On", "8.5", "8.3", "Normal"), wardAlertRow("bed-06", "Bed 06", "PT-0006", "On", "9.0", "9.2", "Normal"), wardAlertRow("bed-07", "Bed 07", "PT-0007", "Off", "8.8", "9.6", "Normal")] },
+    { key: "paediatrics", ward: "Paediatrics Ward", pressure: 48, totalFlow: 9.2, rows: [wardAlertRow("bed-10", "Bed 10", "PT-0010", "On", "8.5", "8.8", "Normal"), wardAlertRow("bed-11", "Bed 11", "PT-0011", "On", "8.0", "8.1", "Normal"), wardAlertRow("bed-12", "Bed 12", "PT-0012", "On", "9.2", "9.5", "Normal")] },
+    { key: "recovery", ward: "Recovery Bay", pressure: 45, totalFlow: 9.6, rows: [wardAlertRow("bed-15", "Bed 15", "PT-0015", "On", "8.5", "8.6", "Normal"), wardAlertRow("bed-16", "Bed 16", "PT-0016", "Off", "9.0", "9.1", "Normal"), wardAlertRow("tank-r1", "Tank R1", "TANK-R1", "-", "9.5", "9.8", "Normal")] },
+    { key: "labour", ward: "Labour Ward", pressure: 47, totalFlow: 8.8, rows: [wardAlertRow("bed-20", "Bed 20", "PT-0020", "On", "8.0", "8.2", "Normal"), wardAlertRow("bed-21", "Bed 21", "PT-0021", "On", "9.0", "9.3", "Normal"), wardAlertRow("bed-22", "Bed 22", "PT-0022", "Off", "9.5", "9.7", "Normal")] },
+    { key: "maternity", ward: "Maternity Ward", pressure: 49, totalFlow: 8.1, rows: [wardAlertRow("bed-25", "Bed 25", "PT-0025", "On", "8.5", "8.4", "Normal"), wardAlertRow("bed-26", "Bed 26", "PT-0026", "On", "9.0", "9.4", "Normal"), wardAlertRow("bed-27", "Bed 27", "PT-0027", "Off", "9.5", "9.9", "Normal")] },
+    { key: "nurse", ward: "Nurse Station", pressure: 48, totalFlow: 9.5, rows: [wardAlertRow("bed-30", "Bed 30", "PT-0030", "On", "8.0", "8.3", "Normal"), wardAlertRow("bed-31", "Bed 31", "PT-0031", "Off", "8.5", "8.7", "Normal"), wardAlertRow("bed-32", "Bed 32", "PT-0032", "Off", "9.0", "9.6", "Normal")] }
   ];
   return cards.sort((left, right) => Number(cardHasActiveAlert(right)) - Number(cardHasActiveAlert(left)));
 }
@@ -2714,11 +2719,11 @@ function renderAlertPipelineMap() {
       <div class="pipe vertical branch-left"><b></b></div>
       <div class="pipe vertical branch-right"><b></b></div>
       <span class="flow-label main">${flowTotal} Litre/Min</span>
-      <button class="map-ward ae" type="button">A&E Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "ae")))} Litre/Min</small></button>
-      <button class="map-ward nurse" type="button">Nurse Station<small>${Math.round(totalFlow(wards.find(w => w.id === "nurse")))} Litre/Min</small></button>
-      <button class="map-ward paed" type="button">Paediatrics Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "paediatric")))} Litre/Min</small></button>
-      <button class="map-ward recovery" type="button">Recovery Bay<small>${Math.round(totalFlow(wards.find(w => w.id === "recovery")))} Litre/Min</small></button>
-      <button class="map-ward labour" type="button">Labour Ward<small>${Math.round(totalFlow(wards.find(w => w.id === "labour")))} Litre/Min</small></button>
+      <button class="map-ward ae" type="button">A&E Ward<small>${averageWardFlow(wards.find(w => w.id === "ae"))} Litre/Min</small></button>
+      <button class="map-ward nurse" type="button">Nurse Station<small>${averageWardFlow(wards.find(w => w.id === "nurse"))} Litre/Min</small></button>
+      <button class="map-ward paed" type="button">Paediatrics Ward<small>${averageWardFlow(wards.find(w => w.id === "paediatric"))} Litre/Min</small></button>
+      <button class="map-ward recovery" type="button">Recovery Bay<small>${averageWardFlow(wards.find(w => w.id === "recovery"))} Litre/Min</small></button>
+      <button class="map-ward labour" type="button">Labour Ward<small>${averageWardFlow(wards.find(w => w.id === "labour"))} Litre/Min</small></button>
     </div>
   `;
 }
@@ -2750,7 +2755,7 @@ function isSuspiciousTank(t) {
 
 function renderWardCard(ward, visibleTanks = ward.tanks.filter(t => t.active)) {
   const alert = visibleTanks.some(t => t.active && (t.leakageAlert || t.highFlowAlert));
-  const flow = visibleTanks.reduce((sum, t) => sum + t.flowRate, 0);
+  const flow = displayFlowReading(visibleTanks.reduce((sum, t) => sum + t.flowRate, 0) / Math.max(1, visibleTanks.length));
   const pressure = Math.round(visibleTanks.reduce((sum, t) => sum + t.pressure, 0) / Math.max(1, visibleTanks.length));
 
   return `
@@ -3115,7 +3120,7 @@ function liveTick() {
         return;
       }
       if (t.leakageAlert || t.fixedFlow) return;
-      t.flowRate = clamp(t.flowRate + rand(-1, 1), 1, 8);
+      t.flowRate = clamp(Number((t.flowRate + (Math.random() - 0.5) * 0.4).toFixed(1)), 8, 10);
       t.stationFlowRate = t.flowRate;
     });
   });
@@ -3156,8 +3161,8 @@ function scheduleSimulation() {
     const c3 = getTank("Tank C3");
     c3.active = true;
     c3.occupied = false;
-    c3.flowRate = 5;
-    c3.stationFlowRate = 5;
+    c3.flowRate = 8.9;
+    c3.stationFlowRate = 8.9;
     c3.leakageAlert = false;
     c3.highFlowAlert = true;
     c3.alertType = "Ghost Flow";
@@ -3170,8 +3175,8 @@ function scheduleSimulation() {
     const a3 = getTank("Tank A3");
     a3.active = true;
     a3.occupied = false;
-    a3.flowRate = 4;
-    a3.stationFlowRate = 4;
+    a3.flowRate = 9.4;
+    a3.stationFlowRate = 9.4;
     a3.leakageAlert = true;
     a3.highFlowAlert = false;
     a3.alertType = "Unauthorized Bed Usage";
@@ -3184,8 +3189,8 @@ function scheduleSimulation() {
     const r1 = getTank("Tank R1");
     r1.active = true;
     r1.occupied = true;
-    r1.flowRate = 1;
-    r1.stationFlowRate = 1;
+    r1.flowRate = 8.7;
+    r1.stationFlowRate = 8.7;
     r1.leakageAlert = true;
     r1.highFlowAlert = false;
     r1.alertType = "Residual Gas";
@@ -3301,7 +3306,7 @@ function renderReport() {
   const alertRows = activeTanks.filter(t => t.leakageAlert || t.highFlowAlert);
   const avgPressure = Math.round(activeTanks.reduce((sum, t) => sum + t.pressure, 0) / Math.max(1, activeTanks.length));
   const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
-  const avgFlowValue = Math.round(totalFlowValue / Math.max(1, wards.length));
+  const avgFlowValue = displayFlowReading(activeTanks.reduce((sum, tankItem) => sum + tankItem.flowRate, 0) / Math.max(1, activeTanks.length));
   const lowestVolume = Math.min(...activeTanks.map(t => Math.round((t.volumeRemaining * 100) / t.maxVolume)));
   const criticalTanks = activeTanks.filter(t => Math.round((t.volumeRemaining * 100) / t.maxVolume) < 10);
   const inventoryTotal = 40;
@@ -4013,7 +4018,8 @@ function renderV5TrendAnalytics() {
 
   const hours = ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"];
   const totalFlowValue = wards.reduce((sum, ward) => sum + totalFlow(ward), 0);
-  const averageFlowValue = Math.round(totalFlowValue / Math.max(1, wards.length));
+  const activeFlowReadings = wards.flatMap(ward => ward.tanks).filter(tankItem => tankItem.active && tankItem.flowRate > 0);
+  const averageFlowValue = displayFlowReading(activeFlowReadings.reduce((sum, tankItem) => sum + tankItem.flowRate, 0) / Math.max(1, activeFlowReadings.length));
   const flowAxisMaximum = Math.max(20, Math.ceil(Math.max(1, averageFlowValue) / 20) * 20);
   const now = new Date();
   const dayProgress = (now.getHours() * 60 + now.getMinutes() + now.getSeconds() / 60) / (24 * 60);
@@ -6466,7 +6472,7 @@ function renderHospitalHeatMap() {
 
   const roomForWard = (wardId, className, label, metaLabel) => {
     const ward = wards.find(item => item.id === wardId);
-    const flow = ward ? totalFlow(ward) : 0;
+    const flow = ward ? averageWardFlow(ward) : 0;
     const activeCount = ward ? ward.tanks.filter(tankItem => tankItem.active).length : 0;
     const tankCount = ward?.tanks.length || 0;
     const alertCount = ward ? getWardIncidentCount(ward.name) : 0;
@@ -6576,7 +6582,7 @@ function getWardIncidentCount(wardName) {
 function getHeatMapWardState(ward, alertCount = 0) {
   if (alertCount > 0) return "ghost";
   if (!ward) return "normal";
-  if (totalFlow(ward) >= 15) return "high";
+  if (averageWardFlow(ward) >= 9.8) return "high";
   return "normal";
 }
 
@@ -6681,6 +6687,15 @@ function getTank(name) {
 
 function totalFlow(ward) {
   return ward.tanks.reduce((sum, t) => sum + t.flowRate, 0);
+}
+
+function averageWardFlow(ward) {
+  const activeReadings = (ward?.tanks || []).filter(tankItem => tankItem.active && tankItem.flowRate > 0);
+  return displayFlowReading(activeReadings.reduce((sum, tankItem) => sum + tankItem.flowRate, 0) / Math.max(1, activeReadings.length));
+}
+
+function displayFlowReading(value) {
+  return Number(clamp(Number(value) || 8, 8, 10).toFixed(1));
 }
 
 function averagePressure(ward) {

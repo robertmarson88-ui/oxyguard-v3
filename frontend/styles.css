@@ -13459,9 +13459,24 @@ body:not(.login-active) #logoutButton {
   transform: translateY(-3px);
   border-color: color-mix(in srgb, var(--kpi-accent) 48%, #c7d7e7) !important;
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--kpi-accent) 18%, transparent),
-    0 14px 30px color-mix(in srgb, var(--kpi-accent) 24%, transparent),
-    0 4px 10px rgba(15, 38, 64, 0.08) !important;
+    0 0 0 1px rgba(56, 189, 248, 0.34),
+    0 0 24px rgba(56, 189, 248, 0.34),
+    0 18px 34px rgba(14, 116, 184, 0.18) !important;
+}
+
+.alert-kpi,
+.alert-panel {
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.alert-kpi:hover,
+.alert-panel:hover {
+  transform: translateY(-3px);
+  border-color: rgba(56, 189, 248, 0.62) !important;
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.3),
+    0 0 24px rgba(56, 189, 248, 0.34),
+    0 18px 34px rgba(14, 116, 184, 0.18) !important;
 }
 
 .v5-dashboard .v5-kpi-card:focus-within {
