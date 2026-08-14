@@ -250,6 +250,9 @@ let currentUser = null;
 const incidentResponseDrafts = new Map();
 const incidentActionDrafts = new Map();
 const simulatorAlertTargets = new Map();
+const simulatorGeneratedSerials = new Map();
+const SIMULATOR_ALERT_TARGETS_STORAGE_KEY = "oxyguardSimulatorAlertTargets";
+let simulatorSerialSequence = 0;
 let activeIncidentResponseEditorId = "";
 let pipelineFilter = "";
 let depletionStatusFilter = "all";
@@ -359,6 +362,7 @@ function cloneWards() {
 }
 
 function start() {
+  restoreSimulatorAlertTargets();
   resetState();
   setupLogin();
   document.getElementById("resetData").addEventListener("click", resetState);
@@ -393,7 +397,7 @@ function start() {
   document.getElementById("simulatorAlertType")?.addEventListener("change", applySimulatorPreset);
   document.getElementById("simulatorWard")?.addEventListener("change", populateSimulatorTanks);
   document.getElementById("simulatorTank")?.addEventListener("change", () => syncSimulatorTankLocation(false));
-  ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume", "simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorEmrStatus"].forEach(id => {
+  ["simulatorPatientStatus", "simulatorPrescribedFlow", "simulatorLiveReading", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumptionPercentage", "simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorEmrStatus"].forEach(id => {
     const input = document.getElementById(id);
     const handleChange = () => {
       renderSimulatorRulePreview();
@@ -1440,7 +1444,7 @@ function renderRealTimeAlert() {
     const feed = databaseAlertRows.length ? databaseAlertRows.slice(0, 5).map(row => [
       row.time,
       row.priority === "Critical" ? "danger" : row.priority === "High" ? "warning" : "info",
-      `${row.type} at ${row.asset}, ${row.ward}`
+      `${row.type} at ${row.asset}, ${row.ward} | Serial # ${row.tankSerial || "Pending assignment"}`
     ]) : [
       ["11:42 AM", "danger", "Ghost flow detected at Bed 07, A&E Ward"],
       ["11:43 AM", "info", "Alert sent to Facilities Team"],
@@ -1529,6 +1533,7 @@ function populateSimulatorTanks() {
 }
 
 function syncSimulatorTankLocation(preserveCylinderStatus = true) {
+  const ward = getSimulatorSelectedWard();
   const tankItem = getSimulatorSelectedTank();
   const location = document.getElementById("simulatorLocation");
   if (tankItem && location) location.value = tankItem.station;
@@ -1537,7 +1542,24 @@ function syncSimulatorTankLocation(preserveCylinderStatus = true) {
     cylinderStatus.value = tankItem.cylinderStatus || (tankItem.active ? "ACTIVE" : "EMPTY");
   }
   const serial = document.getElementById("simulatorTankSerial");
-  if (tankItem && serial) serial.value = tankItem.serial || "Pending hospital validation";
+  if (ward && tankItem && serial) {
+    const generatedSerial = getOrCreateSimulatorTankSerial(ward, tankItem);
+    tankItem.serial = generatedSerial;
+    serial.value = generatedSerial;
+  }
+}
+
+function getOrCreateSimulatorTankSerial(ward, tankItem) {
+  const key = `${ward.id}:${tankItem.name}`;
+  if (simulatorGeneratedSerials.has(key)) return simulatorGeneratedSerials.get(key);
+  simulatorSerialSequence = (simulatorSerialSequence + 1) % 1000;
+  const date = new Date();
+  const dateCode = `${String(date.getFullYear()).slice(-2)}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+  const wardCode = String(ward.id || "ward").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 3);
+  const tankCode = String(tankItem.name || "tank").replace(/^tank\s*/i, "").replace(/[^a-z0-9]/gi, "").toUpperCase().slice(0, 6);
+  const serial = `OXY-${wardCode}-${tankCode}-${dateCode}-${String(simulatorSerialSequence).padStart(3, "0")}`;
+  simulatorGeneratedSerials.set(key, serial);
+  return serial;
 }
 
 function applySimulatorPreset(updateMessage = true, resetValues = true) {
@@ -1564,8 +1586,6 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
     const field = document.getElementById(id);
     if (field) field.hidden = !isResidualGas;
   });
-  const serialField = document.getElementById("simulatorTankSerialField");
-  if (serialField) serialField.hidden = !isResidualGas;
   const presets = {
     "Ghost Flow": { prescribed: 0, live: 1.2, patient: "OFF", severity: "Medium" },
     "Unauthorized Usage": { prescribed: 0, live: 2, patient: "OFF", severity: "High" },
@@ -1583,7 +1603,7 @@ function applySimulatorPreset(updateMessage = true, resetValues = true) {
     if (isResidualGas) {
       document.getElementById("simulatorCylinderStatus").value = "REPLACED";
       document.getElementById("simulatorCylinderCapacity").value = 1200;
-      document.getElementById("simulatorConsumedVolume").value = 1092;
+      document.getElementById("simulatorConsumptionPercentage").value = 90;
     }
     if (isGhostFlow) {
       document.getElementById("simulatorRuleFlowRate").value = 1.2;
@@ -1614,11 +1634,12 @@ function renderSimulatorRulePreview() {
   const patientStatus = document.getElementById("simulatorPatientStatus")?.value || "OFF";
   const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "REPLACED";
   const cylinderCapacity = Number(document.getElementById("simulatorCylinderCapacity")?.value || 0);
-  const consumedVolume = Number(document.getElementById("simulatorConsumedVolume")?.value || 0);
+  const consumptionPercentage = Number(document.getElementById("simulatorConsumptionPercentage")?.value || 0);
   const ruleFlowRate = Number(document.getElementById("simulatorRuleFlowRate")?.value || 0);
   const breathingVariance = Number(document.getElementById("simulatorBreathingVariance")?.value || 0);
   const duration = Number(document.getElementById("simulatorDuration")?.value || 0);
   const emrStatus = document.getElementById("simulatorEmrStatus")?.value || "EMPTY";
+  const tankSerial = document.getElementById("simulatorTankSerial")?.value || "Pending assignment";
   const flowStatus = evaluatePatientFlowStatus(Math.max(0.1, prescribed), live);
   const variance = prescribed > 0 ? flowStatus.variance : 0;
   const ruleText = getSimulatorRuleText(alertType, patientStatus, prescribed, live, variance);
@@ -1627,8 +1648,8 @@ function renderSimulatorRulePreview() {
     ? `<div class="simulator-reading-grid">
         <span><small>Status</small><strong>${cylinderStatus}</strong></span>
         <span><small>Capacity</small><strong>${cylinderCapacity.toLocaleString()} L</strong></span>
-        <span><small>Consumed</small><strong>${consumedVolume.toLocaleString()} L</strong></span>
-        <span><small>Utilization</small><strong>${cylinderCapacity > 0 ? `${((consumedVolume / cylinderCapacity) * 100).toFixed(1)}%` : "Invalid"}</strong></span>
+        <span><small>Consumed</small><strong>${Number.isFinite(consumptionPercentage) ? `${consumptionPercentage.toFixed(1)}%` : "Invalid"}</strong></span>
+        <span><small>Volume</small><strong>${cylinderCapacity > 0 && Number.isFinite(consumptionPercentage) ? `${((cylinderCapacity * consumptionPercentage) / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} L` : "Invalid"}</strong></span>
       </div>`
     : alertType === "Ghost Flow"
       ? `<div class="simulator-reading-grid">
@@ -1670,6 +1691,9 @@ function renderSimulatorRulePreview() {
       <strong>${ruleText.headline}</strong>
       <p>${ruleText.detail}</p>
     </div>
+    <div class="simulator-reading-grid simulator-serial-summary">
+      <span><small>Tank Serial Number</small><strong>${tankSerial}</strong></span>
+    </div>
     ${readingSummary}
   `;
 }
@@ -1685,8 +1709,8 @@ function getSimulatorRuleText(alertType, patientStatus, prescribed, live, varian
       detail: "Select EMPTY, DISCHARGED, TRANSFERRED, or UNASSIGNED and set a duration of at least 11 minutes. Recommended Action: Verify patient assignment and investigate oxygen usage."
     },
     "Residual Gas": {
-      headline: "REPLACED cylinder with utilization above 90%",
-      detail: "Set cylinder status, capacity, and consumed volume manually. The alert triggers only when status is REPLACED and consumption is greater than 90%."
+      headline: "REPLACED cylinder with consumption ≥ 90%",
+      detail: "Set cylinder status, capacity, and consumption percentage manually. The alert triggers when status is REPLACED and consumption is at least 90%."
     },
     "Device Offline": {
       headline: "No telemetry received for at least 10 minutes",
@@ -1725,7 +1749,7 @@ async function submitSimulatorEvent(event) {
   let severity = document.getElementById("simulatorSeverity").value;
   const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "REPLACED";
   const cylinderCapacity = Number(document.getElementById("simulatorCylinderCapacity")?.value || 0);
-  const consumedVolume = Number(document.getElementById("simulatorConsumedVolume")?.value || 0);
+  const consumptionPercentage = Number(document.getElementById("simulatorConsumptionPercentage")?.value || 0);
   const ruleFlowRate = Number(document.getElementById("simulatorRuleFlowRate")?.value || 0);
   const breathingVariance = Number(document.getElementById("simulatorBreathingVariance")?.value || 0);
   const duration = Number(document.getElementById("simulatorDuration")?.value || 0);
@@ -1734,6 +1758,11 @@ async function submitSimulatorEvent(event) {
   const location = document.getElementById("simulatorLocation").value.trim() || tankItem.station;
   const createdAt = new Date().toISOString();
   const sendButton = document.getElementById("simulatorSendButton");
+
+  if (!tankSerial) {
+    updateSimulatorApiStatus("Select a device to generate its tank serial number.", "warn");
+    return;
+  }
 
   if (alertType === "Ghost Flow") {
     severity = ghostFlowSeverityFromDuration(duration);
@@ -1745,16 +1774,16 @@ async function submitSimulatorEvent(event) {
       updateSimulatorApiStatus("Enter a tank serial number.", "warn");
       return;
     }
-    if (cylinderCapacity <= 0 || consumedVolume < 0) {
-      updateSimulatorApiStatus("Enter a valid cylinder capacity and consumed volume.", "warn");
+    if (cylinderCapacity <= 0 || !Number.isFinite(consumptionPercentage)) {
+      updateSimulatorApiStatus("Enter a valid cylinder capacity and consumption percentage.", "warn");
       return;
     }
     if (!["EMPTY", "REPLACED"].includes(cylinderStatus)) {
       updateSimulatorApiStatus("Residual Gas Cylinder Status must be EMPTY or REPLACED.", "warn");
       return;
     }
-    if (consumedVolume <= cylinderCapacity * 0.9) {
-      updateSimulatorApiStatus("Consumed volume must be greater than 90% of cylinder capacity.", "warn");
+    if (consumptionPercentage < 90 || consumptionPercentage > 100) {
+      updateSimulatorApiStatus("Consumed volume percentage must be between 90% and 100%.", "warn");
       return;
     }
   }
@@ -1793,14 +1822,16 @@ async function submitSimulatorEvent(event) {
 
   const effectiveLive = ["Ghost Flow", "Unauthorized Usage"].includes(alertType) ? ruleFlowRate : live;
 
-  if (alertType === "Residual Gas") tankItem.serial = tankSerial;
+  // Carry the generated identifier through every simulator rule so all alert,
+  // ward, nurse, and reporting screens refer to the same physical tank.
+  tankItem.serial = tankSerial;
 
   const effectiveCapacity = cylinderCapacity > 0 ? cylinderCapacity : tankItem.maxVolume;
   const effectiveConsumed = cylinderStatus === "EMPTY"
     ? effectiveCapacity
     : cylinderStatus === "ACTIVE"
       ? Math.max(0, effectiveCapacity - tankItem.volumeRemaining)
-      : Math.min(effectiveCapacity, Math.max(0, consumedVolume));
+      : Math.min(effectiveCapacity, Math.max(0, effectiveCapacity * consumptionPercentage / 100));
 
   applySimulatorEventToTank(tankItem, {
     alertType,
@@ -1858,6 +1889,7 @@ async function submitSimulatorEvent(event) {
         simulatorAlertTargets.set(String(alert.alert_id), { wardId: ward.id, tankName: tankItem.name, serial: tankItem.serial || "" });
       }
     });
+    persistSimulatorAlertTargets();
     const receivedRows = telemetryResult.alerts.map(mapDatabaseAlertRow);
     const receivedIds = new Set(receivedRows.map(row => String(row.id || row.asset)));
     databaseAlertRows = [
@@ -1967,7 +1999,7 @@ function updateSimulatorRuleConstraints(alertType) {
   const breathingVariance = document.getElementById("simulatorBreathingVariance");
   const duration = document.getElementById("simulatorDuration");
   const capacity = document.getElementById("simulatorCylinderCapacity");
-  const consumed = document.getElementById("simulatorConsumedVolume");
+  const consumed = document.getElementById("simulatorConsumptionPercentage");
 
   if (flowRate) {
     flowRate.min = alertType === "Unauthorized Usage" ? "2" : "0.5";
@@ -1983,11 +2015,10 @@ function updateSimulatorRuleConstraints(alertType) {
     duration.min = alertType === "Device Offline" ? "10" : "11";
     duration.step = "0.1";
   }
-  const cylinderCapacity = Number(capacity?.value || 0);
-  if (consumed && cylinderCapacity > 0) {
-    consumed.min = String(Number((cylinderCapacity * 0.9 + 0.01).toFixed(2)));
-    consumed.max = String(cylinderCapacity);
-    consumed.step = "0.01";
+  if (consumed) {
+    consumed.min = "90";
+    consumed.max = "100";
+    consumed.step = "0.1";
   }
 }
 
@@ -1998,7 +2029,7 @@ function updateSimulatorCriteriaFeedback(selectedAlertType) {
     const input = document.getElementById(id);
     if (input) input.setCustomValidity(message || "");
   };
-  ["simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumedVolume", "simulatorEmrStatus"].forEach(id => setValidity(id, ""));
+  ["simulatorRuleFlowRate", "simulatorBreathingVariance", "simulatorDuration", "simulatorCylinderStatus", "simulatorCylinderCapacity", "simulatorConsumptionPercentage", "simulatorEmrStatus"].forEach(id => setValidity(id, ""));
 
   const flowRate = Number(document.getElementById("simulatorRuleFlowRate")?.value);
   const breathingVariance = Number(document.getElementById("simulatorBreathingVariance")?.value);
@@ -2043,7 +2074,7 @@ function updateSimulatorCriteriaFeedback(selectedAlertType) {
   } else if (alertType === "Residual Gas") {
     const cylinderStatus = document.getElementById("simulatorCylinderStatus")?.value || "";
     const capacity = Number(document.getElementById("simulatorCylinderCapacity")?.value);
-    const consumed = Number(document.getElementById("simulatorConsumedVolume")?.value);
+    const consumptionPercentage = Number(document.getElementById("simulatorConsumptionPercentage")?.value);
     if (!["EMPTY", "REPLACED"].includes(cylinderStatus)) {
       const message = "Cylinder status must be EMPTY or REPLACED.";
       outstanding.push(message);
@@ -2054,14 +2085,14 @@ function updateSimulatorCriteriaFeedback(selectedAlertType) {
       outstanding.push(message);
       setValidity("simulatorCylinderCapacity", message);
     }
-    if (!Number.isFinite(consumed) || !Number.isFinite(capacity) || consumed <= capacity * 0.9) {
-      const message = "Consumed volume must be greater than 90% of cylinder capacity.";
+    if (!Number.isFinite(consumptionPercentage) || consumptionPercentage < 90) {
+      const message = "Consumed volume percentage must be at least 90%.";
       outstanding.push(message);
-      setValidity("simulatorConsumedVolume", message);
-    } else if (consumed > capacity) {
-      const message = "Consumed volume cannot exceed cylinder capacity.";
+      setValidity("simulatorConsumptionPercentage", message);
+    } else if (consumptionPercentage > 100) {
+      const message = "Consumed volume percentage cannot exceed 100%.";
       outstanding.push(message);
-      setValidity("simulatorConsumedVolume", message);
+      setValidity("simulatorConsumptionPercentage", message);
     }
   } else if (alertType === "Device Offline" && (!Number.isFinite(duration) || duration < 10)) {
     const message = "No-telemetry duration must be at least 10 minutes.";
@@ -2208,7 +2239,7 @@ function renderSimulatorLog() {
         <time>${item.time}</time>
         <div>
           <strong>${item.alertType}</strong>
-          <span>${item.ward} | ${item.tank} | ${item.location} | Cylinder ${item.cylinderStatus || "ACTIVE"}</span>
+          <span>${item.ward} | ${item.tank} | Serial # ${item.tankSerial || "Pending assignment"} | ${item.location} | Cylinder ${item.cylinderStatus || "ACTIVE"}</span>
         </div>
         <b class="${item.severity.toLowerCase()}">${item.severity}</b>
         <small>${item.apiStatus}</small>
@@ -2421,6 +2452,23 @@ function clearSimulatorAlertTarget(alertId) {
     tank.fixedFlow = false;
   }
   simulatorAlertTargets.delete(String(alertId));
+  persistSimulatorAlertTargets();
+}
+
+function restoreSimulatorAlertTargets() {
+  try {
+    const savedTargets = JSON.parse(sessionStorage.getItem(SIMULATOR_ALERT_TARGETS_STORAGE_KEY) || "[]");
+    if (!Array.isArray(savedTargets)) return;
+    savedTargets.forEach(([alertId, target]) => {
+      if (alertId && target && typeof target === "object") simulatorAlertTargets.set(String(alertId), target);
+    });
+  } catch {
+    sessionStorage.removeItem(SIMULATOR_ALERT_TARGETS_STORAGE_KEY);
+  }
+}
+
+function persistSimulatorAlertTargets() {
+  sessionStorage.setItem(SIMULATOR_ALERT_TARGETS_STORAGE_KEY, JSON.stringify([...simulatorAlertTargets.entries()]));
 }
 
 async function respondToIncident(alertId, action, note = "") {
@@ -5173,7 +5221,7 @@ function renderTankVolumeChart(incidents = getAlertIncidentRows()) {
           <article class="critical-tank-item">
             <div>
               <strong>${incident.type}</strong>
-              <span>${incident.ward} | ${incident.asset}</span>
+              <span>${incident.ward} | ${incident.asset} | Serial # ${incident.tankSerial || "Pending assignment"}</span>
             </div>
             <b>${incident.priority}</b>
           </article>
@@ -6113,7 +6161,7 @@ function renderAnalyticsRuleSummary(rangeEnd = analyticsRangeEnd) {
       type: "Residual Gas",
       code: "O₂",
       tone: "residual",
-      trigger: "A replaced cylinder reports more than 90% utilization.",
+      trigger: "A replaced cylinder reports consumption ≥ 90%.",
       action: "Review cylinder replacement procedures."
     }
   ];
@@ -6624,7 +6672,7 @@ function updateFooter() {
 }
 
 function activeAlerts() {
-  return getAlertIncidentRows().map(alert => `${alert.type} — ${alert.ward} / ${alert.asset}`);
+  return getAlertIncidentRows().map(alert => `${alert.type} — ${alert.ward} / ${alert.asset} / Serial # ${alert.tankSerial || "Pending assignment"}`);
 }
 
 function getTank(name) {

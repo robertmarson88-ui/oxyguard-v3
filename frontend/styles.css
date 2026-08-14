@@ -13225,6 +13225,13 @@ body:not(.login-active) #logoutButton {
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
 }
 
+.simulator-form input[readonly] {
+  border-color: #9fd7f5;
+  background: #eef9ff;
+  color: #075985;
+  cursor: default;
+}
+
 .simulator-actions {
   grid-column: 1 / -1;
   display: flex;
@@ -13288,6 +13295,10 @@ body:not(.login-active) #logoutButton {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.simulator-serial-summary {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .simulator-reading-grid span {
