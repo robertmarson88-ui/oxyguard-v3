@@ -2797,7 +2797,7 @@ function renderCriticalOverview(overview) {
       <div>
         <span>${label}</span>
         <strong>${value}</strong>
-        <small>${value ? "Active" : "Clear"}</small>
+        <small>Today</small>
       </div>
       <b>${icon}</b>
     </article>

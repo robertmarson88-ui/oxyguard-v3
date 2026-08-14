@@ -14550,3 +14550,36 @@ body:not(.login-active) .sidebar > .side-button[hidden] {
     margin-left: 0 !important;
   }
 }
+
+/* Compact, contained Tank Depletion table. */
+.v5-depletion-card { display: flex; flex-direction: column; min-width: 0 !important; overflow: hidden !important; }
+.v5-depletion-card #depletionTable {
+  flex: 1 1 auto;
+  max-height: 242px;
+  overflow: auto !important;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+.v5-depletion-card #depletionTable table { width: 100% !important; min-width: 720px !important; table-layout: fixed !important; }
+.v5-depletion-card #depletionTable th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  height: auto !important;
+  padding: 7px 6px !important;
+  background: #f5f8fc !important;
+  font-size: 8px !important;
+  line-height: 1.15 !important;
+  white-space: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+}
+.v5-depletion-card #depletionTable td { height: auto !important; padding: 7px 6px !important; font-size: 9px !important; line-height: 1.2 !important; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(1) { width: 15%; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(2) { width: 12%; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(3) { width: 15%; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(4) { width: 12%; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(5) { width: 13%; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(6) { width: 14%; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(7) { width: 11%; }
+.v5-depletion-card #depletionTable :is(th, td):nth-child(8) { width: 8%; }

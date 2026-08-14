@@ -99,7 +99,8 @@ INSERT INTO users (user_id, username, email, email_verified, password_hash, role
   ('AA002', 'robertm', 'marsonrobert88@gmail.com', TRUE, 'demo-hash:robertm-2026', 1, '2026-06-09 08:00:00'),
   ('AA003', 'vernon', 'vernon.dacosta@gmail.com', TRUE, 'demo-hash:vernon-2026', 2, '2026-06-09 08:00:00'),
   ('AA011', 'facilities', 'facilities.manager@monamercy.local', TRUE, 'demo-hash:facilities-2026', 3, '2026-06-09 08:00:00'),
-  ('AA012', 'nurse', 'ward.nurse@monamercy.local', TRUE, 'demo-hash:nurse-2026', 5, '2026-06-09 08:00:00')
+  ('AA012', 'nurse', 'ward.nurse@monamercy.local', TRUE, 'demo-hash:nurse-2026', 5, '2026-06-09 08:00:00'),
+  ('AA013', 'NurseAdmin', 'nurse.admin@monamercy.local', TRUE, 'demo-hash:nurseadmin-2026', 4, '2026-08-14 08:00:00')
 ON CONFLICT (user_id) DO UPDATE
   SET username = EXCLUDED.username,
       email = EXCLUDED.email,

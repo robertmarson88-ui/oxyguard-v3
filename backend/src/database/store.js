@@ -2,6 +2,7 @@ export const demoCreatedAt = "2026-06-09T08:00:00Z";
 
 export async function createRelationalStore() {
   const demoAuditLogs = createDemoAuditLogs();
+  const nurseAdminPassword = String(process.env.NURSE_ADMIN_PASSWORD || "").trim();
   const store = {
     source: "demo",
     roles: [
@@ -35,7 +36,10 @@ export async function createRelationalStore() {
       createUser("AA009", "executive", "executive1", "executive@monamercy.local", 2, "demo-hash:executive-2026"),
       createUser("AA010", "supervisor", "nurse1", "nurse.supervisor@monamercy.local", 4, "demo-hash:supervisor-2026"),
       createUser("AA011", "facilities", "facilities1", "facilities.manager@monamercy.local", 3, "demo-hash:facilities-2026"),
-      createUser("AA012", "nurse", "nurse1", "ward.nurse@monamercy.local", 5, "demo-hash:nurse-2026")
+      createUser("AA012", "nurse", "nurse1", "ward.nurse@monamercy.local", 5, "demo-hash:nurse-2026"),
+      ...(nurseAdminPassword
+        ? [createUser("AA013", "NurseAdmin", nurseAdminPassword, "nurse.admin@monamercy.local", 4, "demo-hash:nurseadmin-2026")]
+        : [])
     ],
     wards: [
       { ward_id: "X001", ward_name: "Labour", location: "7a East Wing" },
@@ -173,6 +177,10 @@ async function ensureOperationalSchema(pool) {
   await ensureOperationalUser(pool, "executive", "executive1", "executive@monamercy.local", cfoRole.role_id);
   await ensureOperationalUser(pool, "facilities", "facilities1", "facilities.manager@monamercy.local", facilitiesRole.role_id);
   await ensureOperationalUser(pool, "supervisor", "nurse1", "nurse.supervisor@monamercy.local", nurseManagerRole.role_id);
+  const nurseAdminPassword = String(process.env.NURSE_ADMIN_PASSWORD || "").trim();
+  if (nurseAdminPassword) {
+    await ensureOperationalUser(pool, "NurseAdmin", nurseAdminPassword, "nurse.admin@monamercy.local", nurseManagerRole.role_id);
+  }
   await ensureOperationalUser(pool, "nurse", "nurse1", "ward.nurse@monamercy.local", nurseRole.role_id);
 
   const permissions = await loadPermissions(pool);
@@ -506,11 +514,13 @@ function isIntegerDataType(dataType) {
 }
 
 async function seedSupabaseDemoUsers(pool) {
+  const nurseAdminPassword = String(process.env.NURSE_ADMIN_PASSWORD || "").trim();
   const roles = await queryRows(pool, "select role_id, lower(role_name) as role_name from public.roles");
   const adminRole = roles.find(role => ["administrator", "facilities admin"].includes(role.role_name));
   const facilitiesRole = roles.find(role => ["facilities manager", "facilities admin"].includes(role.role_name));
+  const nurseManagerRole = roles.find(role => ["nurse manager", "nurse supervisor"].includes(role.role_name));
   const nurseRole = roles.find(role => role.role_name === "nurse");
-  if (!adminRole || !facilitiesRole || !nurseRole) return;
+  if (!adminRole || !facilitiesRole || !nurseManagerRole || !nurseRole) return;
 
   const users = [
     ["martin", "martin1", "robinsonmartin187@gmail.com", adminRole.role_id],
@@ -518,6 +528,9 @@ async function seedSupabaseDemoUsers(pool) {
     ["vernon", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id],
     ["vernond", "vernon1", "vernon.dacosta@gmail.com", adminRole.role_id],
     ["facilities", "facilities1", "facilities.manager@monamercy.local", facilitiesRole.role_id],
+    ...(nurseAdminPassword
+      ? [["NurseAdmin", nurseAdminPassword, "nurse.admin@monamercy.local", nurseManagerRole.role_id]]
+      : []),
     ["nurse", "nurse1", "ward.nurse@monamercy.local", nurseRole.role_id]
   ];
 
@@ -613,6 +626,7 @@ function demoPasswordFor(username) {
     admin: "admin1",
     executive: "executive1",
     supervisor: "nurse1",
+    NurseAdmin: String(process.env.NURSE_ADMIN_PASSWORD || "").trim(),
     facilities: "facilities1",
     nurse: "nurse1",
     robertm: "robert1",
