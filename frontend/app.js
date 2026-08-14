@@ -3267,7 +3267,11 @@ function renderReport() {
   const consumptionDirection = todayConsumptionLitres >= yesterdayConsumptionLitres ? "up" : "down";
   const consumptionTone = todayConsumptionLitres >= yesterdayConsumptionLitres ? "bad" : "good";
   const esp32Status = getEsp32DeviceStatus();
-  const criticalOverview = getCriticalAlertOverview(alertRows);
+  // Keep every Core Rule surface on the same unresolved incident snapshot.
+  // Previously the counters applied a separate "today" filter while the
+  // notification badge and detection list used all active incidents.
+  const coreRuleIncidents = getAlertIncidentRows();
+  const criticalOverview = getCriticalAlertOverview(coreRuleIncidents);
   const patientAlertSummary = getPatientAlertSummary(activeTanks);
   const wastageCostLabel = criticalIncidentImpact.count
     ? `${currency(wastageCost)}&nbsp;Exposure&nbsp;|&nbsp;${criticalIncidentImpact.count}&nbsp;Core&nbsp;Detection${criticalIncidentImpact.count === 1 ? "" : "s"}`
@@ -3309,7 +3313,7 @@ function renderReport() {
     return;
   }
 
-  renderCharts(activeTanks);
+  renderCharts(activeTanks, coreRuleIncidents);
   renderHospitalHeatMap();
   renderSystemHealth(esp32Status);
   renderCriticalOverview(criticalOverview);
@@ -3722,8 +3726,7 @@ function getEsp32DeviceStatus() {
   };
 }
 
-function getCriticalAlertOverview() {
-  const incidents = getAlertIncidentRows(databaseAlertRows.filter(isAlertFromToday));
+function getCriticalAlertOverview(incidents = getAlertIncidentRows()) {
   const liveGhostFlow = incidents.filter(row => row.type === "Ghost Flow").length;
   const unauthorized = incidents.filter(row => row.type === "Unauthorized Bed Usage").length;
   const residualGas = incidents.filter(row => row.type === "Residual Gas").length;
@@ -3736,14 +3739,6 @@ function getCriticalAlertOverview() {
     cards,
     total: cards.reduce((sum, [, value]) => sum + value, 0)
   };
-}
-
-function isAlertFromToday(alert, today = new Date()) {
-  const occurredAt = new Date(alert?.occurredAt);
-  return !Number.isNaN(occurredAt.getTime())
-    && occurredAt.getFullYear() === today.getFullYear()
-    && occurredAt.getMonth() === today.getMonth()
-    && occurredAt.getDate() === today.getDate();
 }
 
 function getResidualGasFinancialImpact() {
@@ -5130,9 +5125,9 @@ function tankDepletionStatus(t) {
   return { key: "normal", label: "Full", tone: "good" };
 }
 
-function renderCharts(activeTanks) {
+function renderCharts(activeTanks, coreRuleIncidents = getAlertIncidentRows()) {
   renderWardFlowChart();
-  renderTankVolumeChart(activeTanks);
+  renderTankVolumeChart(coreRuleIncidents);
   renderAlertDistributionChart();
 }
 
@@ -5167,10 +5162,9 @@ function renderWardFlowChart() {
   `;
 }
 
-function renderTankVolumeChart() {
+function renderTankVolumeChart(incidents = getAlertIncidentRows()) {
   const target = document.getElementById("tankVolumeChart");
   if (!target) return;
-  const incidents = getAlertIncidentRows();
 
   target.innerHTML = incidents.length
     ? `
