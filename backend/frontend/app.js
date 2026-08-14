@@ -1048,8 +1048,10 @@ function mapDatabaseAlertRow(alert, index) {
   const ward = getWardLabelFromDevice(alert.device_id);
   const priority = mapAlertPriority(alert.severity);
   const type = formatAlertType(alert.alert_type);
+  const occurredAt = alert.timestamp || alert.created_at || new Date().toISOString();
   return {
-    time: formatActivityTime(alert.timestamp || alert.created_at || new Date().toISOString()),
+    time: formatActivityTime(occurredAt),
+    occurredAt,
     id: alert.alert_id,
     ward,
     type,
@@ -2077,8 +2079,8 @@ function alertKpiCard(label, value, detail, tone, action = "", iconMode = "text"
   `;
 }
 
-function getAlertIncidentRows() {
-  return databaseAlertRows
+function getAlertIncidentRows(sourceRows = databaseAlertRows) {
+  return sourceRows
     .map(row => ({ ...row, type: normalizeWardIncidentStatus(row.type) }))
     .filter(row => row.type)
     .filter((row, index, rows) => rows.findIndex(candidate => (
@@ -3393,7 +3395,7 @@ function getEsp32DeviceStatus() {
 }
 
 function getCriticalAlertOverview() {
-  const incidents = getAlertIncidentRows();
+  const incidents = getAlertIncidentRows(databaseAlertRows.filter(isAlertFromToday));
   const liveGhostFlow = incidents.filter(row => row.type === "Ghost Flow").length;
   const unauthorized = incidents.filter(row => row.type === "Unauthorized Bed Usage").length;
   const residualGas = incidents.filter(row => row.type === "Residual Gas").length;
@@ -3406,6 +3408,14 @@ function getCriticalAlertOverview() {
     cards,
     total: cards.reduce((sum, [, value]) => sum + value, 0)
   };
+}
+
+function isAlertFromToday(alert, today = new Date()) {
+  const occurredAt = new Date(alert?.occurredAt);
+  return !Number.isNaN(occurredAt.getTime())
+    && occurredAt.getFullYear() === today.getFullYear()
+    && occurredAt.getMonth() === today.getMonth()
+    && occurredAt.getDate() === today.getDate();
 }
 
 function getResidualGasFinancialImpact() {
@@ -3495,7 +3505,7 @@ function renderCriticalOverview(overview) {
       <div>
         <span>${label}</span>
         <strong>${value}</strong>
-        <small>${value ? "Active" : "Clear"}</small>
+        <small>Today</small>
       </div>
       <b>${icon}</b>
     </article>
