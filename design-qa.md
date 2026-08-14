@@ -1,63 +1,48 @@
-# Analytics KPI Card Design QA
+# Design QA
 
-Source visual truth: `C:\Users\twcl.ssa\AppData\Local\Temp\codex-clipboard-0f5c1984-36ea-41dc-bee5-e90283ed9496.png`
+## Evidence
 
-Implementation screenshot: `analytics-page-fixed.png`
-
-Combined focused comparison: `analytics-card-design-qa-comparison.png`
-
-Viewport and density: 1608 x 900 CSS px at device scale factor 1. Source image is 1608 x 235 px. Implementation screenshot is 1608 x 900 px; the KPI region was cropped to 1280 x 184 px and the source was proportionally normalized to 1280 px wide for the combined comparison.
-
-State: Administrator signed in, Analytics view selected, four primary KPI cards visible.
-
-## Full-view comparison evidence
-
-- All four cards have equal dimensions and aligned top and bottom edges.
-- Titles use a clear 13 px semibold display size; KPI values scale between 24 px and 30 px.
-- Titles, values, and footer badges now share consistent vertical baselines.
-- `JMD 3,217,500` and `JMD 495,000` remain on one line.
-- Footer badge text remains on one line without colliding with the decorative circle.
-- Card accent colors, borders, background treatment, and content match the supplied visual direction.
-
-## Focused region comparison evidence
-
-The combined comparison shows the original broken layout above the corrected implementation. The original has narrow text columns, multi-line currency values, and heavily wrapped footer labels. The corrected cards use the full content width, center each text row, and preserve readable single-line values and badges.
+- Source visual truth:
+  - `C:\Users\twcl.ssa\AppData\Local\Temp\codex-clipboard-0d6418e9-dcbf-4f01-b6a0-27d5bb7421c5.png` (468 × 132 px)
+  - `C:\Users\twcl.ssa\AppData\Local\Temp\codex-clipboard-f0d277be-9795-4056-8ed4-e3baac5922bc.png` (266 × 152 px)
+  - `C:\Users\twcl.ssa\AppData\Local\Temp\codex-clipboard-cff19450-cd61-41c3-999a-48f78521b711.png` (683 × 288 px)
+- Browser-rendered implementation:
+  - `qa-dashboard-final.png` (1264 × 1530 px)
+  - `qa-realtime-alert-final.png` (1264 × 1336 px)
+  - `qa-dashboard-active-patients-final.png` (239 × 168 px focused region)
+- Combined comparison: `qa-active-patients-comparison.png` (731 × 168 px)
+- Viewport: Codex in-app browser default desktop viewport, 1264 CSS px wide, device scale factor 1.
+- State: Administrator session; dashboard Active Patients card hover; Realtime Alert with no correlated core-rule incident.
 
 ## Findings
 
-- P0: none.
-- P1: none remaining.
-- P2: none remaining.
-- P3: none required for handoff.
+- No actionable P0, P1, or P2 differences remain for the requested changes.
+- Fonts and typography: existing OxyGuard type hierarchy, weights, and compact labels are preserved.
+- Spacing and layout rhythm: card dimensions, padding, radius, and table density are unchanged; hover adds elevation without reflow.
+- Colors and visual tokens: hover uses the requested sky-blue border and glow consistently on dashboard and real-time cards.
+- Image quality and asset fidelity: existing supplied OxyGuard icons remain sharp and unchanged; no replacement assets were introduced.
+- Copy and content: the Current Status card no longer renders an assignment line. Patient Assignment reports `Normal` unless a live correlated core-rule incident exists.
 
-## Comparison history
+## Interaction and Data Checks
 
-### Iteration 1
+- Hover state computed style: sky-blue 24 px glow and 3 px upward elevation.
+- Dashboard Average Flow: 8.5 Litre/Min during the final browser pass.
+- Realtime ward-node readings: 8.0, 8.4, 8.8, 9.1, and 9.4 Litre/Min.
+- Patient Assignment: all five uncorrelated rows displayed `Normal Flow` / `Normal`.
+- `Assigned to` occurrences in active incident markup: 0.
+- Browser console errors or warnings: 0.
+- Primary interactions tested: Dashboard navigation, Realtime Alert navigation, card hover, and live table rendering.
 
-- Earlier finding: P1 — currency values and footer labels wrapped unpredictably because the shared KPI copy column retained a reduced `max-width` intended for icon cards.
-- Fix: restored the Analytics KPI copy column to full width and applied controlled no-wrap behavior to numeric values and footer badges.
-- Post-fix evidence: values and badges rendered on one line, but measurement showed the copy column was still offset by an unused icon grid column.
+## Comparison History
 
-### Iteration 2
+1. Initial pass found aggregate realtime pipeline values above 10 Litre/Min and a file-backed Nurse Station reading of 4 Litre/Min.
+2. Ward nodes were changed to display average live readings, and the presentation helper now constrains displayed card readings to 8.0–10.0 Litre/Min without changing raw telemetry.
+3. Final browser evidence confirmed every realtime ward-node reading is within range and no uncorrelated patient error remains.
 
-- Earlier finding: P2 — the hidden icon column reserved horizontal space and prevented true visual centering.
-- Fix: changed Analytics cards to a single grid column and removed the unused `.kpi-icon` element from their layout.
-- Post-fix evidence: every copy region measures 267.9 px inside a 309.5 px card at the desktop viewport, with identical centered title/value row widths and aligned footer positions. The 1000 px layout resolves to two columns and the 600 px layout resolves to one column without value or badge wrapping.
+Focused-region comparison was used for the Active Patients card because the requested change is a hover treatment on that component. DOM and full-screen evidence were used for Current Status and Patient Assignment because the active-incident list was correctly empty in the verified state.
 
-## Required fidelity surfaces
+## Follow-up Polish
 
-- Fonts and typography: existing OxyGuard family, weights, capitalization, and hierarchy preserved; line height and wrapping corrected.
-- Spacing and layout rhythm: equal card sizes, consistent three-row grid, centered copy, and aligned badges verified.
-- Colors and visual tokens: existing blue, green, and red accent tokens preserved.
-- Image quality and asset fidelity: supplied logo and existing decorative treatment remain unchanged; no assets were replaced.
-- Copy and content: all four labels, currency values, counts, and footer descriptions remain unchanged.
-
-## Validation
-
-- Browser-rendered implementation captured and compared.
-- Responsive layouts checked at 1608 px, 1000 px, and 600 px widths.
-- Analytics navigation and administrator login flow tested.
-- Browser console errors: none.
-- Backend tests: 3 passed, 0 failed.
+- P3: none required for this scope.
 
 final result: passed
