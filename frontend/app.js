@@ -2238,9 +2238,13 @@ function getAlertIncidentRows(sourceRows = databaseAlertRows) {
   return sourceRows
     .map(row => ({ ...row, type: normalizeWardIncidentStatus(row.type) }))
     .filter(row => row.type)
+    .sort((a, b) => {
+      const timeDifference = new Date(b.occurredAt || 0).getTime() - new Date(a.occurredAt || 0).getTime();
+      return timeDifference || Number(b.id || 0) - Number(a.id || 0);
+    })
     .filter((row, index, rows) => rows.findIndex(candidate => (
     candidate.type === row.type && candidate.ward === row.ward && candidate.asset === row.asset
-  )) === index).slice(0, 6);
+  )) === index);
 }
 
 function requiresServerAuthenticatedSession() {

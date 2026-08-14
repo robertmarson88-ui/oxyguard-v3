@@ -863,6 +863,9 @@ function queryAlerts(db, url) {
       status: alert.status || (alert.is_resolved ? "resolved" : "active"),
       recommended_action: alert.recommended_action || "Review alert and investigate the affected device."
     };
+  }).sort((a, b) => {
+    const timeDifference = new Date(b.timestamp || b.created_at).getTime() - new Date(a.timestamp || a.created_at).getTime();
+    return timeDifference || Number(b.alert_id || 0) - Number(a.alert_id || 0);
   });
 }
 
